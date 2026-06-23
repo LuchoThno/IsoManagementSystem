@@ -10,7 +10,6 @@ import {
   deleteTaskApi,
   listTasks,
   updateTaskApi,
-  updateTaskStatusApi,
 } from '../lib/tasksApi';
 
 export const Tasks: React.FC = () => {
@@ -63,11 +62,6 @@ export const Tasks: React.FC = () => {
     await refreshTasks();
   };
 
-  const handleStatusChange = async (taskId: string, status: Task['status']) => {
-    await updateTaskStatusApi(taskId, status);
-    await refreshTasks();
-  };
-
   const handleEditTask = async (task: Task) => {
     const title = window.prompt('Nuevo titulo de la tarea', task.title);
     if (!title) return;
@@ -78,10 +72,19 @@ export const Tasks: React.FC = () => {
     const assignedTo = window.prompt('Responsable', task.assignedTo);
     if (!assignedTo) return;
 
+    const status = window.prompt(
+      'Estado: pending, in-progress, completed o overdue',
+      task.status
+    ) as Task['status'] | null;
+    if (!status || !['pending', 'in-progress', 'completed', 'overdue'].includes(status)) {
+      return;
+    }
+
     await updateTaskApi(task.id, {
       title,
       description,
       assignedTo,
+      status,
     });
 
     await refreshTasks();
@@ -145,7 +148,6 @@ export const Tasks: React.FC = () => {
       ) : (
         <TaskList
           tasks={filteredTasks}
-          onStatusChange={handleStatusChange}
           onEdit={handleEditTask}
           onDelete={handleDeleteTask}
         />

@@ -2,6 +2,7 @@ import { Injectable, OnModuleInit } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Audit, Finding } from './schemas/audit.schema';
+import { ChatThreadEntity } from './schemas/chat-thread.schema';
 import { DocumentEntity } from './schemas/document.schema';
 import { SettingsEntity } from './schemas/settings.schema';
 import { TaskEntity } from './schemas/task.schema';
@@ -28,6 +29,8 @@ export class IsoService implements OnModuleInit {
     private readonly taskModel: Model<TaskEntity>,
     @InjectModel(Audit.name)
     private readonly auditModel: Model<Audit>,
+    @InjectModel(ChatThreadEntity.name)
+    private readonly chatThreadModel: Model<ChatThreadEntity>,
     @InjectModel(SettingsEntity.name)
     private readonly settingsModel: Model<SettingsEntity>
   ) {}
@@ -76,6 +79,93 @@ export class IsoService implements OnModuleInit {
       },
       notifications: settings.notifications,
     };
+  }
+
+  async getChatThreads(userId: string) {
+    const threads = await this.chatThreadModel
+      .find({ participantIds: userId })
+      .sort({ updatedAt: -1 })
+      .lean();
+
+    return threads.map((thread) => this.serializeChatThread(thread));
+  }
+
+  async openDirectThread(participantIds: string[]) {
+    const uniqueParticipants = Array.from(
+      new Set(participantIds.map((participantId) => participantId.trim()).filter(Boolean))
+    ).sort();
+
+    if (uniqueParticipants.length < 2) {
+      throw new Error('At least two participants are required');
+    }
+
+    const existingThreads = await this.chatThreadModel
+      .find({
+        participantIds: { $all: uniqueParticipants },
+      })
+      .lean();
+
+    const existing = existingThreads.find((thread) => {
+      const currentParticipants = [...(thread.participantIds ?? [])].sort();
+      return (
+        currentParticipants.length === uniqueParticipants.length &&
+        currentParticipants.every(
+          (participantId, index) => participantId === uniqueParticipants[index]
+        )
+      );
+    });
+
+    if (existing) {
+      return this.serializeChatThread(existing);
+    }
+
+    const thread = await this.chatThreadModel.create({
+      participantIds: uniqueParticipants,
+      messages: [],
+      updatedAt: new Date(),
+    });
+
+    return this.serializeChatThread(thread.toObject());
+  }
+
+  async sendChatMessage(threadId: string, authorId: string, content: string) {
+    const thread = await this.chatThreadModel.findById(threadId);
+
+    if (!thread) {
+      throw new Error('Conversation not found');
+    }
+
+    const nextMessage = {
+      id: this.makeId('msg'),
+      authorId,
+      content: content.trim(),
+      createdAt: new Date(),
+      readBy: [authorId],
+    };
+
+    thread.messages = [...(thread.messages ?? []), nextMessage];
+    thread.updatedAt = nextMessage.createdAt;
+    await thread.save();
+
+    return this.serializeChatThread(thread.toObject());
+  }
+
+  async markThreadAsRead(threadId: string, userId: string) {
+    const thread = await this.chatThreadModel.findById(threadId);
+
+    if (!thread) {
+      throw new Error('Conversation not found');
+    }
+
+    thread.messages = (thread.messages ?? []).map((message) => ({
+      ...message,
+      readBy: message.readBy.includes(userId)
+        ? message.readBy
+        : [...message.readBy, userId],
+    }));
+
+    await thread.save();
+    return this.serializeChatThread(thread.toObject());
   }
 
   async createDocument(payload: {
@@ -421,10 +511,11 @@ export class IsoService implements OnModuleInit {
   }
 
   private async seedIfEmpty() {
-    const [documentCount, taskCount, auditCount] = await Promise.all([
+    const [documentCount, taskCount, auditCount, chatThreadCount] = await Promise.all([
       this.documentModel.countDocuments(),
       this.taskModel.countDocuments(),
       this.auditModel.countDocuments(),
+      this.chatThreadModel.countDocuments(),
     ]);
 
     await this.getSettingsDocument();
@@ -599,6 +690,45 @@ export class IsoService implements OnModuleInit {
         },
       ]);
     }
+
+    if (chatThreadCount === 0) {
+      await this.chatThreadModel.insertMany([
+        {
+          participantIds: ['user-1', 'user-2'],
+          updatedAt: new Date(),
+          messages: [
+            {
+              id: 'msg-1',
+              authorId: 'user-1',
+              content:
+                'Marcela, por favor revisa las tareas que vencen esta semana antes del comite.',
+              createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
+              readBy: ['user-1', 'user-2'],
+            },
+            {
+              id: 'msg-2',
+              authorId: 'user-2',
+              content: 'Perfecto, hoy cierro la revision y dejo comunicado listo.',
+              createdAt: new Date(),
+              readBy: ['user-1', 'user-2'],
+            },
+          ],
+        },
+        {
+          participantIds: ['user-1', 'user-3'],
+          updatedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+          messages: [
+            {
+              id: 'msg-3',
+              authorId: 'user-3',
+              content: 'Ya tengo la evidencia del hallazgo NC-12 para seguimiento.',
+              createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+              readBy: ['user-1', 'user-3'],
+            },
+          ],
+        },
+      ]);
+    }
   }
 
   private serializeDocument(document: any) {
@@ -665,6 +795,21 @@ export class IsoService implements OnModuleInit {
         status: finding.status,
         dueDate: finding.dueDate,
         assignedTo: finding.assignedTo,
+      })),
+    };
+  }
+
+  private serializeChatThread(thread: any) {
+    return {
+      id: String(thread._id),
+      participantIds: thread.participantIds ?? [],
+      updatedAt: thread.updatedAt,
+      messages: (thread.messages ?? []).map((message: any) => ({
+        id: message.id,
+        authorId: message.authorId,
+        content: message.content,
+        createdAt: message.createdAt,
+        readBy: message.readBy ?? [],
       })),
     };
   }

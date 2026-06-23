@@ -10,7 +10,6 @@ import {
   deleteAuditApi,
   listAudits,
   updateAuditApi,
-  updateAuditStatusApi,
 } from '../lib/auditsApi';
 
 export const Audits: React.FC = () => {
@@ -65,11 +64,6 @@ export const Audits: React.FC = () => {
   const handleCreateAudit = async (auditData: Omit<Audit, 'id'>) => {
     const newAudit = await createAuditApi(auditData);
     setAudits((current) => [...current, newAudit]);
-    await refreshAudits();
-  };
-
-  const handleStatusChange = async (auditId: string, status: Audit['status']) => {
-    await updateAuditStatusApi(auditId, status);
     await refreshAudits();
   };
 
@@ -149,7 +143,6 @@ export const Audits: React.FC = () => {
       ) : (
         <AuditList
           audits={filteredAudits}
-          onStatusChange={handleStatusChange}
           onEdit={handleEditAudit}
           onDelete={handleDeleteAudit}
         />

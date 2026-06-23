@@ -1,6 +1,12 @@
 import React from 'react';
-import { MessageSquareMore, Search, Send, Users2 } from 'lucide-react';
-import { fetchBootstrap, markThreadAsRead, openDirectThread, sendChatMessage } from '../lib/api';
+import { Link2, MessageSquareMore, Search, Send, Sparkles, Users2 } from 'lucide-react';
+import {
+  listChatThreadsApi,
+  markThreadAsReadApi,
+  openDirectThreadApi,
+  sendChatMessageApi,
+} from '../lib/chatApi';
+import { connectChatSocket } from '../lib/chatSocket';
 import { useAuthStore } from '../store/useAuthStore';
 import { useISOStore } from '../store/useISOStore';
 import type { ChatThread, UserAccount } from '../types/iso';
@@ -18,10 +24,13 @@ export const Chat: React.FC = () => {
   const currentUser = useAuthStore((state) => state.user);
   const users = useISOStore((state) => state.users);
   const chatThreads = useISOStore((state) => state.chatThreads);
-  const hydrate = useISOStore((state) => state.hydrate);
+  const replaceChatThreads = useISOStore((state) => state.replaceChatThreads);
+  const upsertChatThread = useISOStore((state) => state.upsertChatThread);
   const [selectedThreadId, setSelectedThreadId] = React.useState<string | null>(null);
   const [message, setMessage] = React.useState('');
   const [directoryQuery, setDirectoryQuery] = React.useState('');
+  const [loadingThreads, setLoadingThreads] = React.useState(true);
+  const [chatError, setChatError] = React.useState<string | null>(null);
 
   const availableUsers = React.useMemo(
     () =>
@@ -56,6 +65,67 @@ export const Chat: React.FC = () => {
     sortedThreads.find((thread) => thread.id === selectedThreadId) ?? sortedThreads[0] ?? null;
 
   React.useEffect(() => {
+    if (!currentUser) {
+      return;
+    }
+
+    let mounted = true;
+
+    const loadThreads = async () => {
+      try {
+        setLoadingThreads(true);
+        const threads = await listChatThreadsApi(currentUser.id);
+        if (mounted) {
+          replaceChatThreads(threads);
+          setChatError(null);
+        }
+      } catch {
+        if (mounted) {
+          setChatError('No fue posible cargar las conversaciones desde MongoDB.');
+        }
+      } finally {
+        if (mounted) {
+          setLoadingThreads(false);
+        }
+      }
+    };
+
+    void loadThreads();
+
+    return () => {
+      mounted = false;
+    };
+  }, [currentUser, replaceChatThreads]);
+
+  React.useEffect(() => {
+    if (!currentUser) {
+      return;
+    }
+
+    const socket = connectChatSocket(currentUser.id);
+
+    socket.on('chat:thread-upserted', (thread: ChatThread) => {
+      upsertChatThread({
+        ...thread,
+        updatedAt: new Date(thread.updatedAt),
+        messages: thread.messages.map((item) => ({
+          ...item,
+          createdAt: new Date(item.createdAt),
+        })),
+      });
+      setChatError(null);
+    });
+
+    socket.on('connect_error', () => {
+      setChatError('No fue posible conectar el chat en tiempo real.');
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [currentUser, upsertChatThread]);
+
+  React.useEffect(() => {
     if (!selectedThreadId && sortedThreads[0]) {
       setSelectedThreadId(sortedThreads[0].id);
     }
@@ -71,16 +141,25 @@ export const Chat: React.FC = () => {
       return;
     }
 
-    void markThreadAsRead(selectedThread.id, currentUser.id).then(async () => {
-      hydrate(await fetchBootstrap());
-    });
-  }, [currentUser, hydrate, selectedThread]);
+    void markThreadAsReadApi(selectedThread.id, currentUser.id)
+      .then((thread) => {
+        upsertChatThread(thread);
+      })
+      .catch(() => {
+        setChatError('No fue posible marcar la conversación como leída.');
+      });
+  }, [currentUser, selectedThread, upsertChatThread]);
 
   const handleOpenChat = async (targetUserId: string) => {
     if (!currentUser) return;
-    const thread = await openDirectThread([currentUser.id, targetUserId]);
-    hydrate(await fetchBootstrap());
-    setSelectedThreadId(thread.id);
+    try {
+      const thread = await openDirectThreadApi([currentUser.id, targetUserId]);
+      upsertChatThread(thread);
+      setSelectedThreadId(thread.id);
+      setChatError(null);
+    } catch {
+      setChatError('No fue posible abrir la conversación.');
+    }
   };
 
   const handleSendMessage = async (event: React.FormEvent) => {
@@ -89,19 +168,51 @@ export const Chat: React.FC = () => {
       return;
     }
 
-    await sendChatMessage(selectedThread.id, currentUser.id, message.trim());
-    hydrate(await fetchBootstrap());
-    setMessage('');
+    try {
+      const thread = await sendChatMessageApi(selectedThread.id, currentUser.id, message.trim());
+      upsertChatThread(thread);
+      setMessage('');
+      setChatError(null);
+    } catch {
+      setChatError('No fue posible enviar el mensaje.');
+    }
   };
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-extrabold text-slate-700">Chat interno</h2>
-        <p className="mt-1 text-sm text-slate-400">
-          Conversaciones operativas para seguimiento de tareas, auditorías y coordinación interna.
-        </p>
+      <div className="grid gap-4 xl:grid-cols-[1fr_340px]">
+        <div>
+          <h2 className="text-2xl font-extrabold text-slate-700">Chat interno</h2>
+          <p className="mt-1 text-sm text-slate-400">
+            Conversaciones operativas para seguimiento de tareas, auditorías y coordinación interna.
+          </p>
+        </div>
+        <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="rounded-2xl bg-[#0acf97]/10 p-3 text-[#0acf97]">
+              <Sparkles className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="text-lg font-extrabold text-slate-700">Proveedor sugerido</h3>
+              <p className="mt-1 text-sm text-slate-400">Socket.IO sobre API + MongoDB</p>
+            </div>
+          </div>
+          <p className="mt-4 text-sm leading-6 text-slate-500">
+            El chat queda persistido en MongoDB y sincronizado en tiempo real con `Socket.IO`.
+            Si necesitas alertas externas, puedes complementar con `GOOGLE_CHAT_WEBHOOK_URL`.
+          </p>
+          <div className="mt-4 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-slate-400">
+            <Link2 className="h-3.5 w-3.5" />
+            Realtime desacoplado del proveedor de correo
+          </div>
+        </div>
       </div>
+
+      {chatError ? (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+          {chatError}
+        </div>
+      ) : null}
 
       <div className="grid gap-6 xl:grid-cols-[330px_1fr]">
         <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
@@ -130,6 +241,11 @@ export const Chat: React.FC = () => {
           </div>
 
           <div className="max-h-[270px] space-y-2 overflow-y-auto px-5 py-4">
+            {loadingThreads ? (
+              <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-400">
+                Cargando conversaciones desde MongoDB...
+              </div>
+            ) : null}
             {availableUsers.map((user) => (
               <button
                 key={user.id}

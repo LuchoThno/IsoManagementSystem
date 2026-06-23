@@ -43,6 +43,8 @@ interface ISOStore {
   replaceSettings: (settings: Settings) => void;
   replaceNotifications: (settings: NotificationSettings) => void;
   replaceUsers: (users: UserAccount[]) => void;
+  replaceChatThreads: (threads: ChatThread[]) => void;
+  upsertChatThread: (thread: ChatThread) => void;
   replaceAlerts: (alerts: Alert[]) => void;
   replaceDashboard: (dashboard: DashboardOverview) => void;
 }
@@ -157,6 +159,19 @@ export const useISOStore = create<ISOStore>((set) => ({
   replaceUsers: (users) =>
     set(() => ({
       users,
+    })),
+
+  replaceChatThreads: (threads) =>
+    set(() => ({
+      chatThreads: threads,
+    })),
+
+  upsertChatThread: (thread) =>
+    set((state) => ({
+      chatThreads: [
+        thread,
+        ...state.chatThreads.filter((current) => current.id !== thread.id),
+      ].sort((left, right) => right.updatedAt.getTime() - left.updatedAt.getTime()),
     })),
 
   replaceAlerts: (alerts) =>

@@ -1,9 +1,13 @@
 import { Body, Controller, Get, Param, Patch, Post, Put } from '@nestjs/common';
+import { ChatGateway } from './chat.gateway';
 import { IsoService } from './iso.service';
 
 @Controller('iso')
 export class IsoController {
-  constructor(private readonly isoService: IsoService) {}
+  constructor(
+    private readonly isoService: IsoService,
+    private readonly chatGateway: ChatGateway
+  ) {}
 
   @Get('documents')
   getDocuments() {
@@ -23,6 +27,50 @@ export class IsoController {
   @Get('bootstrap')
   getBootstrap() {
     return this.isoService.getBootstrap();
+  }
+
+  @Get('chat/threads/:userId')
+  getChatThreads(@Param('userId') userId: string) {
+    return this.isoService.getChatThreads(userId);
+  }
+
+  @Post('chat/threads/direct')
+  async openDirectThread(
+    @Body()
+    body: {
+      participantIds: string[];
+    }
+  ) {
+    const thread = await this.isoService.openDirectThread(body.participantIds);
+    this.chatGateway.emitThreadUpsert(thread);
+    return thread;
+  }
+
+  @Post('chat/threads/:id/messages')
+  async sendChatMessage(
+    @Param('id') id: string,
+    @Body()
+    body: {
+      authorId: string;
+      content: string;
+    }
+  ) {
+    const thread = await this.isoService.sendChatMessage(id, body.authorId, body.content);
+    this.chatGateway.emitThreadUpsert(thread);
+    return thread;
+  }
+
+  @Post('chat/threads/:id/read')
+  async markThreadAsRead(
+    @Param('id') id: string,
+    @Body()
+    body: {
+      userId: string;
+    }
+  ) {
+    const thread = await this.isoService.markThreadAsRead(id, body.userId);
+    this.chatGateway.emitThreadUpsert(thread);
+    return thread;
   }
 
   @Post('documents')

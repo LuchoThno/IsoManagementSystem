@@ -1,101 +1,177 @@
 import React from 'react';
 import { format } from 'date-fns';
-import { CheckCircle2, Clock, AlertCircle, Pencil, Trash2 } from 'lucide-react';
+import {
+  AlertCircle,
+  CheckCircle2,
+  CircleDashed,
+  Clock,
+  PencilLine,
+  ShieldAlert,
+  Trash2,
+} from 'lucide-react';
 import type { Task } from '../../types/iso';
 
 interface TaskListProps {
   tasks: Task[];
-  onStatusChange: (taskId: string, status: Task['status']) => void;
   onEdit: (task: Task) => void;
   onDelete: (task: Task) => void;
 }
 
-export const TaskList: React.FC<TaskListProps> = ({ tasks, onStatusChange, onEdit, onDelete }) => {
+export const TaskList: React.FC<TaskListProps> = ({ tasks, onEdit, onDelete }) => {
   const getStatusIcon = (status: Task['status']) => {
     switch (status) {
       case 'completed':
         return <CheckCircle2 className="w-5 h-5 text-green-500" />;
       case 'overdue':
-        return <AlertCircle className="w-5 h-5 text-red-500" />;
+        return <ShieldAlert className="w-5 h-5 text-red-500" />;
+      case 'in-progress':
+        return <Clock className="w-5 h-5 text-amber-500" />;
       default:
-        return <Clock className="w-5 h-5 text-yellow-500" />;
+        return <CircleDashed className="w-5 h-5 text-sky-500" />;
     }
   };
 
   const getPriorityColor = (priority: Task['priority']) => {
     switch (priority) {
       case 'high':
-        return 'text-red-600 bg-red-50';
+        return 'text-red-700 bg-red-50 ring-1 ring-red-100';
       case 'medium':
-        return 'text-yellow-600 bg-yellow-50';
+        return 'text-amber-700 bg-amber-50 ring-1 ring-amber-100';
       case 'low':
-        return 'text-green-600 bg-green-50';
+        return 'text-emerald-700 bg-emerald-50 ring-1 ring-emerald-100';
     }
   };
 
+  const getStatusLabel = (status: Task['status']) => {
+    switch (status) {
+      case 'completed':
+        return 'Completada';
+      case 'in-progress':
+        return 'En progreso';
+      case 'overdue':
+        return 'Vencida';
+      default:
+        return 'Pendiente';
+    }
+  };
+
+  const getStatusTone = (status: Task['status']) => {
+    switch (status) {
+      case 'completed':
+        return 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100';
+      case 'in-progress':
+        return 'bg-amber-50 text-amber-700 ring-1 ring-amber-100';
+      case 'overdue':
+        return 'bg-rose-50 text-rose-700 ring-1 ring-rose-100';
+      default:
+        return 'bg-sky-50 text-sky-700 ring-1 ring-sky-100';
+    }
+  };
+
+  const actionButtonClassName =
+    'inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700';
+
   return (
-    <div className="panel-card overflow-hidden">
-      <div className="hidden grid-cols-[1.6fr_1fr_140px_130px_180px] gap-4 border-b border-slate-100 bg-slate-50 px-4 py-3 text-xs font-extrabold uppercase tracking-wide text-slate-400 lg:grid">
+    <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
+      <div className="flex items-center justify-between border-b border-slate-100 px-6 py-5">
+        <div>
+          <h3 className="text-lg font-extrabold text-slate-700">Backlog operativo</h3>
+          <p className="mt-1 text-sm text-slate-400">
+            {tasks.length} tareas visibles con responsables, prioridad y seguimiento.
+          </p>
+        </div>
+      </div>
+      <div className="hidden grid-cols-[1.9fr_1fr_150px_170px_120px] gap-4 border-b border-slate-100 bg-slate-50 px-6 py-4 text-xs font-extrabold uppercase tracking-[0.18em] text-slate-500 lg:grid">
         <span>Tarea</span>
-        <span>Responsable / Norma</span>
-        <span>Fecha limite</span>
+        <span>Responsable</span>
+        <span>Fecha límite</span>
         <span>Estado</span>
-        <span>Acciones</span>
+        <span className="text-right">Acciones</span>
       </div>
       {tasks.map((task) => (
-        <div key={task.id} className="grid grid-cols-1 gap-4 border-b border-slate-100 px-4 py-4 transition-colors hover:bg-slate-50 lg:grid-cols-[1.6fr_1fr_140px_130px_180px]">
-          <div>
-            <div className="flex items-center space-x-3">
-              <span>{getStatusIcon(task.status)}</span>
-              <h3 className="text-base font-extrabold text-slate-700">{task.title}</h3>
-              <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${getPriorityColor(task.priority)}`}>
-                  {task.priority === 'high' ? 'Alta' : task.priority === 'medium' ? 'Media' : 'Baja'}
-              </span>
+        <div
+          key={task.id}
+          className="grid grid-cols-1 gap-4 border-b border-slate-100 px-6 py-5 transition hover:bg-[linear-gradient(90deg,rgba(114,124,245,0.05),rgba(57,175,209,0.03))] lg:grid-cols-[1.9fr_1fr_150px_170px_120px]"
+        >
+          <div className="min-w-0">
+            <div className="flex items-start gap-4">
+              <div className="rounded-2xl bg-[#727cf5]/10 p-3 text-[#727cf5]">
+                {getStatusIcon(task.status)}
+              </div>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="text-base font-extrabold text-slate-700">{task.title}</h3>
+                  <span
+                    className={`rounded-full px-2.5 py-1 text-xs font-bold ${getPriorityColor(task.priority)}`}
+                  >
+                    {task.priority === 'high' ? 'Alta' : task.priority === 'medium' ? 'Media' : 'Baja'}
+                  </span>
+                </div>
+                <p className="mt-2 text-sm leading-6 text-slate-400">{task.description}</p>
+                <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-400">
+                  <span>{task.standard}</span>
+                  <span className="h-1 w-1 rounded-full bg-slate-300" />
+                  <span>{task.relatedDocuments.length} documentos relacionados</span>
+                </div>
+              </div>
             </div>
-            <p className="mt-2 text-sm text-slate-400">{task.description}</p>
           </div>
           <div className="text-sm">
-            <p className="font-bold text-slate-600">{task.assignedTo}</p>
-            <p className="mt-1 text-slate-400">{task.standard}</p>
-          </div>
-          <div className="text-sm font-semibold text-slate-500">
-            {format(task.dueDate, 'MMM d, yyyy')}
+            <p className="font-bold text-slate-700">{task.assignedTo}</p>
+            <p className="mt-1 text-slate-400">Responsable principal</p>
           </div>
           <div>
-            <select
-              value={task.status}
-              onChange={(e) => onStatusChange(task.id, e.target.value as Task['status'])}
-              className="admin-select w-full"
-            >
-              <option value="pending">Pendiente</option>
-              <option value="in-progress">En progreso</option>
-              <option value="completed">Completada</option>
-              <option value="overdue">Vencida</option>
-            </select>
+            <p className="text-sm font-bold text-slate-600">
+              {format(task.dueDate, 'dd MMM yyyy')}
+            </p>
+            <p className="mt-1 text-xs text-slate-400">
+              {task.dueDate < new Date() && task.status !== 'completed' ? 'Requiere atención' : 'Seguimiento vigente'}
+            </p>
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => onEdit(task)}
-              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
+          <div>
+            <span
+              className={`inline-flex rounded-full px-3 py-1.5 text-xs font-bold ${getStatusTone(task.status)}`}
             >
-              <Pencil className="h-4 w-4" />
-              Editar
-            </button>
-            <button
-              type="button"
-              onClick={() => onDelete(task)}
-              className="inline-flex items-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-600 transition hover:bg-rose-100"
-            >
-              <Trash2 className="h-4 w-4" />
-              Eliminar
-            </button>
+              {getStatusLabel(task.status)}
+            </span>
+          </div>
+          <div className="flex items-start justify-end">
+            <div className="flex flex-wrap justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => onEdit(task)}
+                className={actionButtonClassName}
+                title="Editar tarea"
+                aria-label="Editar tarea"
+              >
+                <PencilLine className="h-4 w-4" />
+                <span className="sr-only">Editar tarea</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => onDelete(task)}
+                className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-rose-200 bg-rose-50 text-rose-600 transition hover:bg-rose-100"
+                title="Eliminar tarea"
+                aria-label="Eliminar tarea"
+              >
+                <Trash2 className="h-4 w-4" />
+                <span className="sr-only">Eliminar tarea</span>
+              </button>
+            </div>
           </div>
         </div>
       ))}
       {tasks.length === 0 && (
-        <div className="p-8 text-center text-gray-500">
-          No se encontraron tareas con esos filtros.
+        <div className="p-10 text-center text-slate-500">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 text-slate-400">
+            <AlertCircle className="h-6 w-6" />
+          </div>
+          <p className="mt-4 text-lg font-extrabold text-slate-700">
+            No se encontraron tareas con esos filtros
+          </p>
+          <p className="mt-2 text-sm text-slate-400">
+            Ajusta la búsqueda o cambia estado, prioridad y norma para encontrar resultados.
+          </p>
         </div>
       )}
     </div>
