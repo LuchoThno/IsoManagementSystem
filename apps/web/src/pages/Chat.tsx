@@ -1,0 +1,283 @@
+import React from 'react';
+import { MessageSquareMore, Search, Send, Users2 } from 'lucide-react';
+import { fetchBootstrap, markThreadAsRead, openDirectThread, sendChatMessage } from '../lib/api';
+import { useAuthStore } from '../store/useAuthStore';
+import { useISOStore } from '../store/useISOStore';
+import type { ChatThread, UserAccount } from '../types/iso';
+
+const getOtherParticipant = (
+  thread: ChatThread,
+  users: UserAccount[],
+  currentUserId: string
+) => {
+  const otherParticipantId = (thread.participantIds ?? []).find((id) => id !== currentUserId);
+  return users.find((user) => user.id === otherParticipantId);
+};
+
+export const Chat: React.FC = () => {
+  const currentUser = useAuthStore((state) => state.user);
+  const users = useISOStore((state) => state.users);
+  const chatThreads = useISOStore((state) => state.chatThreads);
+  const hydrate = useISOStore((state) => state.hydrate);
+  const [selectedThreadId, setSelectedThreadId] = React.useState<string | null>(null);
+  const [message, setMessage] = React.useState('');
+  const [directoryQuery, setDirectoryQuery] = React.useState('');
+
+  const availableUsers = React.useMemo(
+    () =>
+      users.filter((user) => {
+        if (user.id === currentUser?.id || !user.active) {
+          return false;
+        }
+
+        const normalized = directoryQuery.trim().toLowerCase();
+        if (!normalized) {
+          return true;
+        }
+
+        return (
+          user.name.toLowerCase().includes(normalized) ||
+          user.email.toLowerCase().includes(normalized) ||
+          user.role.toLowerCase().includes(normalized)
+        );
+      }),
+    [currentUser?.id, directoryQuery, users]
+  );
+
+  const sortedThreads = React.useMemo(
+    () =>
+      [...chatThreads].sort(
+        (left, right) => right.updatedAt.getTime() - left.updatedAt.getTime()
+      ),
+    [chatThreads]
+  );
+
+  const selectedThread =
+    sortedThreads.find((thread) => thread.id === selectedThreadId) ?? sortedThreads[0] ?? null;
+
+  React.useEffect(() => {
+    if (!selectedThreadId && sortedThreads[0]) {
+      setSelectedThreadId(sortedThreads[0].id);
+    }
+  }, [selectedThreadId, sortedThreads]);
+
+  React.useEffect(() => {
+    if (!selectedThread || !currentUser) {
+      return;
+    }
+
+    const unread = selectedThread.messages.some((item) => !item.readBy.includes(currentUser.id));
+    if (!unread) {
+      return;
+    }
+
+    void markThreadAsRead(selectedThread.id, currentUser.id).then(async () => {
+      hydrate(await fetchBootstrap());
+    });
+  }, [currentUser, hydrate, selectedThread]);
+
+  const handleOpenChat = async (targetUserId: string) => {
+    if (!currentUser) return;
+    const thread = await openDirectThread([currentUser.id, targetUserId]);
+    hydrate(await fetchBootstrap());
+    setSelectedThreadId(thread.id);
+  };
+
+  const handleSendMessage = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!currentUser || !selectedThread || !message.trim()) {
+      return;
+    }
+
+    await sendChatMessage(selectedThread.id, currentUser.id, message.trim());
+    hydrate(await fetchBootstrap());
+    setMessage('');
+  };
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-extrabold text-slate-700">Chat interno</h2>
+        <p className="mt-1 text-sm text-slate-400">
+          Conversaciones operativas para seguimiento de tareas, auditorías y coordinación interna.
+        </p>
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-[330px_1fr]">
+        <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
+          <div className="border-b border-slate-100 px-5 py-5">
+            <div className="flex items-center gap-3">
+              <div className="rounded-2xl bg-[#727cf5]/10 p-3 text-[#727cf5]">
+                <Users2 className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="panel-title">Directorio</h3>
+                <p className="mt-1 text-sm text-slate-400">
+                  {availableUsers.length} usuario(s) activo(s)
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-4 flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+              <Search className="h-4 w-4 text-slate-400" />
+              <input
+                value={directoryQuery}
+                onChange={(event) => setDirectoryQuery(event.target.value)}
+                placeholder="Buscar usuario..."
+                className="w-full border-none bg-transparent text-sm text-slate-600 outline-none placeholder:text-slate-400"
+              />
+            </div>
+          </div>
+
+          <div className="max-h-[270px] space-y-2 overflow-y-auto px-5 py-4">
+            {availableUsers.map((user) => (
+              <button
+                key={user.id}
+                type="button"
+                onClick={() => void handleOpenChat(user.id)}
+                className="flex w-full items-center justify-between rounded-xl border border-slate-200 px-4 py-3 text-left transition hover:border-slate-300 hover:bg-slate-50"
+              >
+                <div>
+                  <p className="font-bold text-slate-700">{user.name}</p>
+                  <p className="mt-1 text-xs text-slate-400">{user.email}</p>
+                </div>
+                <span className="rounded-full bg-[#727cf5]/10 px-2.5 py-1 text-xs font-bold uppercase text-[#727cf5]">
+                  {user.role}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          <div className="border-t border-slate-100 px-5 py-5">
+            <h4 className="text-sm font-extrabold uppercase tracking-[0.2em] text-slate-400">
+              Conversaciones recientes
+            </h4>
+            <div className="mt-3 space-y-2">
+              {sortedThreads.map((thread) => {
+                if (!currentUser) return null;
+                const otherUser = getOtherParticipant(thread, users, currentUser.id);
+                const unreadCount = thread.messages.filter(
+                  (item) => !item.readBy.includes(currentUser.id)
+                ).length;
+
+                return (
+                  <button
+                    key={thread.id}
+                    type="button"
+                    onClick={() => setSelectedThreadId(thread.id)}
+                    className={`block w-full rounded-xl border px-4 py-3 text-left transition ${
+                      selectedThread?.id === thread.id
+                        ? 'border-[#727cf5] bg-[#727cf5]/5'
+                        : 'border-slate-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <p className="font-bold text-slate-700">
+                          {otherUser?.name ?? 'Conversacion'}
+                        </p>
+                        <p className="mt-1 line-clamp-1 text-xs text-slate-400">
+                          {thread.messages[thread.messages.length - 1]?.content ?? 'Sin mensajes aun'}
+                        </p>
+                      </div>
+                      {unreadCount > 0 && (
+                        <span className="rounded-full bg-[#fa5c7c] px-2 py-1 text-xs font-bold text-white">
+                          {unreadCount}
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+
+        <section className="panel-card flex min-h-[620px] flex-col overflow-hidden">
+          {selectedThread && currentUser ? (
+            <>
+              <div className="border-b border-slate-100 px-6 py-5">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-sm font-bold uppercase tracking-[0.18em] text-slate-400">
+                      Conversación activa
+                    </p>
+                    <h3 className="mt-2 text-xl font-extrabold text-slate-700">
+                      {getOtherParticipant(selectedThread, users, currentUser.id)?.name ?? 'Equipo'}
+                    </h3>
+                    <p className="mt-1 text-sm text-slate-400">
+                      {selectedThread.messages.length} mensaje(s) en este hilo
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-[#0acf97]/10 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-[#0acf97]">
+                    En línea
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex-1 space-y-4 overflow-y-auto bg-[linear-gradient(180deg,#f8fafc_0%,#eef2f7_100%)] px-6 py-6">
+                {selectedThread.messages.map((item) => {
+                  const ownMessage = item.authorId === currentUser.id;
+                  const author = users.find((user) => user.id === item.authorId);
+
+                  return (
+                    <div
+                      key={item.id}
+                      className={`flex ${ownMessage ? 'justify-end' : 'justify-start'}`}
+                    >
+                      <div
+                        className={`max-w-[72%] rounded-2xl px-4 py-3 shadow-sm ${
+                          ownMessage
+                            ? 'bg-[#727cf5] text-white'
+                            : 'border border-slate-200 bg-white text-slate-700'
+                        }`}
+                      >
+                        <p className="text-xs font-bold uppercase tracking-wide opacity-70">
+                          {author?.name ?? 'Usuario'}
+                        </p>
+                        <p className="mt-2 text-sm leading-6">{item.content}</p>
+                        <p className="mt-2 text-[11px] opacity-70">
+                          {item.createdAt.toLocaleString('es-CL')}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <form onSubmit={handleSendMessage} className="border-t border-slate-100 px-6 py-4">
+                <div className="flex items-end gap-3">
+                  <textarea
+                    value={message}
+                    onChange={(event) => setMessage(event.target.value)}
+                    placeholder="Escribe un mensaje operativo..."
+                    className="admin-input min-h-[90px] resize-none"
+                  />
+                  <button
+                    type="submit"
+                    className="inline-flex items-center gap-2 rounded-xl bg-[#727cf5] px-5 py-3 font-bold text-white transition hover:bg-[#636df0]"
+                  >
+                    <Send className="h-4 w-4" />
+                    Enviar
+                  </button>
+                </div>
+              </form>
+            </>
+          ) : (
+            <div className="flex flex-1 flex-col items-center justify-center gap-4 px-8 text-center">
+              <div className="rounded-full bg-[#727cf5]/10 p-4 text-[#727cf5]">
+                <MessageSquareMore className="h-8 w-8" />
+              </div>
+              <div>
+                <p className="text-lg font-extrabold text-slate-700">Selecciona una conversacion</p>
+                <p className="mt-2 text-sm text-slate-400">
+                  Elige un usuario activo para iniciar un chat interno.
+                </p>
+              </div>
+            </div>
+          )}
+        </section>
+      </div>
+    </div>
+  );
+};
