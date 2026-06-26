@@ -6,11 +6,11 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "http://72.60.121.98/api/$1"
+      "destination": "http://72.60.121.98:3000/api/$1"
     },
     {
       "source": "/socket.io/(.*)",
-      "destination": "http://72.60.121.98/socket.io/$1"
+      "destination": "http://72.60.121.98:3000/socket.io/$1"
     },
     {
       "source": "/(.*)",
