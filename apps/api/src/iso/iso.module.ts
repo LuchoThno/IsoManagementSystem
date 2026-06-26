@@ -1,11 +1,17 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ChatGateway } from './chat.gateway';
+import { ClerkAuthGuard } from './clerk-auth.guard';
+import { ClerkAuthService } from './clerk-auth.service';
+import { ClerkDirectoryService } from './clerk-directory.service';
+import { GoogleCalendarService } from './google-calendar.service';
 import { IsoController } from './iso.controller';
 import { IsoService } from './iso.service';
 import { Audit, AuditSchema } from './schemas/audit.schema';
 import { ChatThreadEntity, ChatThreadSchema } from './schemas/chat-thread.schema';
 import { DocumentEntity, DocumentSchema } from './schemas/document.schema';
+import { EmailCampaignEntity, EmailCampaignSchema } from './schemas/email-campaign.schema';
+import { EmailTemplateEntity, EmailTemplateSchema } from './schemas/email-template.schema';
 import { SettingsEntity, SettingsSchema } from './schemas/settings.schema';
 import { TaskEntity, TaskSchema } from './schemas/task.schema';
 
@@ -16,10 +22,19 @@ import { TaskEntity, TaskSchema } from './schemas/task.schema';
       { name: TaskEntity.name, schema: TaskSchema },
       { name: Audit.name, schema: AuditSchema },
       { name: ChatThreadEntity.name, schema: ChatThreadSchema },
+      { name: EmailTemplateEntity.name, schema: EmailTemplateSchema },
+      { name: EmailCampaignEntity.name, schema: EmailCampaignSchema },
       { name: SettingsEntity.name, schema: SettingsSchema },
     ]),
   ],
   controllers: [IsoController],
-  providers: [IsoService, ChatGateway],
+  providers: [
+    IsoService,
+    ChatGateway,
+    GoogleCalendarService,
+    ClerkAuthService,
+    ClerkAuthGuard,
+    ClerkDirectoryService,
+  ],
 })
 export class IsoModule {}

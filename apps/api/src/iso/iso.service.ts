@@ -4,6 +4,8 @@ import { Model } from 'mongoose';
 import { Audit, Finding } from './schemas/audit.schema';
 import { ChatThreadEntity } from './schemas/chat-thread.schema';
 import { DocumentEntity } from './schemas/document.schema';
+import { EmailCampaignEntity } from './schemas/email-campaign.schema';
+import { EmailTemplateEntity } from './schemas/email-template.schema';
 import { SettingsEntity } from './schemas/settings.schema';
 import { TaskEntity } from './schemas/task.schema';
 
@@ -31,6 +33,10 @@ export class IsoService implements OnModuleInit {
     private readonly auditModel: Model<Audit>,
     @InjectModel(ChatThreadEntity.name)
     private readonly chatThreadModel: Model<ChatThreadEntity>,
+    @InjectModel(EmailTemplateEntity.name)
+    private readonly emailTemplateModel: Model<EmailTemplateEntity>,
+    @InjectModel(EmailCampaignEntity.name)
+    private readonly emailCampaignModel: Model<EmailCampaignEntity>,
     @InjectModel(SettingsEntity.name)
     private readonly settingsModel: Model<SettingsEntity>
   ) {}
@@ -55,10 +61,12 @@ export class IsoService implements OnModuleInit {
   }
 
   async getBootstrap() {
-    const [documents, tasks, audits, settings] = await Promise.all([
+    const [documents, tasks, audits, emailTemplates, emailCampaigns, settings] = await Promise.all([
       this.documentModel.find().sort({ updatedAt: -1 }).lean(),
       this.taskModel.find().sort({ dueDate: 1 }).lean(),
       this.auditModel.find().sort({ date: 1 }).lean(),
+      this.emailTemplateModel.find().sort({ updatedAt: -1 }).lean(),
+      this.emailCampaignModel.find().sort({ createdAt: -1 }).lean(),
       this.getSettingsDocument(),
     ]);
 
@@ -78,7 +86,113 @@ export class IsoService implements OnModuleInit {
         timezone: settings.timezone,
       },
       notifications: settings.notifications,
+      emailTemplates: emailTemplates.map((template) => this.serializeEmailTemplate(template)),
+      emailCampaigns: emailCampaigns.map((campaign) => this.serializeEmailCampaign(campaign)),
+      communicationSettings: settings.communicationSettings,
     };
+  }
+
+  async createEmailTemplate(payload: {
+    name: string;
+    subject: string;
+    content: string;
+  }) {
+    const template = await this.emailTemplateModel.create(payload);
+    return this.serializeEmailTemplate(template.toObject());
+  }
+
+  async updateEmailTemplate(
+    id: string,
+    updates: Partial<{
+      name: string;
+      subject: string;
+      content: string;
+    }>
+  ) {
+    const template = await this.emailTemplateModel.findById(id);
+    if (!template) {
+      throw new Error('Template not found');
+    }
+
+    if (typeof updates.name === 'string') template.name = updates.name;
+    if (typeof updates.subject === 'string') template.subject = updates.subject;
+    if (typeof updates.content === 'string') template.content = updates.content;
+    await template.save();
+
+    return this.serializeEmailTemplate(template.toObject());
+  }
+
+  async deleteEmailTemplate(id: string) {
+    await this.emailTemplateModel.findByIdAndDelete(id);
+    return { success: true };
+  }
+
+  async sendBulkTaskReminderCampaign(payload: {
+    name: string;
+    templateId: string;
+    daysAhead: number;
+    recipientIds: string[];
+    recipientNames: string[];
+  }) {
+    const template = await this.emailTemplateModel.findById(payload.templateId).lean();
+    if (!template) {
+      throw new Error('Template not found');
+    }
+
+    const settings = await this.getSettingsDocument();
+    const tasks = await this.taskModel.find().lean();
+    const now = Date.now();
+    const maxDate = now + payload.daysAhead * 24 * 60 * 60 * 1000;
+    const matchingTasks = tasks.filter(
+      (task) =>
+        task.status !== 'completed' &&
+        new Date(task.dueDate).getTime() >= now &&
+        new Date(task.dueDate).getTime() <= maxDate &&
+        payload.recipientNames.includes(task.assignedTo)
+    );
+
+    const dueSummary = matchingTasks
+      .map((task) => `${task.title} (${task.assignedTo})`)
+      .join(', ');
+
+    const rendered = this.renderTemplate(
+      this.serializeEmailTemplate(template),
+      {
+        companyName: settings.companyName,
+        userName: payload.recipientNames.join(', '),
+        taskCount: matchingTasks.length,
+        daysAhead: payload.daysAhead,
+        dueSummary: dueSummary || 'Sin tareas por vencer en este rango.',
+        taskTable:
+          matchingTasks.length > 0
+            ? `<ul>${matchingTasks
+                .map(
+                  (task) =>
+                    `<li><strong>${task.title}</strong> - ${task.assignedTo} - ${new Date(
+                      task.dueDate
+                    ).toLocaleDateString('es-CL')}</li>`
+                )
+                .join('')}</ul>`
+            : '<p>No hay tareas por vencer.</p>',
+      }
+    );
+
+    const campaign = await this.emailCampaignModel.create({
+      name: payload.name,
+      templateId: String(template._id),
+      templateName: template.name,
+      subject: rendered.subject,
+      body: rendered.body,
+      recipientIds: payload.recipientIds,
+      recipientCount: payload.recipientIds.length,
+      taskIds: matchingTasks.map((task) => String(task._id)),
+      taskCount: matchingTasks.length,
+      daysAhead: payload.daysAhead,
+      status: 'sent',
+      sentAt: new Date(),
+    });
+
+    return this.serializeEmailCampaign(campaign.toObject());
   }
 
   async getChatThreads(userId: string) {
@@ -196,7 +310,7 @@ export class IsoService implements OnModuleInit {
           id: this.makeId('doc-version'),
           version: payload.version || '1.0',
           date: now,
-          author: 'Administrador Demo',
+          author: 'Administrador ISO',
           notes: `Carga inicial del archivo ${payload.fileName}`,
         },
       ],
@@ -205,7 +319,7 @@ export class IsoService implements OnModuleInit {
           id: this.makeId('doc-audit'),
           action: 'created',
           date: now,
-          author: 'Administrador Demo',
+          author: 'Administrador ISO',
           details: `Documento creado con formato ${payload.format}`,
         },
       ],
@@ -243,7 +357,7 @@ export class IsoService implements OnModuleInit {
         id: this.makeId('doc-audit'),
         action: 'updated',
         date: new Date(),
-        author: 'Administrador Demo',
+        author: 'Administrador ISO',
         details: `Se actualizo el documento${updates.version ? ` a la version ${updates.version}` : ''}`,
       },
     ];
@@ -255,7 +369,7 @@ export class IsoService implements OnModuleInit {
           id: this.makeId('doc-version'),
           version: updates.version,
           date: new Date(),
-          author: 'Administrador Demo',
+          author: 'Administrador ISO',
           notes: `Cambio de version desde ${previousVersion}`,
         },
       ];
@@ -278,7 +392,7 @@ export class IsoService implements OnModuleInit {
         id: this.makeId('doc-audit'),
         action: 'viewed',
         date: new Date(),
-        author: 'Administrador Demo',
+        author: 'Administrador ISO',
         details: 'Se consulto la vista del documento',
       },
     ];
@@ -477,6 +591,16 @@ export class IsoService implements OnModuleInit {
     };
   }
 
+  async updateCommunicationSettings(
+    communicationSettings: SettingsEntity['communicationSettings']
+  ) {
+    const current = await this.getSettingsDocument();
+    current.communicationSettings = communicationSettings;
+    await current.save();
+
+    return current.communicationSettings;
+  }
+
   private async getSettingsDocument() {
     let settings = await this.settingsModel.findOne();
 
@@ -504,6 +628,15 @@ export class IsoService implements OnModuleInit {
             documentUpdates: true,
           },
         },
+        communicationSettings: {
+          enabled: true,
+          providerName: 'Proveedor SMTP',
+          senderName: 'Sistema ISO',
+          senderEmail: 'notificaciones@servasmar.cl',
+          replyTo: 'calidad@servasmar.cl',
+          apiBaseUrl: 'https://api.servasmar.cl/communications/send',
+          apiKeyHint: 'configurado-en-servidor',
+        },
       });
     }
 
@@ -519,6 +652,7 @@ export class IsoService implements OnModuleInit {
     ]);
 
     await this.getSettingsDocument();
+    await this.seedEmailTemplatesIfEmpty();
 
     if (documentCount === 0) {
       await this.documentModel.insertMany([
@@ -532,13 +666,13 @@ export class IsoService implements OnModuleInit {
           standard: 'ISO9001',
           version: '2.1',
           status: 'active',
-          url: 'https://example.local/documents/manual-calidad.pdf',
+          url: 'https://iso.servasmar.cl/documents/manual-calidad.pdf',
           versionHistory: [
             {
               id: this.makeId('doc-version'),
               version: '2.1',
               date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-              author: 'Administrador Demo',
+              author: 'Administrador ISO',
               notes: 'Ajuste de politica y alcance.',
             },
           ],
@@ -547,7 +681,7 @@ export class IsoService implements OnModuleInit {
               id: this.makeId('doc-audit'),
               action: 'created',
               date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
-              author: 'Administrador Demo',
+              author: 'Administrador ISO',
               details: 'Documento incorporado al sistema',
             },
           ],
@@ -562,7 +696,7 @@ export class IsoService implements OnModuleInit {
           standard: 'ISO19011',
           version: '1.4',
           status: 'active',
-          url: 'https://example.local/documents/auditoria-interna.pdf',
+          url: 'https://iso.servasmar.cl/documents/auditoria-interna.pdf',
           versionHistory: [
             {
               id: this.makeId('doc-version'),
@@ -577,7 +711,7 @@ export class IsoService implements OnModuleInit {
               id: this.makeId('doc-audit'),
               action: 'created',
               date: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000),
-              author: 'Administrador Demo',
+              author: 'Administrador ISO',
               details: 'Documento creado en la base documental',
             },
           ],
@@ -592,7 +726,7 @@ export class IsoService implements OnModuleInit {
           standard: 'ISO45001',
           version: '3.0',
           status: 'draft',
-          url: 'https://example.local/documents/acciones-correctivas.xlsx',
+          url: 'https://iso.servasmar.cl/documents/acciones-correctivas.xlsx',
           versionHistory: [
             {
               id: this.makeId('doc-version'),
@@ -731,6 +865,39 @@ export class IsoService implements OnModuleInit {
     }
   }
 
+  private async seedEmailTemplatesIfEmpty() {
+    const templateCount = await this.emailTemplateModel.countDocuments();
+
+    if (templateCount === 0) {
+      await this.emailTemplateModel.create({
+        name: 'Recordatorio de tareas por vencer',
+        subject: 'Acciones por vencer en {{daysAhead}} dias - {{companyName}}',
+        content:
+          '<h2>Hola {{userName}}</h2><p>Tienes <strong>{{taskCount}}</strong> tarea(s) por vencer.</p><p>{{dueSummary}}</p><div>{{taskTable}}</div><p>Por favor actualiza su estado antes del cierre del periodo.</p>',
+      });
+    }
+  }
+
+  private renderTemplate(
+    template: {
+      subject: string;
+      content: string;
+    },
+    context: Record<string, string | number>
+  ) {
+    const replace = (value: string) =>
+      Object.entries(context).reduce(
+        (content, [key, replacement]) =>
+          content.replaceAll(`{{${key}}}`, String(replacement)),
+        value
+      );
+
+    return {
+      subject: replace(template.subject),
+      body: replace(template.content),
+    };
+  }
+
   private serializeDocument(document: any) {
     return {
       id: String(document._id),
@@ -765,6 +932,60 @@ export class IsoService implements OnModuleInit {
 
   private makeId(prefix: string) {
     return `${prefix}-${Math.random().toString(36).slice(2, 10)}`;
+  }
+
+  private serializeEmailTemplate(template: {
+    _id?: unknown;
+    id?: string;
+    name: string;
+    subject: string;
+    content: string;
+    createdAt?: Date | string;
+    updatedAt?: Date | string;
+  }) {
+    return {
+      id: template.id ?? String(template._id),
+      name: template.name,
+      subject: template.subject,
+      content: template.content,
+      createdAt: new Date(template.createdAt ?? Date.now()).toISOString(),
+      updatedAt: new Date(template.updatedAt ?? Date.now()).toISOString(),
+    };
+  }
+
+  private serializeEmailCampaign(campaign: {
+    _id?: unknown;
+    id?: string;
+    name: string;
+    templateId: string;
+    templateName: string;
+    subject: string;
+    body: string;
+    recipientIds: string[];
+    recipientCount: number;
+    taskIds: string[];
+    taskCount: number;
+    daysAhead: number;
+    status: 'draft' | 'sent';
+    createdAt?: Date | string;
+    sentAt?: Date | string | null;
+  }) {
+    return {
+      id: campaign.id ?? String(campaign._id),
+      name: campaign.name,
+      templateId: campaign.templateId,
+      templateName: campaign.templateName,
+      subject: campaign.subject,
+      body: campaign.body,
+      recipientIds: campaign.recipientIds,
+      recipientCount: campaign.recipientCount,
+      taskIds: campaign.taskIds,
+      taskCount: campaign.taskCount,
+      daysAhead: campaign.daysAhead,
+      status: campaign.status,
+      createdAt: new Date(campaign.createdAt ?? Date.now()).toISOString(),
+      sentAt: campaign.sentAt ? new Date(campaign.sentAt).toISOString() : null,
+    };
   }
 
   private serializeTask(task: any) {

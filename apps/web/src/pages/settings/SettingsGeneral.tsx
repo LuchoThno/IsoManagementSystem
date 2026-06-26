@@ -36,10 +36,18 @@ export const SettingsGeneral: React.FC = () => {
   };
 
   const handleReset = async () => {
-    const bootstrap = await resetDemoData();
-    hydrate(bootstrap);
-    setAuthUser(await getCurrentUser());
-    showMessage('Datos demo restablecidos correctamente.');
+    try {
+      const bootstrap = await resetDemoData();
+      hydrate(bootstrap);
+      setAuthUser(await getCurrentUser());
+      showMessage('Datos locales restablecidos correctamente.');
+    } catch (error) {
+      showMessage(
+        error instanceof Error
+          ? error.message
+          : 'El restablecimiento local ya no está disponible con la API real.'
+      );
+    }
   };
 
   return (
@@ -140,7 +148,7 @@ export const SettingsGeneral: React.FC = () => {
             className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-3 font-bold text-slate-600 transition hover:bg-slate-50"
           >
             <RefreshCcw className="h-4 w-4" />
-            Restablecer demo
+            Restablecer datos locales
           </button>
         </div>
       </div>

@@ -1,6 +1,5 @@
 import type { Document } from '../types/iso';
-
-const API_BASE = import.meta.env.VITE_API_URL || '/api';
+import { requestIsoApi } from './isoApiClient';
 
 type ApiDocument = Omit<Document, 'createdAt' | 'updatedAt' | 'versionHistory' | 'auditTrail'> & {
   createdAt: string;
@@ -35,24 +34,8 @@ const toDocument = (document: ApiDocument): Document => ({
   })),
 });
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_BASE}/iso${path}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...(init?.headers ?? {}),
-    },
-    ...init,
-  });
-
-  if (!response.ok) {
-    throw new Error(`Request failed with status ${response.status}`);
-  }
-
-  return response.json() as Promise<T>;
-}
-
 export async function listDocuments(): Promise<Document[]> {
-  const documents = await request<ApiDocument[]>('/documents');
+  const documents = await requestIsoApi<ApiDocument[]>('/documents');
   return documents.map(toDocument);
 }
 
@@ -67,7 +50,7 @@ export async function createDocumentApi(payload: {
   mimeType: string;
   fileContentUrl: string;
 }): Promise<Document> {
-  const document = await request<ApiDocument>('/documents', {
+  const document = await requestIsoApi<ApiDocument>('/documents', {
     method: 'POST',
     body: JSON.stringify(payload),
   });
@@ -79,7 +62,7 @@ export async function updateDocumentApi(
   documentId: string,
   updates: Partial<Pick<Document, 'title' | 'topic' | 'format' | 'version' | 'status'>>
 ): Promise<Document> {
-  const document = await request<ApiDocument>(`/documents/${documentId}`, {
+  const document = await requestIsoApi<ApiDocument>(`/documents/${documentId}`, {
     method: 'PATCH',
     body: JSON.stringify(updates),
   });
@@ -88,7 +71,7 @@ export async function updateDocumentApi(
 }
 
 export async function registerDocumentViewApi(documentId: string): Promise<Document> {
-  const document = await request<ApiDocument>(`/documents/${documentId}/view`, {
+  const document = await requestIsoApi<ApiDocument>(`/documents/${documentId}/view`, {
     method: 'POST',
   });
 
@@ -96,7 +79,7 @@ export async function registerDocumentViewApi(documentId: string): Promise<Docum
 }
 
 export async function deleteDocumentApi(documentId: string): Promise<void> {
-  await request(`/documents/${documentId}/delete`, {
+  await requestIsoApi(`/documents/${documentId}/delete`, {
     method: 'PATCH',
   });
 }

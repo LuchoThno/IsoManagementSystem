@@ -1,6 +1,5 @@
 import type { Audit } from '../types/iso';
-
-const API_BASE = import.meta.env.VITE_API_URL || '/api';
+import { requestIsoApi } from './isoApiClient';
 
 type ApiAudit = Omit<Audit, 'date' | 'findings'> & {
   date: string;
@@ -20,29 +19,13 @@ const toAudit = (audit: ApiAudit): Audit => ({
   })),
 });
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_BASE}/iso${path}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...(init?.headers ?? {}),
-    },
-    ...init,
-  });
-
-  if (!response.ok) {
-    throw new Error(`Request failed with status ${response.status}`);
-  }
-
-  return response.json() as Promise<T>;
-}
-
 export async function listAudits(): Promise<Audit[]> {
-  const audits = await request<ApiAudit[]>('/audits');
+  const audits = await requestIsoApi<ApiAudit[]>('/audits');
   return audits.map(toAudit);
 }
 
 export async function createAuditApi(payload: Omit<Audit, 'id'>): Promise<Audit> {
-  const audit = await request<ApiAudit>('/audits', {
+  const audit = await requestIsoApi<ApiAudit>('/audits', {
     method: 'POST',
     body: JSON.stringify({
       ...payload,
@@ -61,7 +44,7 @@ export async function updateAuditApi(
   auditId: string,
   updates: Partial<Omit<Audit, 'id'>>
 ): Promise<Audit> {
-  const audit = await request<ApiAudit>(`/audits/${auditId}`, {
+  const audit = await requestIsoApi<ApiAudit>(`/audits/${auditId}`, {
     method: 'PATCH',
     body: JSON.stringify({
       ...updates,
@@ -82,7 +65,7 @@ export async function updateAuditStatusApi(
   auditId: string,
   status: Audit['status']
 ): Promise<Audit> {
-  const audit = await request<ApiAudit>(`/audits/${auditId}/status`, {
+  const audit = await requestIsoApi<ApiAudit>(`/audits/${auditId}/status`, {
     method: 'PATCH',
     body: JSON.stringify({ status }),
   });
@@ -91,7 +74,7 @@ export async function updateAuditStatusApi(
 }
 
 export async function deleteAuditApi(auditId: string): Promise<void> {
-  await request(`/audits/${auditId}/delete`, {
+  await requestIsoApi(`/audits/${auditId}/delete`, {
     method: 'PATCH',
   });
 }

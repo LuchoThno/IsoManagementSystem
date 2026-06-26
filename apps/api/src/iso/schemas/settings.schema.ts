@@ -54,6 +54,30 @@ export class SettingsEntity {
       documentUpdates: boolean;
     };
   };
+
+  @Prop(
+    raw({
+      enabled: { type: Boolean, default: true },
+      providerName: { type: String, default: 'Proveedor SMTP' },
+      senderName: { type: String, default: 'Sistema ISO' },
+      senderEmail: { type: String, default: 'notificaciones@servasmar.cl' },
+      replyTo: { type: String, default: 'calidad@servasmar.cl' },
+      apiBaseUrl: {
+        type: String,
+        default: 'https://api.servasmar.cl/communications/send',
+      },
+      apiKeyHint: { type: String, default: 'configurado-en-servidor' },
+    })
+  )
+  communicationSettings!: {
+    enabled: boolean;
+    providerName: string;
+    senderName: string;
+    senderEmail: string;
+    replyTo: string;
+    apiBaseUrl: string;
+    apiKeyHint: string;
+  };
 }
 
 export const SettingsSchema = SchemaFactory.createForClass(SettingsEntity);

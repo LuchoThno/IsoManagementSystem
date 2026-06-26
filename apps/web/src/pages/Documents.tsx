@@ -293,7 +293,7 @@ export const Documents: React.FC = () => {
             <div className="mx-auto max-w-md">
               <p className="text-lg font-extrabold text-rose-700">{loadError}</p>
               <p className="mt-2 text-sm text-rose-500">
-                Revisa la API o la conexión a MongoDB para continuar.
+                Revisa la API o la conexión de datos para continuar.
               </p>
             </div>
           </div>

@@ -34,8 +34,8 @@ export const Dashboard: React.FC = () => {
               Monitorea calidad, seguridad y ambiente desde un solo dashboard operativo.
             </h1>
             <p className="mt-3 max-w-2xl text-sm text-slate-400 md:text-base">
-              Version de pruebas almacenada localmente. Puedes crear tareas, auditorias,
-              documentos y configuracion sin backend.
+              Consulta el estado del sistema, la ejecución operativa y los indicadores clave
+              desde una sola vista conectada al backend.
             </p>
             <div className="mt-6 grid gap-4 md:grid-cols-3">
               <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
@@ -75,20 +75,20 @@ export const Dashboard: React.FC = () => {
             <p className="text-sm font-bold uppercase tracking-[0.24em] text-white/70">
               Estado del sistema
             </p>
-            <h2 className="mt-2 text-2xl font-extrabold">Panel de pruebas listo</h2>
+            <h2 className="mt-2 text-2xl font-extrabold">Panel operativo activo</h2>
           </div>
           <div className="space-y-4 p-6">
             <div className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3">
               <div>
                 <p className="text-sm font-bold text-slate-600">Modo de persistencia</p>
-                <p className="text-sm text-slate-400">localStorage del navegador</p>
+                <p className="text-sm text-slate-400">API y base de datos central</p>
               </div>
               <ArrowUpRight className="h-4 w-4 text-[#727cf5]" />
             </div>
             <div className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3">
               <div>
-                <p className="text-sm font-bold text-slate-600">Documentos demo</p>
-                <p className="text-sm text-slate-400">Cargados automaticamente para test</p>
+                <p className="text-sm font-bold text-slate-600">Repositorio documental</p>
+                <p className="text-sm text-slate-400">Controlado y disponible para operación</p>
               </div>
               <FileCheck2 className="h-4 w-4 text-[#0acf97]" />
             </div>

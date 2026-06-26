@@ -128,7 +128,7 @@ export const SettingsUsers: React.FC = () => {
         <div>
           <h2 className="text-2xl font-extrabold text-slate-700">Usuarios</h2>
           <p className="mt-1 text-sm text-slate-400">
-            Gestiona cuentas locales, roles y activación del entorno de pruebas.
+            Gestiona cuentas, roles y estado de acceso del sistema.
           </p>
         </div>
       </div>
@@ -218,7 +218,7 @@ export const SettingsUsers: React.FC = () => {
             <div>
               <h3 className="panel-title">Usuarios registrados</h3>
               <p className="mt-2 text-sm text-slate-400">
-                Busca, activa, edita o elimina cuentas del entorno local.
+                Busca, activa, edita o elimina cuentas disponibles en el entorno actual.
               </p>
             </div>
             <input

@@ -1,5 +1,6 @@
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
+import { BrandLockup, BrandMark } from '../brand/Brand';
 import {
   AlertCircle,
   BellRing,
@@ -129,17 +130,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className="border-b border-white/5 px-4 py-5">
           <div className="flex items-center justify-between">
             <div className={`flex items-center gap-3 ${collapsed ? 'lg:justify-center' : ''}`}>
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#727cf5] font-extrabold text-white">
-                IM
-              </div>
-              {!collapsed && (
-                <div>
-                  <p className="text-[11px] font-bold uppercase tracking-[0.35em] text-white/45">
-                    Iso Manager
-                  </p>
-                  <h1 className="mt-1 text-lg font-extrabold text-white">Adminto ISO</h1>
-                </div>
-              )}
+              {collapsed ? <BrandMark className="h-10 w-10" /> : <BrandLockup inverse />}
             </div>
 
             <div className="flex items-center gap-2">

@@ -5,6 +5,8 @@ import {
   WebSocketServer,
 } from '@nestjs/websockets';
 import type { Server, Socket } from 'socket.io';
+import { getAllowedOrigins } from '../config/cors';
+import { ClerkAuthService } from './clerk-auth.service';
 
 type SerializedChatThread = {
   id: string;
@@ -21,20 +23,35 @@ type SerializedChatThread = {
 
 @WebSocketGateway({
   cors: {
-    origin: true,
+    origin: getAllowedOrigins(),
     credentials: true,
   },
 })
 export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
+  constructor(private readonly clerkAuthService: ClerkAuthService) {}
+
   @WebSocketServer()
   server!: Server;
 
-  handleConnection(client: Socket) {
-    const rawUserId = client.handshake.query.userId;
-    const userId = Array.isArray(rawUserId) ? rawUserId[0] : rawUserId;
+  async handleConnection(client: Socket) {
+    if (this.clerkAuthService.isEnabled()) {
+      const rawToken = client.handshake.auth?.token;
+      const token = typeof rawToken === 'string' ? rawToken : null;
 
-    if (typeof userId === 'string' && userId.trim()) {
-      client.join(this.getUserRoom(userId));
+      try {
+        const identity = await this.clerkAuthService.authenticateToken(token);
+        client.join(this.getUserRoom(identity.appUserId));
+      } catch {
+        client.disconnect();
+        return;
+      }
+    } else {
+      const rawUserId = client.handshake.query.userId;
+      const userId = Array.isArray(rawUserId) ? rawUserId[0] : rawUserId;
+
+      if (typeof userId === 'string' && userId.trim()) {
+        client.join(this.getUserRoom(userId));
+      }
     }
   }
 

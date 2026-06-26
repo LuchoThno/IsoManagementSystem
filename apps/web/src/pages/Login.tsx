@@ -1,6 +1,9 @@
 import React from 'react';
-import { Navigate } from 'react-router-dom';
+import { SignIn, useClerk, useUser } from '@clerk/clerk-react';
+import { Navigate, useLocation } from 'react-router-dom';
 import { ShieldCheck } from 'lucide-react';
+import { BrandLockup } from '../components/brand/Brand';
+import { clerkAfterSignInUrl, clerkSignInPath, clerkSignUpPath, isClerkEnabled } from '../lib/clerk';
 import { useAuthStore } from '../store/useAuthStore';
 
 export const Login: React.FC = () => {
@@ -9,18 +12,41 @@ export const Login: React.FC = () => {
   const error = useAuthStore((state) => state.error);
   const login = useAuthStore((state) => state.login);
   const initialize = useAuthStore((state) => state.initialize);
+  const syncSession = useAuthStore((state) => state.syncSession);
+  const location = useLocation();
 
-  const [email, setEmail] = React.useState('admin@iso.local');
-  const [password, setPassword] = React.useState('Admin123!');
+  const [email, setEmail] = React.useState('');
+  const [password, setPassword] = React.useState('');
   const [loading, setLoading] = React.useState(false);
 
+  const clerk = useClerk();
+  const { isSignedIn } = useUser();
+
   React.useEffect(() => {
-    if (!initialized) {
+    if (!initialized && !isClerkEnabled) {
       void initialize();
     }
   }, [initialize, initialized]);
 
-  if (initialized && user) {
+  React.useEffect(() => {
+    if (!isClerkEnabled || !clerk) {
+      return;
+    }
+
+    const query = new URLSearchParams(location.search);
+    if (query.get('logout') !== '1' || !isSignedIn) {
+      return;
+    }
+
+    syncSession(null, null);
+    void clerk.signOut({ redirectUrl: clerkSignInPath });
+  }, [clerk, isSignedIn, location.search, syncSession]);
+
+  if (isClerkEnabled && isSignedIn) {
+    return <Navigate to={clerkAfterSignInUrl} replace />;
+  }
+
+  if (!isClerkEnabled && initialized && user) {
     return <Navigate to="/" replace />;
   }
 
@@ -31,22 +57,72 @@ export const Login: React.FC = () => {
     setLoading(false);
   };
 
+  if (isClerkEnabled) {
+    const query = new URLSearchParams(location.search);
+    const isLoggingOut = query.get('logout') === '1';
+
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#eef2f7] px-4">
+        <div className="grid w-full max-w-6xl overflow-hidden rounded-3xl bg-white shadow-2xl lg:grid-cols-[1.05fr_0.95fr]">
+          <div className="hidden bg-[#313a46] p-10 text-white lg:block">
+            <BrandLockup inverse />
+            <h1 className="mt-4 text-4xl font-extrabold">Acceso corporativo Servasmar</h1>
+            <p className="mt-4 max-w-md text-white/75">
+              Inicia sesión con Clerk usando la misma base de identidad del CRM de Servasmar para entrar al panel ISO.
+            </p>
+            <div className="mt-10 rounded-2xl bg-white/5 p-5">
+              <div className="flex items-center gap-3">
+                <ShieldCheck className="h-5 w-5 text-[#0acf97]" />
+                <p className="font-bold">Inicio de sesión centralizado</p>
+              </div>
+              <p className="mt-3 text-sm text-white/80">
+                Si tu cuenta ya existe en el ecosistema Servasmar, Clerk la reutilizará aquí y sincronizará tu perfil al entorno ISO.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-center p-6 md:p-10">
+            {isLoggingOut ? (
+              <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+                <p className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-400">
+                  Sesión
+                </p>
+                <h2 className="mt-3 text-3xl font-extrabold text-slate-700">Cerrando sesión</h2>
+                <p className="mt-2 text-sm text-slate-400">
+                  Estamos cerrando tu sesión de Clerk de forma segura.
+                </p>
+              </div>
+            ) : (
+              <SignIn
+                path={clerkSignInPath}
+                routing="path"
+                signUpUrl={clerkSignUpPath}
+                fallbackRedirectUrl={clerkAfterSignInUrl}
+              />
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#eef2f7] px-4">
       <div className="grid w-full max-w-5xl overflow-hidden rounded-3xl bg-white shadow-2xl lg:grid-cols-[1.1fr_0.9fr]">
         <div className="hidden bg-[#313a46] p-10 text-white lg:block">
-          <p className="text-sm font-bold uppercase tracking-[0.3em] text-white/45">ISO Manager</p>
-          <h1 className="mt-4 text-4xl font-extrabold">Acceso al panel de pruebas</h1>
+          <BrandLockup inverse />
+          <h1 className="mt-4 text-4xl font-extrabold">Acceso al panel ISO</h1>
           <p className="mt-4 max-w-md text-white/75">
-            Inicia sesion para administrar documentos, tareas, auditorias, usuarios y configuracion desde esta demo local.
+            Inicia sesión para administrar documentos, tareas, auditorías, usuarios y configuración del sistema.
           </p>
           <div className="mt-10 rounded-2xl bg-white/5 p-5">
             <div className="flex items-center gap-3">
               <ShieldCheck className="h-5 w-5 text-[#0acf97]" />
-              <p className="font-bold">Credenciales demo</p>
+              <p className="font-bold">Acceso local</p>
             </div>
-            <p className="mt-3 text-sm text-white/80">Correo: `admin@iso.local`</p>
-            <p className="mt-1 text-sm text-white/80">Clave: `Admin123!`</p>
+            <p className="mt-3 text-sm text-white/80">
+              Usa las credenciales configuradas para este entorno cuando el acceso local esté habilitado.
+            </p>
           </div>
         </div>
 
@@ -57,7 +133,7 @@ export const Login: React.FC = () => {
             </p>
             <h2 className="mt-3 text-3xl font-extrabold text-slate-700">Iniciar sesion</h2>
             <p className="mt-2 text-sm text-slate-400">
-              Usa tu usuario local para entrar al sistema.
+              Usa tus credenciales para entrar al sistema.
             </p>
 
             <form onSubmit={handleSubmit} className="mt-8 space-y-5">
@@ -99,7 +175,7 @@ export const Login: React.FC = () => {
             </form>
 
             <div className="mt-6 rounded-xl bg-slate-50 p-4 text-sm text-slate-500 lg:hidden">
-              Credenciales demo: `admin@iso.local` / `Admin123!`
+              El acceso local puede estar habilitado según la configuración del entorno.
             </div>
           </div>
         </div>

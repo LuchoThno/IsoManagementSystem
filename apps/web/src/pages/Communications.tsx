@@ -44,11 +44,11 @@ const baseEmailModel = {
 const integrationCards = [
   {
     title: 'Correo saliente',
-    subtitle: 'Gmail SMTP o worker en Render',
+    subtitle: 'SMTP corporativo o servicio administrado',
     icon: MailCheck,
     tone: 'bg-[#727cf5]/10 text-[#727cf5]',
     envs: ['MAIL_PROVIDER', 'SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', 'SMTP_PASS'],
-    detail: 'Usa Gmail SMTP para operación simple o Render para alojar un webhook/API de despacho.',
+    detail: 'Conecta el proveedor de correo saliente que utilice la operación para despachar notificaciones.',
   },
   {
     title: 'Calendario',
@@ -65,7 +65,7 @@ const integrationCards = [
   },
   {
     title: 'Chat y alertas',
-    subtitle: 'Google Chat o Socket.IO',
+    subtitle: 'Canales internos y webhooks',
     icon: MessageSquareShare,
     tone: 'bg-[#0acf97]/10 text-[#0acf97]',
     envs: ['CHAT_PROVIDER', 'VITE_SOCKET_URL', 'GOOGLE_CHAT_WEBHOOK_URL'],
@@ -226,8 +226,11 @@ export const Communications: React.FC = () => {
 
   const handleSendCampaign = async (event: React.FormEvent) => {
     event.preventDefault();
-    await sendBulkTaskReminderCampaign(campaignForm);
-    await refreshData(`${recipientModeLabel} enviado al entorno de pruebas.`);
+    await sendBulkTaskReminderCampaign({
+      ...campaignForm,
+      recipientNames: resolvedRecipients.map((user) => user.name),
+    });
+    await refreshData(`${recipientModeLabel} enviado correctamente.`);
   };
 
   return (
@@ -244,7 +247,7 @@ export const Communications: React.FC = () => {
             <p className="mt-3 text-sm leading-6 text-slate-500">
               Este módulo está pensado para conectar correo saliente, calendario y chat de trabajo
               desde variables de entorno claras, con una base compatible con Gmail, Google Calendar,
-              Render y opciones gratuitas para desarrollo.
+              infraestructura propia o servicios administrados según la operación del equipo.
             </p>
           </div>
 

@@ -19,7 +19,7 @@ const sections = [
     to: '/settings/users',
     icon: Users2,
     title: 'Usuarios',
-    description: 'Cuentas, roles y accesos locales',
+    description: 'Cuentas, roles y accesos del sistema',
   },
 ];
 

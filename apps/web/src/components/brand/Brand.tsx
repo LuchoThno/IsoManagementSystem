@@ -1,0 +1,64 @@
+import React from 'react';
+
+interface BrandMarkProps {
+  className?: string;
+}
+
+export const BrandMark: React.FC<BrandMarkProps> = ({ className = 'h-11 w-11' }) => (
+  <svg
+    viewBox="0 0 64 64"
+    className={className}
+    aria-hidden="true"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <rect width="64" height="64" rx="18" fill="#243242" />
+    <path
+      d="M15 21C21 16 29 14 37 15.5C44.5 16.9 50.7 21.5 54 28.5C48 26.2 41.2 25.4 34.8 26.6C28.3 27.8 22.4 31 18 35.8C16.1 31.4 15.1 26.3 15 21Z"
+      fill="#0ACF97"
+    />
+    <path
+      d="M18.5 38.3C22.8 33.8 28.5 30.8 34.7 29.8C40.9 28.9 47.3 29.8 53 32.3C51.9 38.8 48.4 44.8 43.1 48.8C37.9 52.8 31.3 54.6 24.9 53.8C22 49.2 19.8 43.9 18.5 38.3Z"
+      fill="#39AFD1"
+    />
+    <path
+      d="M31.9 21L41 26.2V33.3C41 39.5 37.2 45 31.9 47C26.6 45 22.8 39.5 22.8 33.3V26.2L31.9 21Z"
+      fill="white"
+    />
+    <path
+      d="M31.9 26.1L27.2 28.8V33.1C27.2 36.8 29.1 40 31.9 41.4C34.7 40 36.6 36.8 36.6 33.1V28.8L31.9 26.1Z"
+      fill="#243242"
+    />
+  </svg>
+);
+
+interface BrandLockupProps {
+  compact?: boolean;
+  inverse?: boolean;
+}
+
+export const BrandLockup: React.FC<BrandLockupProps> = ({
+  compact = false,
+  inverse = false,
+}) => {
+  const eyebrowClass = inverse ? 'text-white/45' : 'text-slate-400';
+  const titleClass = inverse ? 'text-white' : 'text-slate-800';
+  const subtitleClass = inverse ? 'text-white/70' : 'text-slate-500';
+
+  return (
+    <div className={`flex items-center gap-3 ${compact ? '' : 'min-w-0'}`}>
+      <BrandMark className={compact ? 'h-10 w-10' : 'h-12 w-12'} />
+      <div className="min-w-0">
+        <p className={`text-[11px] font-bold uppercase tracking-[0.32em] ${eyebrowClass}`}>
+          Servasmar
+        </p>
+        <h1 className={`truncate text-lg font-extrabold ${titleClass}`}>SIG ISO</h1>
+        {!compact && (
+          <p className={`truncate text-xs font-medium ${subtitleClass}`}>
+            Sistema Integrado de Gestión
+          </p>
+        )}
+      </div>
+    </div>
+  );
+};

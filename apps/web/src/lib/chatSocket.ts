@@ -1,4 +1,5 @@
 import { io, type Socket } from 'socket.io-client';
+import { getClerkSessionToken } from './clerkSession';
 
 const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
@@ -11,10 +12,18 @@ const getSocketBaseUrl = () => {
   return API_BASE.replace(/\/api\/?$/, '');
 };
 
-export const connectChatSocket = (userId: string): Socket =>
-  io(getSocketBaseUrl(), {
+export const connectChatSocket = async (userId: string): Promise<Socket> => {
+  const token = await getClerkSessionToken();
+
+  return io(getSocketBaseUrl(), {
     transports: ['websocket', 'polling'],
     query: {
       userId,
     },
+    auth: token
+      ? {
+          token,
+        }
+      : undefined,
   });
+};

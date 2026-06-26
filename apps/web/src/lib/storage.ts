@@ -838,6 +838,50 @@ export async function login(email: string, password: string): Promise<UserAccoun
   return sanitizeUser(toUser(user));
 }
 
+export async function syncExternalUserSession(payload: {
+  externalId: string;
+  email: string;
+  name: string;
+  role?: UserRole;
+}): Promise<UserAccount> {
+  const data = getStorage();
+  const normalizedEmail = payload.email.toLowerCase().trim();
+  const existingUserIndex = data.users.findIndex(
+    (item) => item.email.toLowerCase() === normalizedEmail
+  );
+
+  if (existingUserIndex >= 0) {
+    const currentUser = toUser(data.users[existingUserIndex]);
+    const nextUser: UserAccount = {
+      ...currentUser,
+      name: payload.name || currentUser.name,
+      email: normalizedEmail,
+      role: payload.role ?? currentUser.role,
+      active: true,
+    };
+
+    data.users[existingUserIndex] = toPersistedUser(nextUser);
+    saveStorage(data);
+    setSession(nextUser.id);
+    return sanitizeUser(nextUser);
+  }
+
+  const nextUser: UserAccount = {
+    id: `clerk-${payload.externalId}`,
+    name: payload.name || normalizedEmail,
+    email: normalizedEmail,
+    role: payload.role ?? 'viewer',
+    password: '',
+    active: true,
+    createdAt: new Date(),
+  };
+
+  data.users = [toPersistedUser(nextUser), ...(data.users ?? [])];
+  saveStorage(data);
+  setSession(nextUser.id);
+  return sanitizeUser(nextUser);
+}
+
 export async function logout(): Promise<void> {
   setSession(null);
 }

@@ -1,6 +1,5 @@
 import type { ChatThread } from '../types/iso';
-
-const API_BASE = import.meta.env.VITE_API_URL || '/api';
+import { requestIsoApi } from './isoApiClient';
 
 type ApiChatThread = Omit<ChatThread, 'updatedAt' | 'messages'> & {
   updatedAt: string;
@@ -20,29 +19,13 @@ const toChatThread = (thread: ApiChatThread): ChatThread => ({
   })),
 });
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_BASE}/iso${path}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...(init?.headers ?? {}),
-    },
-    ...init,
-  });
-
-  if (!response.ok) {
-    throw new Error(`Request failed with status ${response.status}`);
-  }
-
-  return response.json() as Promise<T>;
-}
-
 export async function listChatThreadsApi(userId: string): Promise<ChatThread[]> {
-  const threads = await request<ApiChatThread[]>(`/chat/threads/${userId}`);
+  const threads = await requestIsoApi<ApiChatThread[]>(`/chat/threads/${userId}`);
   return threads.map(toChatThread);
 }
 
 export async function openDirectThreadApi(participantIds: string[]): Promise<ChatThread> {
-  const thread = await request<ApiChatThread>('/chat/threads/direct', {
+  const thread = await requestIsoApi<ApiChatThread>('/chat/threads/direct', {
     method: 'POST',
     body: JSON.stringify({ participantIds }),
   });
@@ -55,7 +38,7 @@ export async function sendChatMessageApi(
   authorId: string,
   content: string
 ): Promise<ChatThread> {
-  const thread = await request<ApiChatThread>(`/chat/threads/${threadId}/messages`, {
+  const thread = await requestIsoApi<ApiChatThread>(`/chat/threads/${threadId}/messages`, {
     method: 'POST',
     body: JSON.stringify({ authorId, content }),
   });
@@ -67,7 +50,7 @@ export async function markThreadAsReadApi(
   threadId: string,
   userId: string
 ): Promise<ChatThread> {
-  const thread = await request<ApiChatThread>(`/chat/threads/${threadId}/read`, {
+  const thread = await requestIsoApi<ApiChatThread>(`/chat/threads/${threadId}/read`, {
     method: 'POST',
     body: JSON.stringify({ userId }),
   });

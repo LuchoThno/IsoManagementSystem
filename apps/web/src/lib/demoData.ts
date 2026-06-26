@@ -127,12 +127,12 @@ export const createSeedData = (): PersistedISOData => ({
       status: 'active',
       url: 'data:text/plain;charset=utf-8,Manual%20Integrado%20de%20Gestion',
       versionHistory: [
-        buildVersionEntry('ver-1', '1.0', 65, 'Administrador Demo', 'Creacion inicial del manual'),
+        buildVersionEntry('ver-1', '1.0', 65, 'Administrador ISO', 'Creacion inicial del manual'),
         buildVersionEntry('ver-2', '2.0', 30, 'Marcela Castro', 'Actualizacion del mapa de procesos'),
-        buildVersionEntry('ver-3', '3.2', 2, 'Administrador Demo', 'Ajuste de alcance y politica'),
+        buildVersionEntry('ver-3', '3.2', 2, 'Administrador ISO', 'Ajuste de alcance y politica'),
       ],
       auditTrail: [
-        buildAuditEntry('audit-doc-1', 'created', 65, 'Administrador Demo', 'Documento creado en el repositorio'),
+        buildAuditEntry('audit-doc-1', 'created', 65, 'Administrador ISO', 'Documento creado en el repositorio'),
         buildAuditEntry('audit-doc-2', 'updated', 30, 'Marcela Castro', 'Se agregan cambios de procesos'),
         buildAuditEntry('audit-doc-3', 'viewed', 1, 'Pedro Salinas', 'Consulta para auditoria interna'),
       ],
@@ -152,11 +152,11 @@ export const createSeedData = (): PersistedISOData => ({
       status: 'active',
       url: 'data:text/plain;charset=utf-8,Procedimiento%20de%20Control%20Documental',
       versionHistory: [
-        buildVersionEntry('ver-4', '1.0', 34, 'Administrador Demo', 'Publicacion del procedimiento'),
+        buildVersionEntry('ver-4', '1.0', 34, 'Administrador ISO', 'Publicacion del procedimiento'),
         buildVersionEntry('ver-5', '2.4', 6, 'Marcela Castro', 'Mejora de codificacion y distribución'),
       ],
       auditTrail: [
-        buildAuditEntry('audit-doc-4', 'created', 34, 'Administrador Demo', 'Alta del procedimiento'),
+        buildAuditEntry('audit-doc-4', 'created', 34, 'Administrador ISO', 'Alta del procedimiento'),
         buildAuditEntry('audit-doc-5', 'updated', 6, 'Marcela Castro', 'Actualizacion de responsables'),
       ],
     },
@@ -199,11 +199,11 @@ export const createSeedData = (): PersistedISOData => ({
       url: 'data:text/plain;charset=utf-8,Matriz%20de%20Aspectos%20Ambientales',
       versionHistory: [
         buildVersionEntry('ver-8', '4.0', 60, 'Marcela Castro', 'Revision de impactos'),
-        buildVersionEntry('ver-9', '5.0', 10, 'Administrador Demo', 'Actualizacion de controles ambientales'),
+        buildVersionEntry('ver-9', '5.0', 10, 'Administrador ISO', 'Actualizacion de controles ambientales'),
       ],
       auditTrail: [
-        buildAuditEntry('audit-doc-8', 'created', 88, 'Administrador Demo', 'Matriz creada'),
-        buildAuditEntry('audit-doc-9', 'updated', 10, 'Administrador Demo', 'Se actualizan criterios de evaluación'),
+        buildAuditEntry('audit-doc-8', 'created', 88, 'Administrador ISO', 'Matriz creada'),
+        buildAuditEntry('audit-doc-9', 'updated', 10, 'Administrador ISO', 'Se actualizan criterios de evaluación'),
       ],
     },
   ],
@@ -234,7 +234,7 @@ export const createSeedData = (): PersistedISOData => ({
       id: 'task-3',
       title: 'Capacitacion de control operacional',
       description: 'Ejecutar sesion de refuerzo con jefaturas y registro de asistencia.',
-      assignedTo: 'Administrador Demo',
+      assignedTo: 'Administrador ISO',
       dueDate: daysFromNow(8),
       status: 'pending',
       priority: 'medium',
@@ -290,7 +290,7 @@ export const createSeedData = (): PersistedISOData => ({
     },
   ],
   settings: {
-    companyName: 'ISO Manager Demo',
+    companyName: 'Sistema ISO',
     standards: {
       ISO9001: true,
       ISO14001: true,
@@ -316,8 +316,8 @@ export const createSeedData = (): PersistedISOData => ({
   users: [
     {
       id: 'user-1',
-      name: 'Administrador Demo',
-      email: 'admin@iso.local',
+      name: 'Administrador ISO',
+      email: 'admin@servasmar.cl',
       role: 'admin',
       password: 'Admin123!',
       active: true,
@@ -326,7 +326,7 @@ export const createSeedData = (): PersistedISOData => ({
     {
       id: 'user-2',
       name: 'Marcela Castro',
-      email: 'marcela@iso.local',
+      email: 'marcela@servasmar.cl',
       role: 'manager',
       password: 'Marcela123!',
       active: true,
@@ -335,7 +335,7 @@ export const createSeedData = (): PersistedISOData => ({
     {
       id: 'user-3',
       name: 'Pedro Salinas',
-      email: 'pedro@iso.local',
+      email: 'pedro@servasmar.cl',
       role: 'auditor',
       password: 'Pedro123!',
       active: true,
@@ -396,8 +396,8 @@ export const createSeedData = (): PersistedISOData => ({
       name: 'Seguimiento semanal de vencimientos',
       templateId: 'template-1',
       templateName: 'Recordatorio de tareas por vencer',
-      subject: 'Acciones por vencer en 7 dias - ISO Manager Demo',
-      body: 'Comunicado demo generado para usuarios con tareas cercanas.',
+      subject: 'Acciones por vencer en 7 dias - Sistema ISO',
+      body: 'Comunicado generado para usuarios con tareas cercanas.',
       recipientIds: ['user-2', 'user-3'],
       recipientCount: 2,
       taskIds: ['task-1', 'task-2', 'task-4'],
@@ -410,12 +410,12 @@ export const createSeedData = (): PersistedISOData => ({
   ],
   communicationSettings: {
     enabled: true,
-    providerName: 'SMTP Demo',
-    senderName: 'ISO Manager Bot',
-    senderEmail: 'notificaciones@iso.local',
-    replyTo: 'calidad@iso.local',
-    apiBaseUrl: 'https://smtp.demo.local/api/send',
-    apiKeyHint: 'demo-key-****',
+    providerName: 'Proveedor SMTP',
+    senderName: 'Sistema ISO',
+    senderEmail: 'notificaciones@servasmar.cl',
+    replyTo: 'calidad@servasmar.cl',
+    apiBaseUrl: 'https://api.servasmar.cl/communications/send',
+    apiKeyHint: 'configurado-en-servidor',
   },
 });
 

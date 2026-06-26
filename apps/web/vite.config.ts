@@ -8,6 +8,7 @@ export default defineConfig(({ mode }) => {
   const proxyTarget = apiUrl.replace(/\/api\/?$/, '');
 
   return {
+    envPrefix: ['VITE_', 'NEXT_PUBLIC_'],
     plugins: [react()],
     server: {
       host: '0.0.0.0',

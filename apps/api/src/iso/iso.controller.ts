@@ -1,12 +1,20 @@
-import { Body, Controller, Get, Param, Patch, Post, Put } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Put, UseGuards } from '@nestjs/common';
+import { ClerkAuth } from './clerk-auth.decorator';
+import { ClerkAuthGuard } from './clerk-auth.guard';
 import { ChatGateway } from './chat.gateway';
+import { ClerkDirectoryService } from './clerk-directory.service';
+import { GoogleCalendarService } from './google-calendar.service';
 import { IsoService } from './iso.service';
+import type { ClerkSessionIdentity } from './clerk.types';
 
 @Controller('iso')
+@UseGuards(ClerkAuthGuard)
 export class IsoController {
   constructor(
     private readonly isoService: IsoService,
-    private readonly chatGateway: ChatGateway
+    private readonly chatGateway: ChatGateway,
+    private readonly googleCalendarService: GoogleCalendarService,
+    private readonly clerkDirectoryService: ClerkDirectoryService
   ) {}
 
   @Get('documents')
@@ -29,19 +37,57 @@ export class IsoController {
     return this.isoService.getBootstrap();
   }
 
+  @Get('calendar/status')
+  getCalendarStatus() {
+    return this.googleCalendarService.getStatus();
+  }
+
+  @Get('users/clerk')
+  getClerkUsers() {
+    return this.clerkDirectoryService.listUsers();
+  }
+
+  @Get('auth/clerk/me')
+  getCurrentClerkUser(@ClerkAuth() clerkAuth: ClerkSessionIdentity | null) {
+    if (!clerkAuth) {
+      return null;
+    }
+
+    return this.clerkDirectoryService.getCurrentUser(clerkAuth.userId);
+  }
+
+  @Post('calendar/sync')
+  syncCalendar() {
+    return this.googleCalendarService.syncEvents();
+  }
+
   @Get('chat/threads/:userId')
-  getChatThreads(@Param('userId') userId: string) {
-    return this.isoService.getChatThreads(userId);
+  getChatThreads(
+    @Param('userId') userId: string,
+    @ClerkAuth() clerkAuth: ClerkSessionIdentity | null
+  ) {
+    return this.isoService.getChatThreads(clerkAuth?.appUserId ?? userId);
   }
 
   @Post('chat/threads/direct')
   async openDirectThread(
+    @ClerkAuth() clerkAuth: ClerkSessionIdentity | null,
     @Body()
     body: {
       participantIds: string[];
     }
   ) {
-    const thread = await this.isoService.openDirectThread(body.participantIds);
+    const participantIds = clerkAuth
+      ? [
+          clerkAuth.appUserId,
+          ...body.participantIds.filter(
+            (participantId) =>
+              participantId !== clerkAuth.appUserId && participantId.startsWith('clerk-')
+          ),
+        ]
+      : body.participantIds;
+
+    const thread = await this.isoService.openDirectThread(participantIds);
     this.chatGateway.emitThreadUpsert(thread);
     return thread;
   }
@@ -49,13 +95,18 @@ export class IsoController {
   @Post('chat/threads/:id/messages')
   async sendChatMessage(
     @Param('id') id: string,
+    @ClerkAuth() clerkAuth: ClerkSessionIdentity | null,
     @Body()
     body: {
       authorId: string;
       content: string;
     }
   ) {
-    const thread = await this.isoService.sendChatMessage(id, body.authorId, body.content);
+    const thread = await this.isoService.sendChatMessage(
+      id,
+      clerkAuth?.appUserId ?? body.authorId,
+      body.content
+    );
     this.chatGateway.emitThreadUpsert(thread);
     return thread;
   }
@@ -63,12 +114,16 @@ export class IsoController {
   @Post('chat/threads/:id/read')
   async markThreadAsRead(
     @Param('id') id: string,
+    @ClerkAuth() clerkAuth: ClerkSessionIdentity | null,
     @Body()
     body: {
       userId: string;
     }
   ) {
-    const thread = await this.isoService.markThreadAsRead(id, body.userId);
+    const thread = await this.isoService.markThreadAsRead(
+      id,
+      clerkAuth?.appUserId ?? body.userId
+    );
     this.chatGateway.emitThreadUpsert(thread);
     return thread;
   }
@@ -251,5 +306,65 @@ export class IsoController {
     }
   ) {
     return this.isoService.updateSettings(body.settings, body.notifications);
+  }
+
+  @Put('communications/settings')
+  updateCommunicationSettings(
+    @Body()
+    body: {
+      enabled: boolean;
+      providerName: string;
+      senderName: string;
+      senderEmail: string;
+      replyTo: string;
+      apiBaseUrl: string;
+      apiKeyHint: string;
+    }
+  ) {
+    return this.isoService.updateCommunicationSettings(body);
+  }
+
+  @Post('communications/templates')
+  createEmailTemplate(
+    @Body()
+    body: {
+      name: string;
+      subject: string;
+      content: string;
+    }
+  ) {
+    return this.isoService.createEmailTemplate(body);
+  }
+
+  @Patch('communications/templates/:id')
+  updateEmailTemplate(
+    @Param('id') id: string,
+    @Body()
+    body: {
+      name?: string;
+      subject?: string;
+      content?: string;
+    }
+  ) {
+    return this.isoService.updateEmailTemplate(id, body);
+  }
+
+  @Patch('communications/templates/:id/delete')
+  deleteEmailTemplate(@Param('id') id: string) {
+    return this.isoService.deleteEmailTemplate(id);
+  }
+
+  @Post('communications/campaigns/send')
+  sendBulkTaskReminderCampaign(
+    @Body()
+    body: {
+      name: string;
+      templateId: string;
+      daysAhead: number;
+      recipientIds: string[];
+      recipientNames: string[];
+    }
+  ) {
+    return this.isoService.sendBulkTaskReminderCampaign(body);
   }
 }

@@ -1,5 +1,10 @@
 import React from 'react';
+import { useAuth, useClerk } from '@clerk/clerk-react';
 import { useNavigate } from 'react-router-dom';
+import {
+  clerkSignInPath,
+  isClerkEnabled,
+} from '../../lib/clerk';
 import {
   Bell,
   ChevronDown,
@@ -35,6 +40,8 @@ export const TopBar: React.FC<TopBarProps> = ({
   onToggleCollapsed,
 }) => {
   const navigate = useNavigate();
+  const clerk = useClerk();
+  const { isSignedIn } = useAuth();
   const settings = useISOStore((state) => state.settings);
   const alerts = useISOStore((state) => state.alerts);
   const documents = useISOStore((state) => state.documents);
@@ -188,6 +195,12 @@ export const TopBar: React.FC<TopBarProps> = ({
   };
 
   const handleLogout = async () => {
+    if (isClerkEnabled && clerk && isSignedIn) {
+      await logout();
+      navigate(`${clerkSignInPath}?logout=1`, { replace: true });
+      return;
+    }
+
     await logout();
     navigate('/login', { replace: true });
   };
@@ -271,7 +284,7 @@ export const TopBar: React.FC<TopBarProps> = ({
           <div className="flex items-center gap-3">
             <div className="hidden items-center gap-2 rounded-full bg-[#727cf5]/10 px-3 py-2 text-[#727cf5] md:flex">
               <Globe2 className="h-4 w-4" />
-              <span className="text-sm font-bold uppercase tracking-wide">Demo local</span>
+              <span className="text-sm font-bold uppercase tracking-wide">Entorno ISO</span>
             </div>
 
             <button
@@ -347,7 +360,7 @@ export const TopBar: React.FC<TopBarProps> = ({
                   <User className="h-4 w-4" />
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-slate-700">{user?.name ?? 'Usuario local'}</p>
+                  <p className="text-sm font-bold text-slate-700">{user?.name ?? 'Usuario'}</p>
                   <p className="text-xs capitalize text-slate-400">{user?.role ?? 'Sin rol'}</p>
                 </div>
                 <ChevronDown className="h-4 w-4 text-slate-400" />
