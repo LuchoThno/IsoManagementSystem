@@ -4,6 +4,10 @@ import { getClerkSessionToken } from './clerkSession';
 const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
 const getSocketBaseUrl = () => {
+  if (typeof window !== 'undefined' && window.location.hostname === 'iso.servasmar.cl') {
+    return window.location.origin;
+  }
+
   const configured = import.meta.env.VITE_SOCKET_URL;
   if (typeof configured === 'string' && configured.trim()) {
     return configured;
