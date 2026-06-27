@@ -6,6 +6,8 @@ import './index.css';
 import {
   clerkAfterSignInUrl,
   clerkAfterSignUpUrl,
+  clerkDomain,
+  clerkIsSatellite,
   clerkPublishableKey,
   clerkSignInPath,
   clerkSignUpPath,
@@ -20,6 +22,8 @@ createRoot(document.getElementById('root')!).render(
     signUpFallbackRedirectUrl={clerkAfterSignUpUrl}
     signInUrl={clerkSignInPath}
     signUpUrl={clerkSignUpPath}
+    domain={clerkIsSatellite ? clerkDomain : undefined}
+    isSatellite={clerkIsSatellite}
     afterSignOutUrl="/login"
   >
     <App />

@@ -13,8 +13,15 @@ const rawPublishableKey =
   import.meta.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ||
   '';
 
+const getCurrentHostname = () =>
+  typeof window === 'undefined' ? '' : window.location.hostname;
+
+const isIsoSatelliteHost = () => getCurrentHostname() === 'iso.servasmar.cl';
+
 export const isClerkEnabled = rawPublishableKey.trim().length > 0;
 export const clerkPublishableKey = rawPublishableKey.trim();
+export const clerkDomain = import.meta.env.VITE_CLERK_DOMAIN?.trim() || 'servasmar.cl';
+export const clerkIsSatellite = isIsoSatelliteHost();
 export const clerkSignInPath = normalizePath(
   import.meta.env.VITE_CLERK_SIGN_IN_URL || import.meta.env.NEXT_PUBLIC_CLERK_SIGN_IN_URL,
   '/login'
