@@ -10,7 +10,9 @@ import {
   clerkIsSatellite,
   clerkPublishableKey,
   clerkSignInPath,
+  clerkSignInUrl,
   clerkSignUpPath,
+  clerkSignUpUrl,
 } from './lib/clerk';
 
 createRoot(document.getElementById('root')!).render(
@@ -20,8 +22,8 @@ createRoot(document.getElementById('root')!).render(
     __internal_bypassMissingPublishableKey
     signInFallbackRedirectUrl={clerkAfterSignInUrl}
     signUpFallbackRedirectUrl={clerkAfterSignUpUrl}
-    signInUrl={clerkSignInPath}
-    signUpUrl={clerkSignUpPath}
+    signInUrl={clerkSignInUrl}
+    signUpUrl={clerkSignUpUrl}
     domain={clerkIsSatellite ? clerkDomain : undefined}
     isSatellite={clerkIsSatellite}
     afterSignOutUrl="/login"

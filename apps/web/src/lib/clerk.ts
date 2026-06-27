@@ -16,20 +16,31 @@ const rawPublishableKey =
 const getCurrentHostname = () =>
   typeof window === 'undefined' ? '' : window.location.hostname;
 
+const getCurrentOrigin = () =>
+  typeof window === 'undefined' ? '' : window.location.origin;
+
 const isIsoSatelliteHost = () => getCurrentHostname() === 'iso.servasmar.cl';
+const toAbsoluteUrl = (path: string) => {
+  const origin = getCurrentOrigin();
+  return origin ? `${origin}${path}` : path;
+};
 
 export const isClerkEnabled = rawPublishableKey.trim().length > 0;
 export const clerkPublishableKey = rawPublishableKey.trim();
 export const clerkDomain = import.meta.env.VITE_CLERK_DOMAIN?.trim() || 'servasmar.cl';
 export const clerkIsSatellite = isIsoSatelliteHost();
-export const clerkSignInPath = normalizePath(
+const normalizedSignInPath = normalizePath(
   import.meta.env.VITE_CLERK_SIGN_IN_URL || import.meta.env.NEXT_PUBLIC_CLERK_SIGN_IN_URL,
   '/login'
 );
-export const clerkSignUpPath = normalizePath(
+const normalizedSignUpPath = normalizePath(
   import.meta.env.VITE_CLERK_SIGN_UP_URL || import.meta.env.NEXT_PUBLIC_CLERK_SIGN_UP_URL,
-  clerkSignInPath
+  normalizedSignInPath
 );
+export const clerkSignInPath = normalizedSignInPath;
+export const clerkSignUpPath = normalizedSignUpPath;
+export const clerkSignInUrl = clerkIsSatellite ? toAbsoluteUrl(normalizedSignInPath) : normalizedSignInPath;
+export const clerkSignUpUrl = clerkIsSatellite ? toAbsoluteUrl(normalizedSignUpPath) : normalizedSignUpPath;
 export const clerkAfterSignInUrl = normalizePath(
   import.meta.env.VITE_CLERK_AFTER_SIGN_IN_URL ||
     import.meta.env.NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL,
