@@ -1,6 +1,6 @@
 import React from 'react';
 import { SignIn, useUser } from '@clerk/clerk-react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { ShieldCheck } from 'lucide-react';
 import { BrandLockup } from '../components/brand/Brand';
 import { clerkAfterSignInUrl, clerkSignInPath, clerkSignUpPath, isClerkEnabled } from '../lib/clerk';
@@ -12,6 +12,7 @@ export const Login: React.FC = () => {
   const error = useAuthStore((state) => state.error);
   const login = useAuthStore((state) => state.login);
   const initialize = useAuthStore((state) => state.initialize);
+  const location = useLocation();
 
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
@@ -27,6 +28,10 @@ export const Login: React.FC = () => {
 
   if (isClerkEnabled && isSignedIn) {
     return <Navigate to={clerkAfterSignInUrl} replace />;
+  }
+
+  if (isClerkEnabled && location.pathname !== clerkSignInPath) {
+    return <Navigate to={clerkSignInPath} replace />;
   }
 
   if (!isClerkEnabled && initialized && user) {
