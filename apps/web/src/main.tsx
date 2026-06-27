@@ -9,9 +9,7 @@ import {
   clerkDomain,
   clerkIsSatellite,
   clerkPublishableKey,
-  clerkSignInPath,
   clerkSignInUrl,
-  clerkSignUpPath,
   clerkSignUpUrl,
 } from './lib/clerk';
 

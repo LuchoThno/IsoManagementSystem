@@ -164,7 +164,22 @@ const mergeWithSeed = (rawData: Partial<PersistedISOData>): PersistedISOData => 
       ? rawData.emailCampaigns
       : seed.emailCampaigns,
     settings: rawData.settings ?? seed.settings,
-    notifications: rawData.notifications ?? seed.notifications,
+    notifications: {
+      ...seed.notifications,
+      ...rawData.notifications,
+      email: {
+        ...seed.notifications.email,
+        ...rawData.notifications?.email,
+      },
+      inApp: {
+        ...seed.notifications.inApp,
+        ...rawData.notifications?.inApp,
+      },
+      desktop: {
+        ...seed.notifications.desktop,
+        ...rawData.notifications?.desktop,
+      },
+    },
     communicationSettings: rawData.communicationSettings ?? seed.communicationSettings,
   };
 };

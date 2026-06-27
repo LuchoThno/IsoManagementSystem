@@ -312,6 +312,11 @@ export const createSeedData = (): PersistedISOData => ({
       auditReminders: true,
       documentUpdates: true,
     },
+    desktop: {
+      enabled: true,
+      chatMessages: true,
+      connectionAlerts: true,
+    },
   },
   users: [
     {

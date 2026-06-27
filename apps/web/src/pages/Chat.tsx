@@ -1,6 +1,19 @@
 import React from 'react';
-import { MessageSquareMore, Search, Send, Users2 } from 'lucide-react';
+import {
+  AlertTriangle,
+  BellRing,
+  MessageSquareMore,
+  Search,
+  Send,
+  Users2,
+  Wifi,
+  WifiOff,
+} from 'lucide-react';
 import type { Socket } from 'socket.io-client';
+import {
+  showChatMessageNotification,
+  showConnectionStatusNotification,
+} from '../lib/browserNotifications';
 import {
   listChatThreadsApi,
   markThreadAsReadApi,
@@ -12,6 +25,8 @@ import { connectChatSocket } from '../lib/chatSocket';
 import { useAuthStore } from '../store/useAuthStore';
 import { useISOStore } from '../store/useISOStore';
 import type { ChatThread, UserAccount } from '../types/iso';
+
+type ConnectionStatus = 'online' | 'disconnected' | 'unavailable';
 
 const getOtherParticipant = (
   thread: ChatThread,
@@ -28,11 +43,67 @@ export const Chat: React.FC = () => {
   const chatThreads = useISOStore((state) => state.chatThreads);
   const replaceChatThreads = useISOStore((state) => state.replaceChatThreads);
   const upsertChatThread = useISOStore((state) => state.upsertChatThread);
+  const notifications = useISOStore((state) => state.notifications);
   const [selectedThreadId, setSelectedThreadId] = React.useState<string | null>(null);
   const [message, setMessage] = React.useState('');
   const [directoryQuery, setDirectoryQuery] = React.useState('');
   const [loadingThreads, setLoadingThreads] = React.useState(true);
   const [chatError, setChatError] = React.useState<string | null>(null);
+  const [connectionStatus, setConnectionStatus] = React.useState<ConnectionStatus>('disconnected');
+  const [browserOnline, setBrowserOnline] = React.useState(
+    typeof navigator === 'undefined' ? true : navigator.onLine
+  );
+  const threadsRef = React.useRef(chatThreads);
+  const selectedThreadIdRef = React.useRef<string | null>(selectedThreadId);
+  const statusInitializedRef = React.useRef(false);
+
+  React.useEffect(() => {
+    threadsRef.current = chatThreads;
+  }, [chatThreads]);
+
+  React.useEffect(() => {
+    selectedThreadIdRef.current = selectedThreadId;
+  }, [selectedThreadId]);
+
+  const updateConnectionStatus = React.useCallback(
+    (nextStatus: ConnectionStatus) => {
+      setConnectionStatus((current) => {
+        if (current === nextStatus) {
+          return current;
+        }
+
+        if (statusInitializedRef.current && notifications.desktop.enabled && notifications.desktop.connectionAlerts) {
+          showConnectionStatusNotification(nextStatus);
+        }
+
+        statusInitializedRef.current = true;
+        return nextStatus;
+      });
+    },
+    [notifications.desktop.connectionAlerts, notifications.desktop.enabled]
+  );
+
+  React.useEffect(() => {
+    const handleOnline = () => {
+      setBrowserOnline(true);
+      if (connectionStatus !== 'online') {
+        updateConnectionStatus('disconnected');
+      }
+    };
+
+    const handleOffline = () => {
+      setBrowserOnline(false);
+      updateConnectionStatus('disconnected');
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [connectionStatus, updateConnectionStatus]);
 
   const availableUsers = React.useMemo(
     () =>
@@ -85,10 +156,14 @@ export const Chat: React.FC = () => {
         if (mounted) {
           replaceChatThreads(threads);
           setChatError(null);
+          if (browserOnline) {
+            updateConnectionStatus('disconnected');
+          }
         }
       } catch {
         if (mounted) {
           setChatError('No fue posible cargar las conversaciones desde el backend.');
+          updateConnectionStatus('unavailable');
         }
       } finally {
         if (mounted) {
@@ -102,7 +177,7 @@ export const Chat: React.FC = () => {
     return () => {
       mounted = false;
     };
-  }, [currentUser, replaceChatThreads]);
+  }, [browserOnline, currentUser, replaceChatThreads, updateConnectionStatus]);
 
   React.useEffect(() => {
     if (!currentUser) {
@@ -121,31 +196,72 @@ export const Chat: React.FC = () => {
 
         socket = nextSocket;
 
+        nextSocket.on('connect', () => {
+          setChatError(null);
+          updateConnectionStatus('online');
+        });
+
         nextSocket.on('chat:thread-upserted', (thread: ChatThread) => {
-          upsertChatThread({
+          const hydratedThread = {
             ...thread,
             updatedAt: new Date(thread.updatedAt),
             messages: thread.messages.map((item) => ({
               ...item,
               createdAt: new Date(item.createdAt),
             })),
-          });
+          };
+          const previousThread = threadsRef.current.find((item) => item.id === hydratedThread.id);
+          const previousMessageId =
+            previousThread?.messages[previousThread.messages.length - 1]?.id ?? null;
+          const lastMessage =
+            hydratedThread.messages[hydratedThread.messages.length - 1] ?? null;
+          const shouldNotify =
+            Boolean(lastMessage) &&
+            lastMessage?.authorId !== currentUser.id &&
+            lastMessage?.id !== previousMessageId &&
+            notifications.desktop.enabled &&
+            notifications.desktop.chatMessages &&
+            (typeof document === 'undefined' ||
+              document.hidden ||
+              selectedThreadIdRef.current !== hydratedThread.id);
+
+          upsertChatThread(hydratedThread);
           setChatError(null);
+
+          if (shouldNotify && lastMessage) {
+            const author =
+              users.find((user) => user.id === lastMessage.authorId)?.name ?? 'Chat interno';
+            showChatMessageNotification(author, lastMessage.content);
+          }
+        });
+
+        nextSocket.on('disconnect', () => {
+          updateConnectionStatus(browserOnline ? 'disconnected' : 'unavailable');
         });
 
         nextSocket.on('connect_error', () => {
           setChatError('No fue posible conectar el chat en tiempo real.');
+          updateConnectionStatus('unavailable');
         });
       })
       .catch(() => {
         setChatError('No fue posible conectar el chat en tiempo real.');
+        updateConnectionStatus('unavailable');
       });
 
     return () => {
       mounted = false;
       socket?.disconnect();
     };
-  }, [currentUser, upsertChatThread]);
+  }, [
+    browserOnline,
+    currentUser,
+    notifications.desktop.chatMessages,
+    notifications.desktop.enabled,
+    updateConnectionStatus,
+    upsertChatThread,
+    users,
+  ]);
 
   React.useEffect(() => {
     if (!selectedThreadId && sortedThreads[0]) {
@@ -170,7 +286,7 @@ export const Chat: React.FC = () => {
       .catch(() => {
         setChatError('No fue posible marcar la conversación como leída.');
       });
-  }, [currentUser, selectedThread, upsertChatThread]);
+  }, [currentUser, loadingThreads, selectedThread, upsertChatThread]);
 
   const handleOpenChat = async (targetUserId: string) => {
     if (!currentUser) return;
@@ -200,13 +316,70 @@ export const Chat: React.FC = () => {
     }
   };
 
+  const connectionMeta = React.useMemo(() => {
+    switch (connectionStatus) {
+      case 'online':
+        return {
+          label: 'En línea',
+          description: 'Chat en tiempo real operativo y sincronizado.',
+          classes: 'bg-emerald-100 text-emerald-700',
+          icon: Wifi,
+        };
+      case 'unavailable':
+        return {
+          label: 'No disponible',
+          description: 'El servicio no respondió o la sesión no alcanzó el backend.',
+          classes: 'bg-rose-100 text-rose-700',
+          icon: AlertTriangle,
+        };
+      default:
+        return {
+          label: 'Desconectado',
+          description: browserOnline
+            ? 'Reintentando conexión en tiempo real.'
+            : 'El dispositivo está sin conectividad de red.',
+          classes: 'bg-amber-100 text-amber-700',
+          icon: WifiOff,
+        };
+    }
+  }, [browserOnline, connectionStatus]);
+
+  const ConnectionIcon = connectionMeta.icon;
+
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-extrabold text-slate-700">Chat interno</h2>
-        <p className="mt-1 text-sm text-slate-400">
-          Conversaciones operativas para seguimiento de tareas, auditorías y coordinación interna.
-        </p>
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <h2 className="text-2xl font-extrabold text-slate-700">Chat interno</h2>
+          <p className="mt-1 text-sm text-slate-400">
+            Conversaciones operativas para seguimiento de tareas, auditorías y coordinación interna.
+          </p>
+        </div>
+
+        <div className="rounded-[24px] border border-slate-200 bg-white px-4 py-4 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className={`rounded-2xl p-3 ${connectionMeta.classes}`}>
+              <ConnectionIcon className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-extrabold uppercase tracking-[0.18em] text-slate-500">
+                  Estado de conexión
+                </p>
+                <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${connectionMeta.classes}`}>
+                  {connectionMeta.label}
+                </span>
+              </div>
+              <p className="mt-1 text-sm text-slate-400">{connectionMeta.description}</p>
+            </div>
+          </div>
+          <div className="mt-3 inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-500">
+            <BellRing className="h-3.5 w-3.5" />
+            {notifications.desktop.enabled && notifications.desktop.chatMessages
+              ? 'Burbujas del dispositivo activas para nuevos mensajes'
+              : 'Burbujas del dispositivo desactivadas'}
+          </div>
+        </div>
       </div>
 
       {chatError ? (
@@ -326,8 +499,8 @@ export const Chat: React.FC = () => {
                       {selectedThread.messages.length} mensaje(s) en este hilo
                     </p>
                   </div>
-                  <span className="rounded-full bg-[#0acf97]/10 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-[#0acf97]">
-                    En línea
+                  <span className={`rounded-full px-3 py-1.5 text-xs font-bold uppercase tracking-wide ${connectionMeta.classes}`}>
+                    {connectionMeta.label}
                   </span>
                 </div>
               </div>

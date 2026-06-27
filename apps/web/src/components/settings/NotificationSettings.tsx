@@ -19,6 +19,11 @@ export const NotificationSettings: React.FC<NotificationSettingsProps> = ({ onSa
       auditReminders: true,
       documentUpdates: true,
     },
+    desktop: {
+      enabled: true,
+      chatMessages: true,
+      connectionAlerts: true,
+    },
   });
 
   const handleSubmit = (e: React.FormEvent) => {

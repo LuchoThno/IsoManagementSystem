@@ -38,6 +38,11 @@ export class SettingsEntity {
         auditReminders: { type: Boolean, default: true },
         documentUpdates: { type: Boolean, default: true },
       }),
+      desktop: raw({
+        enabled: { type: Boolean, default: true },
+        chatMessages: { type: Boolean, default: true },
+        connectionAlerts: { type: Boolean, default: true },
+      }),
     })
   )
   notifications!: {
@@ -52,6 +57,11 @@ export class SettingsEntity {
       taskReminders: boolean;
       auditReminders: boolean;
       documentUpdates: boolean;
+    };
+    desktop: {
+      enabled: boolean;
+      chatMessages: boolean;
+      connectionAlerts: boolean;
     };
   };
 

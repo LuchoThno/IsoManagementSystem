@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { BadgeCheck, Files, ScanSearch, ScrollText } from 'lucide-react';
 import { DocumentFilters } from '../components/documents/DocumentFilters';
+import { EditDocumentModal } from '../components/documents/EditDocumentModal';
 import { DocumentTable } from '../components/documents/DocumentTable';
 import { DocumentUpload } from '../components/documents/DocumentUpload';
 import type { Document, ISOStandard } from '../types/iso';
@@ -32,6 +33,7 @@ export const Documents: React.FC = () => {
   const [typeFilter, setTypeFilter] = useState<'manual' | 'procedure' | 'record' | 'all'>('all');
   const [selectedVersionDocument, setSelectedVersionDocument] = useState<Document | null>(null);
   const [selectedAuditDocument, setSelectedAuditDocument] = useState<Document | null>(null);
+  const [editingDocument, setEditingDocument] = useState<Document | null>(null);
 
   useEffect(() => {
     setSearchQuery(searchParams.get('q') ?? '');
@@ -118,42 +120,7 @@ export const Documents: React.FC = () => {
   };
 
   const handleEditDocument = async (doc: Document) => {
-    const title = window.prompt('Nuevo titulo del documento', doc.title);
-    if (!title) return;
-
-    const topic = window.prompt('Tema del documento', doc.topic);
-    if (!topic) return;
-
-    const version = window.prompt('Version del documento', doc.version);
-    if (!version) return;
-
-    const format = window.prompt(
-      'Formato: PDF, DOCX, XLSX, PPTX, TXT, PNG, JPG, WEBP o GIF',
-      doc.format
-    ) as
-      | Document['format']
-      | null;
-    if (!format || !['PDF', 'DOCX', 'XLSX', 'PPTX', 'TXT', 'PNG', 'JPG', 'WEBP', 'GIF'].includes(format)) {
-      return;
-    }
-
-    const status = window.prompt(
-      'Estado: draft, active o archived',
-      doc.status
-    ) as Document['status'] | null;
-    if (!status || !['draft', 'active', 'archived'].includes(status)) {
-      return;
-    }
-
-    await updateDocumentApi(doc.id, {
-      title,
-      topic,
-      version,
-      format,
-      status,
-    });
-
-    await refreshDocuments();
+    setEditingDocument(doc);
   };
 
   const handleDeleteDocument = async (doc: Document) => {
@@ -416,6 +383,16 @@ export const Documents: React.FC = () => {
           </div>
         </section>
       </div>
+
+      <EditDocumentModal
+        isOpen={Boolean(editingDocument)}
+        document={editingDocument}
+        onClose={() => setEditingDocument(null)}
+        onSubmit={async (documentId, updates) => {
+          await updateDocumentApi(documentId, updates);
+          await refreshDocuments();
+        }}
+      />
     </div>
   );
 };

@@ -115,6 +115,11 @@ export interface NotificationSettings {
     auditReminders: boolean;
     documentUpdates: boolean;
   };
+  desktop: {
+    enabled: boolean;
+    chatMessages: boolean;
+    connectionAlerts: boolean;
+  };
 }
 
 export type UserRole = 'admin' | 'manager' | 'auditor' | 'viewer';

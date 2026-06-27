@@ -3,7 +3,7 @@ import { Plus } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { TaskList } from '../components/tasks/TaskList';
 import { TaskFilters } from '../components/tasks/TaskFilters';
-import { CreateTaskModal } from '../components/tasks/CreateTaskModal';
+import { TaskModal } from '../components/tasks/TaskModal';
 import type { Task, ISOStandard } from '../types/iso';
 import {
   createTaskApi,
@@ -18,6 +18,7 @@ export const Tasks: React.FC = () => {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [searchParams] = useSearchParams();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<Task['status'] | 'all'>('all');
   const [priorityFilter, setPriorityFilter] = useState<Task['priority'] | 'all'>('all');
@@ -63,31 +64,7 @@ export const Tasks: React.FC = () => {
   };
 
   const handleEditTask = async (task: Task) => {
-    const title = window.prompt('Nuevo titulo de la tarea', task.title);
-    if (!title) return;
-
-    const description = window.prompt('Descripcion', task.description);
-    if (!description) return;
-
-    const assignedTo = window.prompt('Responsable', task.assignedTo);
-    if (!assignedTo) return;
-
-    const status = window.prompt(
-      'Estado: pending, in-progress, completed o overdue',
-      task.status
-    ) as Task['status'] | null;
-    if (!status || !['pending', 'in-progress', 'completed', 'overdue'].includes(status)) {
-      return;
-    }
-
-    await updateTaskApi(task.id, {
-      title,
-      description,
-      assignedTo,
-      status,
-    });
-
-    await refreshTasks();
+    setEditingTask(task);
   };
 
   const handleDeleteTask = async (task: Task) => {
@@ -153,10 +130,23 @@ export const Tasks: React.FC = () => {
         />
       )}
 
-      <CreateTaskModal
+      <TaskModal
         isOpen={isCreateModalOpen}
+        mode="create"
         onClose={() => setIsCreateModalOpen(false)}
         onSubmit={handleCreateTask}
+      />
+
+      <TaskModal
+        isOpen={Boolean(editingTask)}
+        mode="edit"
+        initialTask={editingTask}
+        onClose={() => setEditingTask(null)}
+        onSubmit={async (taskData) => {
+          if (!editingTask) return;
+          await updateTaskApi(editingTask.id, taskData);
+          await refreshTasks();
+        }}
       />
     </div>
   );

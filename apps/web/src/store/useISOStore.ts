@@ -88,6 +88,11 @@ export const useISOStore = create<ISOStore>((set) => ({
       auditReminders: true,
       documentUpdates: true,
     },
+    desktop: {
+      enabled: true,
+      chatMessages: true,
+      connectionAlerts: true,
+    },
   },
   communicationSettings: {
     enabled: true,

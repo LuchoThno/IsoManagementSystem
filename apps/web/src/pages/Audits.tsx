@@ -3,7 +3,7 @@ import { Plus } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { AuditList } from '../components/audits/AuditList';
 import { AuditFilters } from '../components/audits/AuditFilters';
-import { CreateAuditModal } from '../components/audits/CreateAuditModal';
+import { AuditModal } from '../components/audits/AuditModal';
 import type { Audit, ISOStandard } from '../types/iso';
 import {
   createAuditApi,
@@ -18,6 +18,7 @@ export const Audits: React.FC = () => {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [searchParams] = useSearchParams();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [editingAudit, setEditingAudit] = useState<Audit | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<Audit['status'] | 'all'>('all');
   const [typeFilter, setTypeFilter] = useState<Audit['type'] | 'all'>('all');
@@ -68,21 +69,7 @@ export const Audits: React.FC = () => {
   };
 
   const handleEditAudit = async (audit: Audit) => {
-    const type = window.prompt('Tipo: internal o external', audit.type) as Audit['type'] | null;
-    if (!type || !['internal', 'external'].includes(type)) return;
-
-    const status = window.prompt(
-      'Estado: planned, in-progress o completed',
-      audit.status
-    ) as Audit['status'] | null;
-    if (!status || !['planned', 'in-progress', 'completed'].includes(status)) return;
-
-    await updateAuditApi(audit.id, {
-      type,
-      status,
-    });
-
-    await refreshAudits();
+    setEditingAudit(audit);
   };
 
   const handleDeleteAudit = async (audit: Audit) => {
@@ -148,10 +135,23 @@ export const Audits: React.FC = () => {
         />
       )}
 
-      <CreateAuditModal
+      <AuditModal
         isOpen={isCreateModalOpen}
+        mode="create"
         onClose={() => setIsCreateModalOpen(false)}
         onSubmit={handleCreateAudit}
+      />
+
+      <AuditModal
+        isOpen={Boolean(editingAudit)}
+        mode="edit"
+        initialAudit={editingAudit}
+        onClose={() => setEditingAudit(null)}
+        onSubmit={async (auditData) => {
+          if (!editingAudit) return;
+          await updateAuditApi(editingAudit.id, auditData);
+          await refreshAudits();
+        }}
       />
     </div>
   );

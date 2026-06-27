@@ -85,7 +85,7 @@ export class IsoService implements OnModuleInit {
         defaultLanguage: settings.defaultLanguage,
         timezone: settings.timezone,
       },
-      notifications: settings.notifications,
+      notifications: this.normalizeNotifications(settings.notifications),
       emailTemplates: emailTemplates.map((template) => this.serializeEmailTemplate(template)),
       emailCampaigns: emailCampaigns.map((campaign) => this.serializeEmailCampaign(campaign)),
       communicationSettings: settings.communicationSettings,
@@ -582,12 +582,12 @@ export class IsoService implements OnModuleInit {
     current.standards = settings.standards;
     current.defaultLanguage = settings.defaultLanguage;
     current.timezone = settings.timezone;
-    current.notifications = notifications;
+    current.notifications = this.normalizeNotifications(notifications);
     await current.save();
 
     return {
       settings,
-      notifications,
+      notifications: this.normalizeNotifications(current.notifications),
     };
   }
 
@@ -627,6 +627,11 @@ export class IsoService implements OnModuleInit {
             auditReminders: true,
             documentUpdates: true,
           },
+          desktop: {
+            enabled: true,
+            chatMessages: true,
+            connectionAlerts: true,
+          },
         },
         communicationSettings: {
           enabled: true,
@@ -640,7 +645,37 @@ export class IsoService implements OnModuleInit {
       });
     }
 
+    const normalizedNotifications = this.normalizeNotifications(settings.notifications);
+    if (JSON.stringify(settings.notifications) !== JSON.stringify(normalizedNotifications)) {
+      settings.notifications = normalizedNotifications;
+      await settings.save();
+    }
+
     return settings;
+  }
+
+  private normalizeNotifications(
+    notifications: Partial<SettingsEntity['notifications']> | undefined
+  ): SettingsEntity['notifications'] {
+    return {
+      email: {
+        enabled: notifications?.email?.enabled ?? true,
+        taskReminders: notifications?.email?.taskReminders ?? true,
+        auditReminders: notifications?.email?.auditReminders ?? true,
+        documentUpdates: notifications?.email?.documentUpdates ?? true,
+      },
+      inApp: {
+        enabled: notifications?.inApp?.enabled ?? true,
+        taskReminders: notifications?.inApp?.taskReminders ?? true,
+        auditReminders: notifications?.inApp?.auditReminders ?? true,
+        documentUpdates: notifications?.inApp?.documentUpdates ?? true,
+      },
+      desktop: {
+        enabled: notifications?.desktop?.enabled ?? true,
+        chatMessages: notifications?.desktop?.chatMessages ?? true,
+        connectionAlerts: notifications?.desktop?.connectionAlerts ?? true,
+      },
+    };
   }
 
   private async seedIfEmpty() {

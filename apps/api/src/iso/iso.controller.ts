@@ -304,6 +304,11 @@ export class IsoController {
           auditReminders: boolean;
           documentUpdates: boolean;
         };
+        desktop: {
+          enabled: boolean;
+          chatMessages: boolean;
+          connectionAlerts: boolean;
+        };
       };
     }
   ) {
