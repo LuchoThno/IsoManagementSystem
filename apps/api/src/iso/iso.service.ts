@@ -583,6 +583,7 @@ export class IsoService implements OnModuleInit {
     current.defaultLanguage = settings.defaultLanguage;
     current.timezone = settings.timezone;
     current.notifications = this.normalizeNotifications(notifications);
+    current.markModified('notifications');
     await current.save();
 
     return {
@@ -648,6 +649,7 @@ export class IsoService implements OnModuleInit {
     const normalizedNotifications = this.normalizeNotifications(settings.notifications);
     if (JSON.stringify(settings.notifications) !== JSON.stringify(normalizedNotifications)) {
       settings.notifications = normalizedNotifications;
+      settings.markModified('notifications');
       await settings.save();
     }
 
