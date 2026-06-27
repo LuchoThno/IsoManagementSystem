@@ -2,9 +2,11 @@ import { io, type Socket } from 'socket.io-client';
 import { getClerkSessionToken } from './clerkSession';
 
 const API_BASE = import.meta.env.VITE_API_URL || '/api';
+const isIsoProductionHost = () =>
+  typeof window !== 'undefined' && window.location.hostname === 'iso.servasmar.cl';
 
 const getSocketBaseUrl = () => {
-  if (typeof window !== 'undefined' && window.location.hostname === 'iso.servasmar.cl') {
+  if (isIsoProductionHost()) {
     return window.location.origin;
   }
 
@@ -18,9 +20,11 @@ const getSocketBaseUrl = () => {
 
 export const connectChatSocket = async (userId: string): Promise<Socket> => {
   const token = await getClerkSessionToken();
+  const usePollingOnly = isIsoProductionHost();
 
   return io(getSocketBaseUrl(), {
-    transports: ['websocket', 'polling'],
+    transports: usePollingOnly ? ['polling'] : ['websocket', 'polling'],
+    upgrade: !usePollingOnly,
     query: {
       userId,
     },

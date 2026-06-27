@@ -80,6 +80,7 @@ export const Chat: React.FC = () => {
     const loadThreads = async () => {
       try {
         setLoadingThreads(true);
+        replaceChatThreads([]);
         const threads = await listChatThreadsApi(currentUser.id);
         if (mounted) {
           replaceChatThreads(threads);
@@ -153,7 +154,7 @@ export const Chat: React.FC = () => {
   }, [selectedThreadId, sortedThreads]);
 
   React.useEffect(() => {
-    if (!selectedThread || !currentUser) {
+    if (!selectedThread || !currentUser || loadingThreads) {
       return;
     }
 
