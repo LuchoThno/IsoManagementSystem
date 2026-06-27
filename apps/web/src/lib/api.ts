@@ -1,7 +1,26 @@
 import { isClerkEnabled } from './clerk';
+import {
+  listChatThreadsApi,
+  markThreadAsReadApi,
+  openDirectThreadApi,
+  sendChatMessageApi,
+} from './chatApi';
 import { listClerkDirectoryUsers } from './clerkDirectoryApi';
+import {
+  createAuditApi,
+  deleteAuditApi,
+  updateAuditApi,
+  updateAuditStatusApi,
+} from './auditsApi';
+import {
+  createDocumentApi,
+  deleteDocumentApi,
+  registerDocumentViewApi,
+  updateDocumentApi,
+} from './documentsApi';
 import { requestIsoApi } from './isoApiClient';
 import * as storage from './storage';
+import { createTaskApi, deleteTaskApi, updateTaskApi, updateTaskStatusApi } from './tasksApi';
 import type { ISOBootstrapData, UserAccount } from '../types/iso';
 import type {
   Alert,
@@ -178,7 +197,7 @@ export async function listUsers(): Promise<UserAccount[]> {
   }
 }
 
-export const createAudit = storage.createAudit;
+export const createAudit = createAuditApi;
 export const createEmailTemplate = (payload: {
   name: string;
   subject: string;
@@ -188,28 +207,28 @@ export const createEmailTemplate = (payload: {
     method: 'POST',
     body: JSON.stringify(payload),
   });
-export const createDocument = storage.createDocument;
-export const createTask = storage.createTask;
+export const createDocument = createDocumentApi;
+export const createTask = createTaskApi;
 export const createUser = storage.createUser;
-export const deleteAudit = storage.deleteAudit;
+export const deleteAudit = deleteAuditApi;
 export const deleteEmailTemplate = (templateId: string) =>
   requestIsoApi(`/communications/templates/${templateId}/delete`, {
     method: 'PATCH',
   });
-export const deleteDocument = storage.deleteDocument;
-export const deleteTask = storage.deleteTask;
+export const deleteDocument = deleteDocumentApi;
+export const deleteTask = deleteTaskApi;
 export const deleteUser = storage.deleteUser;
 export const getCurrentUser = storage.getCurrentUser;
-export const listChatThreads = storage.listChatThreads;
+export const listChatThreads = listChatThreadsApi;
 export const listEmailTemplates = async (): Promise<EmailTemplate[]> => {
   const bootstrap = await fetchBootstrap();
   return bootstrap.emailTemplates;
 };
 export const login = storage.login;
-export const markThreadAsRead = storage.markThreadAsRead;
-export const openDirectThread = storage.openDirectThread;
+export const markThreadAsRead = markThreadAsReadApi;
+export const openDirectThread = openDirectThreadApi;
 export const logout = storage.logout;
-export const registerDocumentView = storage.registerDocumentView;
+export const registerDocumentView = registerDocumentViewApi;
 export const resetDemoData = async () => {
   throw new Error('El restablecimiento de datos locales ya no está disponible cuando el panel usa la API real.');
 };
@@ -224,16 +243,16 @@ export const sendBulkTaskReminderCampaign = (payload: {
     method: 'POST',
     body: JSON.stringify(payload),
   });
-export const sendChatMessage = storage.sendChatMessage;
+export const sendChatMessage = sendChatMessageApi;
 export const syncExternalUserSession = storage.syncExternalUserSession;
-export const updateAudit = storage.updateAudit;
-export const updateAuditStatus = storage.updateAuditStatus;
+export const updateAudit = updateAuditApi;
+export const updateAuditStatus = updateAuditStatusApi;
 export const updateCommunicationSettings = (settings: ISOBootstrapData['communicationSettings']) =>
   requestIsoApi<ISOBootstrapData['communicationSettings']>('/communications/settings', {
     method: 'PUT',
     body: JSON.stringify(settings),
   });
-export const updateDocument = storage.updateDocument;
+export const updateDocument = updateDocumentApi;
 export const updateEmailTemplate = (
   templateId: string,
   updates: Partial<Pick<EmailTemplate, 'name' | 'subject' | 'content'>>
@@ -253,6 +272,6 @@ export const updateSettings = (payload: {
     method: 'PUT',
     body: JSON.stringify(payload),
   });
-export const updateTask = storage.updateTask;
-export const updateTaskStatus = storage.updateTaskStatus;
+export const updateTask = updateTaskApi;
+export const updateTaskStatus = updateTaskStatusApi;
 export const updateUser = storage.updateUser;
