@@ -6,6 +6,7 @@ import { ClerkDirectoryService } from './clerk-directory.service';
 import { GoogleCalendarService } from './google-calendar.service';
 import { IsoService } from './iso.service';
 import type { ClerkSessionIdentity } from './clerk.types';
+import { Public } from './public.decorator';
 
 @Controller('iso')
 @UseGuards(ClerkAuthGuard)
@@ -33,6 +34,7 @@ export class IsoController {
   }
 
   @Get('bootstrap')
+  @Public()
   getBootstrap() {
     return this.isoService.getBootstrap();
   }
