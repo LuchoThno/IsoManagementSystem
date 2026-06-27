@@ -1,6 +1,6 @@
 import React from 'react';
-import { SignIn, useClerk, useUser } from '@clerk/clerk-react';
-import { Navigate, useLocation } from 'react-router-dom';
+import { SignIn, useUser } from '@clerk/clerk-react';
+import { Navigate } from 'react-router-dom';
 import { ShieldCheck } from 'lucide-react';
 import { BrandLockup } from '../components/brand/Brand';
 import { clerkAfterSignInUrl, clerkSignInPath, clerkSignUpPath, isClerkEnabled } from '../lib/clerk';
@@ -12,14 +12,11 @@ export const Login: React.FC = () => {
   const error = useAuthStore((state) => state.error);
   const login = useAuthStore((state) => state.login);
   const initialize = useAuthStore((state) => state.initialize);
-  const syncSession = useAuthStore((state) => state.syncSession);
-  const location = useLocation();
 
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [loading, setLoading] = React.useState(false);
 
-  const clerk = useClerk();
   const { isSignedIn } = useUser();
 
   React.useEffect(() => {
@@ -27,20 +24,6 @@ export const Login: React.FC = () => {
       void initialize();
     }
   }, [initialize, initialized]);
-
-  React.useEffect(() => {
-    if (!isClerkEnabled || !clerk) {
-      return;
-    }
-
-    const query = new URLSearchParams(location.search);
-    if (query.get('logout') !== '1' || !isSignedIn) {
-      return;
-    }
-
-    syncSession(null, null);
-    void clerk.signOut({ redirectUrl: clerkSignInPath });
-  }, [clerk, isSignedIn, location.search, syncSession]);
 
   if (isClerkEnabled && isSignedIn) {
     return <Navigate to={clerkAfterSignInUrl} replace />;
@@ -58,9 +41,6 @@ export const Login: React.FC = () => {
   };
 
   if (isClerkEnabled) {
-    const query = new URLSearchParams(location.search);
-    const isLoggingOut = query.get('logout') === '1';
-
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#eef2f7] px-4">
         <div className="grid w-full max-w-6xl overflow-hidden rounded-3xl bg-white shadow-2xl lg:grid-cols-[1.05fr_0.95fr]">
@@ -82,24 +62,12 @@ export const Login: React.FC = () => {
           </div>
 
           <div className="flex items-center justify-center p-6 md:p-10">
-            {isLoggingOut ? (
-              <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-sm">
-                <p className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-400">
-                  Sesión
-                </p>
-                <h2 className="mt-3 text-3xl font-extrabold text-slate-700">Cerrando sesión</h2>
-                <p className="mt-2 text-sm text-slate-400">
-                  Estamos cerrando tu sesión de Clerk de forma segura.
-                </p>
-              </div>
-            ) : (
-              <SignIn
-                path={clerkSignInPath}
-                routing="path"
-                signUpUrl={clerkSignUpPath}
-                fallbackRedirectUrl={clerkAfterSignInUrl}
-              />
-            )}
+            <SignIn
+              path={clerkSignInPath}
+              routing="path"
+              signUpUrl={clerkSignUpPath}
+              fallbackRedirectUrl={clerkAfterSignInUrl}
+            />
           </div>
         </div>
       </div>

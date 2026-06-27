@@ -197,7 +197,7 @@ export const TopBar: React.FC<TopBarProps> = ({
   const handleLogout = async () => {
     if (isClerkEnabled && clerk && isSignedIn) {
       await logout();
-      navigate(`${clerkSignInPath}?logout=1`, { replace: true });
+      await clerk.signOut({ redirectUrl: clerkSignInPath });
       return;
     }
 
