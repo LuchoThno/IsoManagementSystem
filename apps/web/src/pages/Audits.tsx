@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Plus } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
+import { fetchBootstrap } from '../lib/api';
 import { AuditList } from '../components/audits/AuditList';
 import { AuditFilters } from '../components/audits/AuditFilters';
 import { AuditModal } from '../components/audits/AuditModal';
@@ -8,11 +9,12 @@ import type { Audit, ISOStandard } from '../types/iso';
 import {
   createAuditApi,
   deleteAuditApi,
-  listAudits,
   updateAuditApi,
 } from '../lib/auditsApi';
+import { useISOStore } from '../store/useISOStore';
 
 export const Audits: React.FC = () => {
+  const hydrate = useISOStore((state) => state.hydrate);
   const [audits, setAudits] = useState<Audit[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -24,6 +26,12 @@ export const Audits: React.FC = () => {
   const [typeFilter, setTypeFilter] = useState<Audit['type'] | 'all'>('all');
   const [standardFilter, setStandardFilter] = useState<ISOStandard | 'all'>('all');
 
+  const refreshAudits = useCallback(async () => {
+    const bootstrap = await fetchBootstrap();
+    hydrate(bootstrap);
+    setAudits(bootstrap.audits);
+  }, [hydrate]);
+
   useEffect(() => {
     setSearchQuery(searchParams.get('q') ?? '');
   }, [searchParams]);
@@ -33,7 +41,7 @@ export const Audits: React.FC = () => {
       try {
         setLoading(true);
         setLoadError(null);
-        setAudits(await listAudits());
+        await refreshAudits();
       } catch {
         setLoadError('No fue posible cargar las auditorías desde la API.');
       } finally {
@@ -42,7 +50,7 @@ export const Audits: React.FC = () => {
     };
 
     void loadAudits();
-  }, []);
+  }, [refreshAudits]);
 
   const filteredAudits = audits.filter((audit) => {
     const matchesSearch =
@@ -57,10 +65,6 @@ export const Audits: React.FC = () => {
     const matchesStandard = standardFilter === 'all' || audit.standard === standardFilter;
     return matchesSearch && matchesStatus && matchesType && matchesStandard;
   });
-
-  const refreshAudits = async () => {
-    setAudits(await listAudits());
-  };
 
   const handleCreateAudit = async (auditData: Omit<Audit, 'id'>) => {
     const newAudit = await createAuditApi(auditData);

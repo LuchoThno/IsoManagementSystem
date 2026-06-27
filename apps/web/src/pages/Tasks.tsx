@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Plus } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
+import { fetchBootstrap } from '../lib/api';
 import { TaskList } from '../components/tasks/TaskList';
 import { TaskFilters } from '../components/tasks/TaskFilters';
 import { TaskModal } from '../components/tasks/TaskModal';
@@ -8,11 +9,12 @@ import type { Task, ISOStandard } from '../types/iso';
 import {
   createTaskApi,
   deleteTaskApi,
-  listTasks,
   updateTaskApi,
 } from '../lib/tasksApi';
+import { useISOStore } from '../store/useISOStore';
 
 export const Tasks: React.FC = () => {
+  const hydrate = useISOStore((state) => state.hydrate);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -24,6 +26,12 @@ export const Tasks: React.FC = () => {
   const [priorityFilter, setPriorityFilter] = useState<Task['priority'] | 'all'>('all');
   const [standardFilter, setStandardFilter] = useState<ISOStandard | 'all'>('all');
 
+  const refreshTasks = useCallback(async () => {
+    const bootstrap = await fetchBootstrap();
+    hydrate(bootstrap);
+    setTasks(bootstrap.tasks);
+  }, [hydrate]);
+
   useEffect(() => {
     setSearchQuery(searchParams.get('q') ?? '');
   }, [searchParams]);
@@ -33,7 +41,7 @@ export const Tasks: React.FC = () => {
       try {
         setLoading(true);
         setLoadError(null);
-        setTasks(await listTasks());
+        await refreshTasks();
       } catch {
         setLoadError('No fue posible cargar las tareas desde la API.');
       } finally {
@@ -42,7 +50,7 @@ export const Tasks: React.FC = () => {
     };
 
     void loadTasks();
-  }, []);
+  }, [refreshTasks]);
 
   const filteredTasks = tasks.filter((task) => {
     const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -52,10 +60,6 @@ export const Tasks: React.FC = () => {
     const matchesStandard = standardFilter === 'all' || task.standard === standardFilter;
     return matchesSearch && matchesStatus && matchesPriority && matchesStandard;
   });
-
-  const refreshTasks = async () => {
-    setTasks(await listTasks());
-  };
 
   const handleCreateTask = async (taskData: Omit<Task, 'id'>) => {
     const newTask = await createTaskApi(taskData);

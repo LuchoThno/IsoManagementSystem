@@ -10,6 +10,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import type { Task } from '../../types/iso';
+import { useISOStore } from '../../store/useISOStore';
 
 interface TaskListProps {
   tasks: Task[];
@@ -18,6 +19,8 @@ interface TaskListProps {
 }
 
 export const TaskList: React.FC<TaskListProps> = ({ tasks, onEdit, onDelete }) => {
+  const documents = useISOStore((state) => state.documents);
+
   const getStatusIcon = (status: Task['status']) => {
     switch (status) {
       case 'completed':
@@ -113,6 +116,22 @@ export const TaskList: React.FC<TaskListProps> = ({ tasks, onEdit, onDelete }) =
                   <span className="h-1 w-1 rounded-full bg-slate-300" />
                   <span>{task.relatedDocuments.length} documentos relacionados</span>
                 </div>
+                {task.relatedDocuments.length > 0 && (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {task.relatedDocuments
+                      .map((documentId) => documents.find((document) => document.id === documentId))
+                      .filter(Boolean)
+                      .slice(0, 3)
+                      .map((document) => (
+                        <span
+                          key={document!.id}
+                          className="rounded-full bg-[#727cf5]/10 px-3 py-1 text-xs font-bold text-[#727cf5]"
+                        >
+                          {document!.title}
+                        </span>
+                      ))}
+                  </div>
+                )}
               </div>
             </div>
           </div>

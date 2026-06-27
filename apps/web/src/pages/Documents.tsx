@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { BadgeCheck, Files, ScanSearch, ScrollText } from 'lucide-react';
 import { DocumentFilters } from '../components/documents/DocumentFilters';
@@ -9,10 +9,11 @@ import type { Document, ISOStandard } from '../types/iso';
 import {
   createDocumentApi,
   deleteDocumentApi,
-  listDocuments,
   registerDocumentViewApi,
   updateDocumentApi,
 } from '../lib/documentsApi';
+import { fetchBootstrap } from '../lib/api';
+import { useISOStore } from '../store/useISOStore';
 
 const readFileAsDataUrl = (file: File) =>
   new Promise<string>((resolve, reject) => {
@@ -23,6 +24,7 @@ const readFileAsDataUrl = (file: File) =>
   });
 
 export const Documents: React.FC = () => {
+  const hydrate = useISOStore((state) => state.hydrate);
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -35,6 +37,12 @@ export const Documents: React.FC = () => {
   const [selectedAuditDocument, setSelectedAuditDocument] = useState<Document | null>(null);
   const [editingDocument, setEditingDocument] = useState<Document | null>(null);
 
+  const refreshDocuments = useCallback(async () => {
+    const bootstrap = await fetchBootstrap();
+    hydrate(bootstrap);
+    setDocuments(bootstrap.documents);
+  }, [hydrate]);
+
   useEffect(() => {
     setSearchQuery(searchParams.get('q') ?? '');
   }, [searchParams]);
@@ -44,7 +52,7 @@ export const Documents: React.FC = () => {
       try {
         setLoading(true);
         setLoadError(null);
-        setDocuments(await listDocuments());
+        await refreshDocuments();
       } catch {
         setLoadError('No fue posible cargar los documentos desde la API.');
       } finally {
@@ -53,7 +61,7 @@ export const Documents: React.FC = () => {
     };
 
     void loadDocuments();
-  }, []);
+  }, [refreshDocuments]);
 
   const activeDocuments = documents.filter((doc) => doc.status === 'active').length;
   const draftDocuments = documents.filter((doc) => doc.status === 'draft').length;
@@ -74,10 +82,6 @@ export const Documents: React.FC = () => {
     const matchesType = typeFilter === 'all' || doc.type === typeFilter;
     return matchesSearch && matchesTopic && matchesStandard && matchesType;
   });
-
-  const refreshDocuments = async () => {
-    setDocuments(await listDocuments());
-  };
 
   const handleUpload = async (data: {
     title: string;

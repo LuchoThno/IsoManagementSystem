@@ -1,6 +1,7 @@
 import React from 'react';
 import { CalendarClock, ClipboardPenLine, Flag, UserRound, X } from 'lucide-react';
 import type { ISOStandard, Task } from '../../types/iso';
+import { useISOStore } from '../../store/useISOStore';
 
 interface TaskModalProps {
   isOpen: boolean;
@@ -28,6 +29,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
   onClose,
   onSubmit,
 }) => {
+  const documents = useISOStore((state) => state.documents);
   const [formData, setFormData] = React.useState(emptyForm);
   const [submitting, setSubmitting] = React.useState(false);
 
@@ -68,6 +70,15 @@ export const TaskModal: React.FC<TaskModalProps> = ({
   };
 
   if (!isOpen) return null;
+
+  const toggleRelatedDocument = (documentId: string) => {
+    setFormData((current) => ({
+      ...current,
+      relatedDocuments: current.relatedDocuments.includes(documentId)
+        ? current.relatedDocuments.filter((currentId) => currentId !== documentId)
+        : [...current.relatedDocuments, documentId],
+    }));
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4">
@@ -201,6 +212,50 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                 <option value="ISO45001">ISO 45001</option>
               </select>
             </label>
+          </div>
+
+          <div className="rounded-[24px] border border-slate-200 bg-slate-50/80 p-5">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <h4 className="text-sm font-extrabold uppercase tracking-[0.18em] text-slate-500">
+                  Trazabilidad documental
+                </h4>
+                <p className="mt-2 text-sm text-slate-400">
+                  Vincula esta tarea con los documentos que la originan o que sirven como evidencia.
+                </p>
+              </div>
+              <span className="rounded-full bg-[#727cf5]/10 px-3 py-1.5 text-xs font-bold text-[#727cf5]">
+                {formData.relatedDocuments.length} relacionado(s)
+              </span>
+            </div>
+
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              {documents.length > 0 ? (
+                documents.map((document) => (
+                  <label
+                    key={document.id}
+                    className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-4"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={formData.relatedDocuments.includes(document.id)}
+                      onChange={() => toggleRelatedDocument(document.id)}
+                      className="mt-1 h-4 w-4 rounded border-slate-300 text-blue-600"
+                    />
+                    <div>
+                      <p className="font-bold text-slate-700">{document.title}</p>
+                      <p className="mt-1 text-xs text-slate-400">
+                        {document.standard} · {document.type} · v{document.version}
+                      </p>
+                    </div>
+                  </label>
+                ))
+              ) : (
+                <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-5 text-sm text-slate-400 md:col-span-2">
+                  No hay documentos disponibles para relacionar todavía.
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="flex gap-3">
