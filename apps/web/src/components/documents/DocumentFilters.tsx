@@ -1,5 +1,6 @@
 import React from 'react';
 import { Filter, Search } from 'lucide-react';
+import { useStandardOptions } from '../../hooks/useStandardOptions';
 import type { ISOStandard } from '../../types/iso';
 
 interface DocumentFiltersProps {
@@ -19,6 +20,7 @@ export const DocumentFilters: React.FC<DocumentFiltersProps> = ({
   searchValue = '',
   topics,
 }) => {
+  const standardOptions = useStandardOptions();
   return (
     <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
       <div className="flex min-w-0 flex-1 items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
@@ -53,9 +55,11 @@ export const DocumentFilters: React.FC<DocumentFiltersProps> = ({
           onChange={(e) => onFilterStandard(e.target.value as ISOStandard | 'all')}
         >
           <option value="all">Todas las normas</option>
-          <option value="ISO9001">ISO 9001</option>
-          <option value="ISO14001">ISO 14001</option>
-          <option value="ISO45001">ISO 45001</option>
+          {standardOptions.map((standard) => (
+            <option key={standard.id} value={standard.code}>
+              {standard.code}
+            </option>
+          ))}
         </select>
 
         <select

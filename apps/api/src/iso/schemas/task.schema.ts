@@ -24,8 +24,8 @@ export class TaskEntity {
   @Prop({ required: true, enum: ['low', 'medium', 'high'], default: 'medium' })
   priority!: 'low' | 'medium' | 'high';
 
-  @Prop({ required: true, enum: ['ISO9001', 'ISO14001', 'ISO45001'] })
-  standard!: 'ISO9001' | 'ISO14001' | 'ISO45001';
+  @Prop({ required: true })
+  standard!: string;
 
   @Prop({ type: [String], default: [] })
   relatedDocuments!: string[];

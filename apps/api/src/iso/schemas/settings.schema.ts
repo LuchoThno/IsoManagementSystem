@@ -5,18 +5,8 @@ export class SettingsEntity {
   @Prop({ required: true, default: 'ISO Manager' })
   companyName!: string;
 
-  @Prop(
-    raw({
-      ISO9001: { type: Boolean, default: true },
-      ISO14001: { type: Boolean, default: true },
-      ISO45001: { type: Boolean, default: true },
-    })
-  )
-  standards!: {
-    ISO9001: boolean;
-    ISO14001: boolean;
-    ISO45001: boolean;
-  };
+  @Prop({ type: Object, default: { ISO9001: true, ISO14001: true, ISO45001: true } })
+  standards!: Record<string, boolean>;
 
   @Prop({ required: true, default: 'es' })
   defaultLanguage!: string;

@@ -6,6 +6,7 @@ import { useAuthStore } from '../../store/useAuthStore';
 
 export const SettingsGeneral: React.FC = () => {
   const currentSettings = useISOStore((state) => state.settings);
+  const standards = useISOStore((state) => state.standards);
   const currentNotifications = useISOStore((state) => state.notifications);
   const replaceSettings = useISOStore((state) => state.replaceSettings);
   const replaceNotifications = useISOStore((state) => state.replaceNotifications);
@@ -15,9 +16,33 @@ export const SettingsGeneral: React.FC = () => {
   const [formState, setFormState] = React.useState(currentSettings);
   const [message, setMessage] = React.useState('');
 
+  const standardsCatalog = React.useMemo(() => {
+    const known = standards.map((standard) => ({
+      key: standard.code,
+      label: `${standard.code} · ${standard.title}`,
+    }));
+
+    const missing = Object.keys(currentSettings.standards)
+      .filter((code) => !known.some((standard) => standard.key === code))
+      .map((code) => ({
+        key: code,
+        label: code,
+      }));
+
+    return [...known, ...missing];
+  }, [currentSettings.standards, standards]);
+
   React.useEffect(() => {
-    setFormState(currentSettings);
-  }, [currentSettings]);
+    const mergedStandards = standardsCatalog.reduce<Record<string, boolean>>((accumulator, standard) => {
+      accumulator[standard.key] = currentSettings.standards[standard.key] ?? true;
+      return accumulator;
+    }, {});
+
+    setFormState({
+      ...currentSettings,
+      standards: mergedStandards,
+    });
+  }, [currentSettings, standardsCatalog]);
 
   const showMessage = (value: string) => {
     setMessage(value);
@@ -108,21 +133,21 @@ export const SettingsGeneral: React.FC = () => {
         <div className="mt-6">
           <p className="text-sm font-bold text-slate-600">Normas activas</p>
           <div className="mt-3 grid gap-3 md:grid-cols-3">
-            {Object.entries(formState.standards).map(([standard, active]) => (
+            {standardsCatalog.map(({ key, label }) => (
               <label
-                key={standard}
+                key={key}
                 className="flex items-center justify-between rounded-2xl border border-slate-200 px-4 py-4"
               >
-                <span className="font-bold text-slate-700">{standard}</span>
+                <span className="font-bold text-slate-700">{label}</span>
                 <input
                   type="checkbox"
-                  checked={active}
+                  checked={formState.standards[key] ?? false}
                   onChange={(event) =>
                     setFormState({
                       ...formState,
                       standards: {
                         ...formState.standards,
-                        [standard]: event.target.checked,
+                        [key]: event.target.checked,
                       },
                     })
                   }

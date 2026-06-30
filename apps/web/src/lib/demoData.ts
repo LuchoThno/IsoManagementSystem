@@ -2,14 +2,18 @@ import type {
   Audit,
   ChatThread,
   CommunicationSettings,
+  Contract,
+  CorrectiveAction,
   DashboardOverview,
   Document,
   DocumentAuditEntry,
   DocumentVersionEntry,
+  Evidence,
   EmailCampaign,
   EmailTemplate,
   NotificationSettings,
   Settings,
+  StandardSummary,
   Task,
   UserAccount,
 } from '../types/iso';
@@ -57,6 +61,10 @@ export interface PersistedISOData {
   documents: PersistedDocument[];
   tasks: PersistedTask[];
   audits: PersistedAudit[];
+  standards: PersistedStandard[];
+  evidences: PersistedEvidence[];
+  contracts: PersistedContract[];
+  correctiveActions: PersistedCorrectiveAction[];
   settings: Settings;
   notifications: NotificationSettings;
   users: PersistedUser[];
@@ -68,6 +76,50 @@ export interface PersistedISOData {
 
 type PersistedUser = Omit<UserAccount, 'createdAt'> & {
   createdAt: string;
+};
+
+type PersistedStandard = Omit<StandardSummary, 'publishedAt' | 'createdAt' | 'updatedAt'> & {
+  publishedAt: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+type PersistedEvidence = Omit<
+  Evidence,
+  'dueDate' | 'collectedAt' | 'createdAt' | 'updatedAt'
+> & {
+  dueDate: string | null;
+  collectedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+type PersistedContract = Omit<
+  Contract,
+  'startDate' | 'endDate' | 'createdAt' | 'updatedAt' | 'documents' | 'obligations'
+> & {
+  startDate: string | null;
+  endDate: string | null;
+  createdAt: string;
+  updatedAt: string;
+  obligations?: Array<
+    Omit<NonNullable<Contract['obligations']>[number], 'dueDate' | 'createdAt' | 'updatedAt'> & {
+      dueDate: string | null;
+      createdAt?: string;
+      updatedAt?: string;
+    }
+  >;
+  documents?: Array<
+    Omit<NonNullable<Contract['documents']>[number], 'uploadedAt'> & {
+      uploadedAt: string;
+    }
+  >;
+};
+
+type PersistedCorrectiveAction = Omit<CorrectiveAction, 'dueDate' | 'createdAt' | 'updatedAt'> & {
+  dueDate: string | null;
+  createdAt: string;
+  updatedAt: string;
 };
 
 const daysFromNow = (days: number) => {
@@ -289,6 +341,10 @@ export const createSeedData = (): PersistedISOData => ({
       ],
     },
   ],
+  standards: [],
+  evidences: [],
+  contracts: [],
+  correctiveActions: [],
   settings: {
     companyName: 'Sistema ISO',
     standards: {

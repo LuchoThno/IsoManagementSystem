@@ -1,8 +1,9 @@
-import { Body, Controller, Get, Param, Patch, Post, Put, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Put, Query, UseGuards } from '@nestjs/common';
 import { ClerkAuth } from './clerk-auth.decorator';
 import { ClerkAuthGuard } from './clerk-auth.guard';
 import { ChatGateway } from './chat.gateway';
 import { ClerkDirectoryService } from './clerk-directory.service';
+import { GrcService } from './grc.service';
 import { GoogleCalendarService } from './google-calendar.service';
 import { IsoService } from './iso.service';
 import type { ClerkSessionIdentity } from './clerk.types';
@@ -12,6 +13,7 @@ import type { ClerkSessionIdentity } from './clerk.types';
 export class IsoController {
   constructor(
     private readonly isoService: IsoService,
+    private readonly grcService: GrcService,
     private readonly chatGateway: ChatGateway,
     private readonly googleCalendarService: GoogleCalendarService,
     private readonly clerkDirectoryService: ClerkDirectoryService
@@ -35,6 +37,87 @@ export class IsoController {
   @Get('audits')
   getAudits() {
     return this.isoService.getAudits();
+  }
+
+  @Get('standards')
+  getStandards() {
+    return this.grcService.listStandards();
+  }
+
+  @Post('standards')
+  createStandard(@Body() body: any) {
+    return this.grcService.createStandard(body);
+  }
+
+  @Get('standards/:id/structure')
+  getStandardStructure(@Param('id') id: string) {
+    return this.grcService.getStandardStructure(id);
+  }
+
+  @Get('requirements/:id/evidences')
+  getRequirementEvidences(@Param('id') id: string) {
+    return this.grcService.listRequirementEvidences(id);
+  }
+
+  @Get('evidences')
+  getEvidences(
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+    @Query('search') search?: string
+  ) {
+    return this.grcService.listEvidences({
+      page: page ? Number(page) : undefined,
+      pageSize: pageSize ? Number(pageSize) : undefined,
+      search,
+    });
+  }
+
+  @Post('evidences')
+  createEvidence(@Body() body: any) {
+    return this.grcService.createEvidence(body);
+  }
+
+  @Get('contracts')
+  getContracts(
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+    @Query('search') search?: string
+  ) {
+    return this.grcService.listContracts({
+      page: page ? Number(page) : undefined,
+      pageSize: pageSize ? Number(pageSize) : undefined,
+      search,
+    });
+  }
+
+  @Post('contracts')
+  createContract(@Body() body: any) {
+    return this.grcService.createContract(body);
+  }
+
+  @Get('contracts/:id/obligations')
+  getContractObligations(@Param('id') id: string) {
+    return this.grcService.listContractObligations(id);
+  }
+
+  @Get('audits/:id/checklist')
+  getAuditChecklist(@Param('id') id: string) {
+    return this.grcService.getAuditChecklist(id);
+  }
+
+  @Get('corrective-actions')
+  getCorrectiveActions() {
+    return this.grcService.listCorrectiveActions();
+  }
+
+  @Get('grc/summary')
+  getGrcSummary() {
+    return this.grcService.getOverview();
+  }
+
+  @Post('corrective-actions')
+  createCorrectiveAction(@Body() body: any) {
+    return this.grcService.createCorrectiveAction(body);
   }
 
   @Get('bootstrap')
@@ -151,7 +234,7 @@ export class IsoController {
       topic: string;
       type: 'manual' | 'procedure' | 'record';
       format: 'PDF' | 'DOCX' | 'XLSX' | 'PPTX' | 'TXT' | 'PNG' | 'JPG' | 'WEBP' | 'GIF';
-      standard: 'ISO9001' | 'ISO14001' | 'ISO45001';
+      standard: string;
       version: string;
       fileName: string;
       mimeType: string;
@@ -196,7 +279,7 @@ export class IsoController {
       dueDate: string;
       status: 'pending' | 'in-progress' | 'completed' | 'overdue';
       priority: 'low' | 'medium' | 'high';
-      standard: 'ISO9001' | 'ISO14001' | 'ISO45001';
+      standard: string;
       relatedDocuments: string[];
     }
   ) {
@@ -214,7 +297,7 @@ export class IsoController {
       dueDate?: string;
       status?: 'pending' | 'in-progress' | 'completed' | 'overdue';
       priority?: 'low' | 'medium' | 'high';
-      standard?: 'ISO9001' | 'ISO14001' | 'ISO45001';
+      standard?: string;
       relatedDocuments?: string[];
     }
   ) {
@@ -239,7 +322,7 @@ export class IsoController {
     @Body()
     body: {
       type: 'internal' | 'external';
-      standard: 'ISO9001' | 'ISO14001' | 'ISO45001';
+      standard: string;
       date: string;
       status: 'planned' | 'in-progress' | 'completed';
       findings: Array<{
@@ -261,7 +344,7 @@ export class IsoController {
     @Body()
     body: {
       type?: 'internal' | 'external';
-      standard?: 'ISO9001' | 'ISO14001' | 'ISO45001';
+      standard?: string;
       date?: string;
       status?: 'planned' | 'in-progress' | 'completed';
       findings?: Array<{
@@ -296,11 +379,7 @@ export class IsoController {
     body: {
       settings: {
         companyName: string;
-        standards: {
-          ISO9001: boolean;
-          ISO14001: boolean;
-          ISO45001: boolean;
-        };
+        standards: Record<string, boolean>;
         defaultLanguage: string;
         timezone: string;
       };

@@ -14,9 +14,17 @@ interface AuditListProps {
   audits: Audit[];
   onEdit: (audit: Audit) => void;
   onDelete: (audit: Audit) => void;
+  onSelect?: (audit: Audit) => void;
+  selectedAuditId?: string | null;
 }
 
-export const AuditList: React.FC<AuditListProps> = ({ audits, onEdit, onDelete }) => {
+export const AuditList: React.FC<AuditListProps> = ({
+  audits,
+  onEdit,
+  onDelete,
+  onSelect,
+  selectedAuditId,
+}) => {
   const getStatusIcon = (status: Audit['status']) => {
     switch (status) {
       case 'completed':
@@ -84,7 +92,13 @@ export const AuditList: React.FC<AuditListProps> = ({ audits, onEdit, onDelete }
       {audits.map((audit) => (
         <div
           key={audit.id}
+          onClick={() => onSelect?.(audit)}
           className="grid grid-cols-1 gap-4 border-b border-slate-100 px-6 py-5 transition hover:bg-[linear-gradient(90deg,rgba(114,124,245,0.05),rgba(57,175,209,0.03))] lg:grid-cols-[1.9fr_150px_1.1fr_150px_120px]"
+          style={
+            selectedAuditId === audit.id
+              ? { background: 'linear-gradient(90deg,rgba(114,124,245,0.08),rgba(57,175,209,0.05))' }
+              : undefined
+          }
         >
           <div className="min-w-0">
             <div className="flex items-start gap-4">
@@ -145,7 +159,10 @@ export const AuditList: React.FC<AuditListProps> = ({ audits, onEdit, onDelete }
             <div className="flex flex-wrap justify-end gap-2">
               <button
                 type="button"
-                onClick={() => onEdit(audit)}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onEdit(audit);
+                }}
                 className={actionButtonClassName}
                 title="Editar auditoría"
                 aria-label="Editar auditoría"
@@ -155,7 +172,10 @@ export const AuditList: React.FC<AuditListProps> = ({ audits, onEdit, onDelete }
               </button>
               <button
                 type="button"
-                onClick={() => onDelete(audit)}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onDelete(audit);
+                }}
                 className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-rose-200 bg-rose-50 text-rose-600 transition hover:bg-rose-100"
                 title="Eliminar auditoría"
                 aria-label="Eliminar auditoría"

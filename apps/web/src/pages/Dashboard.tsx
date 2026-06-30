@@ -1,4 +1,5 @@
 import React from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   Activity,
   AlertTriangle,
@@ -9,11 +10,18 @@ import {
   Shield,
   TimerReset,
 } from 'lucide-react';
+import { fetchGrcOverview } from '../lib/api';
 import { useISOStore } from '../store/useISOStore';
 
 export const Dashboard: React.FC = () => {
   const dashboard = useISOStore((state) => state.dashboard);
   const alerts = useISOStore((state) => state.alerts);
+  const standards = useISOStore((state) => state.standards);
+  const { data: grcOverview } = useQuery({
+    queryKey: ['grc-overview'],
+    queryFn: fetchGrcOverview,
+    staleTime: 60_000,
+  });
 
   const toneClasses = {
     primary: 'bg-[#727cf5] text-white',
@@ -126,6 +134,28 @@ export const Dashboard: React.FC = () => {
             </div>
           </div>
         ))}
+      </div>
+
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
+        <div className="panel-card p-5">
+          <p className="text-sm font-bold text-slate-400">Normas dinámicas</p>
+          <p className="mt-2 text-3xl font-extrabold text-slate-700">{standards.length}</p>
+          <p className="mt-2 text-sm text-slate-400">Catálogo normativo activo y administrable.</p>
+        </div>
+        <div className="panel-card p-5">
+          <p className="text-sm font-bold text-slate-400">Evidencias objetivas</p>
+          <p className="mt-2 text-3xl font-extrabold text-slate-700">
+            {grcOverview?.evidencesCount ?? 0}
+          </p>
+          <p className="mt-2 text-sm text-slate-400">Registros vinculados a requisitos y auditorías.</p>
+        </div>
+        <div className="panel-card p-5">
+          <p className="text-sm font-bold text-slate-400">Contratos controlados</p>
+          <p className="mt-2 text-3xl font-extrabold text-slate-700">
+            {grcOverview?.contractsCount ?? 0}
+          </p>
+          <p className="mt-2 text-sm text-slate-400">Obligaciones y vencimientos bajo trazabilidad.</p>
+        </div>
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1.5fr_1fr]">

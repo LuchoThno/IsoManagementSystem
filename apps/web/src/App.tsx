@@ -25,6 +25,18 @@ const Tasks = React.lazy(() =>
 const Audits = React.lazy(() =>
   import('./pages/Audits').then((module) => ({ default: module.Audits }))
 );
+const Standards = React.lazy(() =>
+  import('./pages/Standards').then((module) => ({ default: module.Standards }))
+);
+const StandardDetail = React.lazy(() =>
+  import('./pages/StandardDetail').then((module) => ({ default: module.StandardDetail }))
+);
+const Evidences = React.lazy(() =>
+  import('./pages/Evidences').then((module) => ({ default: module.Evidences }))
+);
+const Contracts = React.lazy(() =>
+  import('./pages/Contracts').then((module) => ({ default: module.Contracts }))
+);
 const Calendar = React.lazy(() =>
   import('./pages/Calendar').then((module) => ({ default: module.Calendar }))
 );
@@ -232,6 +244,10 @@ const AppRoutes: React.FC<{ protectedRoute: React.FC<{ children: React.ReactNode
         <Route path="documents" element={withSuspense(<Documents />, 'documentos')} />
         <Route path="tasks" element={withSuspense(<Tasks />, 'tareas')} />
         <Route path="audits" element={withSuspense(<Audits />, 'auditorías')} />
+        <Route path="standards" element={withSuspense(<Standards />, 'normas')} />
+        <Route path="standards/:id" element={withSuspense(<StandardDetail />, 'detalle normativo')} />
+        <Route path="evidences" element={withSuspense(<Evidences />, 'evidencias')} />
+        <Route path="contracts" element={withSuspense(<Contracts />, 'contratos')} />
         <Route path="calendar" element={withSuspense(<Calendar />, 'calendario')} />
         <Route path="alerts" element={withSuspense(<Alerts />, 'alertas')} />
         <Route path="chat" element={withSuspense(<Chat />, 'chat')} />

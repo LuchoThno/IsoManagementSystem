@@ -13,6 +13,7 @@ import type {
   ISOBootstrapShellData,
   NotificationSettings,
   Settings,
+  StandardSummary,
   Task,
   UserAccount,
 } from '../types/iso';
@@ -22,6 +23,7 @@ interface ISOStore {
   documents: Document[];
   tasks: Task[];
   audits: Audit[];
+  standards: StandardSummary[];
   alerts: Alert[];
   settings: Settings;
   notifications: NotificationSettings;
@@ -41,6 +43,7 @@ interface ISOStore {
   replaceDocuments: (documents: Document[]) => void;
   replaceTasks: (tasks: Task[]) => void;
   replaceAudits: (audits: Audit[]) => void;
+  replaceStandards: (standards: StandardSummary[]) => void;
   addDocument: (document: Document) => void;
   addTask: (task: Task) => void;
   addAudit: (audit: Audit) => void;
@@ -66,6 +69,7 @@ export const useISOStore = create<ISOStore>((set) => ({
   documents: [],
   tasks: [],
   audits: [],
+  standards: [],
   alerts: [],
   users: [],
   chatThreads: [],
@@ -120,6 +124,7 @@ export const useISOStore = create<ISOStore>((set) => ({
       documents: data.documents,
       tasks: data.tasks,
       audits: data.audits,
+      standards: data.standards,
       alerts: data.alerts,
       settings: data.settings,
       notifications: data.notifications,
@@ -138,6 +143,7 @@ export const useISOStore = create<ISOStore>((set) => ({
       documents: state.documents,
       tasks: state.tasks,
       audits: state.audits,
+      standards: data.standards,
       users: state.users,
       chatThreads: state.chatThreads,
       dashboard: data.dashboard,
@@ -169,6 +175,11 @@ export const useISOStore = create<ISOStore>((set) => ({
   replaceAudits: (audits) =>
     set(() => ({
       audits,
+    })),
+
+  replaceStandards: (standards) =>
+    set(() => ({
+      standards,
     })),
 
   addDocument: (document) =>

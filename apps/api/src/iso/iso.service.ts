@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
+import { GrcService } from './grc.service';
 import { Audit, Finding } from './schemas/audit.schema';
 import { ChatThreadEntity } from './schemas/chat-thread.schema';
 import { DocumentEntity } from './schemas/document.schema';
@@ -16,7 +17,7 @@ import { EmailTemplateEntity } from './schemas/email-template.schema';
 import { SettingsEntity } from './schemas/settings.schema';
 import { TaskEntity } from './schemas/task.schema';
 
-type Standard = 'ISO9001' | 'ISO14001' | 'ISO45001';
+type Standard = string;
 type DocumentFormat =
   | 'PDF'
   | 'DOCX'
@@ -46,7 +47,8 @@ export class IsoService implements OnModuleInit {
     private readonly emailCampaignModel: Model<EmailCampaignEntity>,
     @InjectModel(SettingsEntity.name)
     private readonly settingsModel: Model<SettingsEntity>,
-    private readonly emailDeliveryService: EmailDeliveryService
+    private readonly emailDeliveryService: EmailDeliveryService,
+    private readonly grcService: GrcService
   ) {}
 
   async onModuleInit() {
@@ -69,13 +71,14 @@ export class IsoService implements OnModuleInit {
   }
 
   async getBootstrap() {
-    const [documents, tasks, audits, emailTemplates, emailCampaigns, settings] = await Promise.all([
+    const [documents, tasks, audits, emailTemplates, emailCampaigns, settings, standards] = await Promise.all([
       this.documentModel.find().sort({ updatedAt: -1 }).lean(),
       this.taskModel.find().sort({ dueDate: 1 }).lean(),
       this.auditModel.find().sort({ date: 1 }).lean(),
       this.emailTemplateModel.find().sort({ updatedAt: -1 }).lean(),
       this.emailCampaignModel.find().sort({ createdAt: -1 }).lean(),
       this.getSettingsDocument(),
+      this.grcService.listStandards(),
     ]);
 
     const alerts = this.buildAlerts(tasks, audits);
@@ -86,6 +89,7 @@ export class IsoService implements OnModuleInit {
       documents: documents.map((document) => this.serializeDocumentSummary(document)),
       tasks: tasks.map((task) => this.serializeTask(task)),
       audits: audits.map((audit) => this.serializeAudit(audit)),
+      standards,
       alerts,
       settings: {
         companyName: settings.companyName,
@@ -101,13 +105,14 @@ export class IsoService implements OnModuleInit {
   }
 
   async getBootstrapShell() {
-    const [documents, tasks, audits, emailTemplates, emailCampaigns, settings] = await Promise.all([
+    const [documents, tasks, audits, emailTemplates, emailCampaigns, settings, standards] = await Promise.all([
       this.documentModel.find().sort({ updatedAt: -1 }).lean(),
       this.taskModel.find().sort({ dueDate: 1 }).lean(),
       this.auditModel.find().sort({ date: 1 }).lean(),
       this.emailTemplateModel.find().sort({ updatedAt: -1 }).lean(),
       this.emailCampaignModel.find().sort({ createdAt: -1 }).lean(),
       this.getSettingsDocument(),
+      this.grcService.listStandards(),
     ]);
 
     const alerts = this.buildAlerts(tasks, audits);
@@ -115,6 +120,7 @@ export class IsoService implements OnModuleInit {
 
     return {
       dashboard,
+      standards,
       alerts,
       settings: {
         companyName: settings.companyName,
@@ -665,11 +671,7 @@ export class IsoService implements OnModuleInit {
   async updateSettings(
     settings: {
       companyName: string;
-      standards: {
-        ISO9001: boolean;
-        ISO14001: boolean;
-        ISO45001: boolean;
-      };
+      standards: Record<string, boolean>;
       defaultLanguage: string;
       timezone: string;
     },

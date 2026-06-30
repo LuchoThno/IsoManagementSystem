@@ -1,6 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { ClerkProvider } from '@clerk/clerk-react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import App from './App.tsx';
 import './index.css';
 import {
@@ -12,6 +13,8 @@ import {
   clerkSignInUrl,
   clerkSignUpUrl,
 } from './lib/clerk';
+
+const queryClient = new QueryClient();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -26,7 +29,9 @@ createRoot(document.getElementById('root')!).render(
     isSatellite={clerkIsSatellite}
     afterSignOutUrl="/login"
   >
-    <App />
+    <QueryClientProvider client={queryClient}>
+      <App />
+    </QueryClientProvider>
   </ClerkProvider>
   </StrictMode>
 );

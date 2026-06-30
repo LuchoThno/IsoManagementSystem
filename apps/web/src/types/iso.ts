@@ -1,5 +1,4 @@
-// src/types/iso.ts
-export type ISOStandard = 'ISO9001' | 'ISO14001' | 'ISO45001';
+export type ISOStandard = string;
 export type DocumentFormat =
   | 'PDF'
   | 'DOCX'
@@ -10,6 +9,200 @@ export type DocumentFormat =
   | 'JPG'
   | 'WEBP'
   | 'GIF';
+
+export interface StandardSummary {
+  id: string;
+  code: string;
+  title: string;
+  version: string;
+  description: string;
+  category: 'standard' | 'framework' | 'regulation' | 'contractual';
+  status: 'draft' | 'active' | 'archived';
+  enabled: boolean;
+  owner: string;
+  publishedAt: Date | null;
+  createdAt?: Date;
+  updatedAt?: Date;
+  metrics?: {
+    requirementsCount: number;
+    evidencedCount: number;
+    complianceRate: number;
+  };
+}
+
+export interface StandardSection {
+  id: string;
+  standardId: string;
+  code: string;
+  title: string;
+  description: string;
+  order: number;
+}
+
+export interface StandardClause {
+  id: string;
+  standardId: string;
+  sectionId: string;
+  parentClauseId: string | null;
+  code: string;
+  title: string;
+  description: string;
+  order: number;
+}
+
+export interface StandardRequirement {
+  id: string;
+  standardId: string;
+  sectionId: string | null;
+  clauseId: string;
+  code: string;
+  title: string;
+  description: string;
+  intent: string;
+  order: number;
+  criticality: 'low' | 'medium' | 'high';
+  status: 'draft' | 'active' | 'obsolete';
+}
+
+export interface StandardAppendix {
+  id: string;
+  standardId: string;
+  code: string;
+  title: string;
+  type: 'annex' | 'appendix' | 'guide';
+  description: string;
+  content: string;
+  order: number;
+}
+
+export interface StandardClauseNode extends StandardClause {
+  requirements: StandardRequirement[];
+  children: StandardClauseNode[];
+}
+
+export interface StandardSectionNode extends StandardSection {
+  clauses: StandardClauseNode[];
+}
+
+export interface StandardStructure {
+  standard: StandardSummary;
+  sections: StandardSectionNode[];
+  appendices: StandardAppendix[];
+  metrics: {
+    totalClauses: number;
+    totalRequirements: number;
+    evidencedRequirements: number;
+    complianceRate: number;
+  };
+}
+
+export interface Evidence {
+  id: string;
+  title: string;
+  description: string;
+  standardId: string | null;
+  requirementId: string;
+  clauseId: string | null;
+  status: 'missing' | 'pending' | 'approved' | 'expired';
+  objectiveType: 'document' | 'record' | 'interview' | 'observation' | 'contract';
+  owner: string;
+  sourceDocumentId: string | null;
+  documentIds: string[];
+  linkedAuditIds: string[];
+  dueDate: Date | null;
+  collectedAt: Date | null;
+  notes: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface ContractDocument {
+  id: string;
+  contractId: string;
+  title: string;
+  kind: 'contract' | 'annex' | 'policy' | 'evidence';
+  fileName: string;
+  mimeType: string;
+  url: string;
+  uploadedAt: Date;
+}
+
+export interface ContractObligation {
+  id: string;
+  contractId: string;
+  standardId: string | null;
+  title: string;
+  description: string;
+  sourceClause: string;
+  dueDate: Date | null;
+  status: 'open' | 'in-progress' | 'fulfilled' | 'overdue';
+  priority: 'low' | 'medium' | 'high';
+  owner: string;
+  evidenceIds: string[];
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+export interface Contract {
+  id: string;
+  title: string;
+  counterparty: string;
+  identifier: string;
+  status: 'draft' | 'active' | 'expired' | 'closed';
+  startDate: Date | null;
+  endDate: Date | null;
+  standardIds: string[];
+  owner: string;
+  summary: string;
+  createdAt: Date;
+  updatedAt: Date;
+  obligations?: ContractObligation[];
+  documents?: ContractDocument[];
+}
+
+export interface AuditChecklistItem {
+  id: string;
+  checklistId: string;
+  auditId: string;
+  requirementId: string | null;
+  clauseId: string | null;
+  clauseCode: string;
+  title: string;
+  prompt: string;
+  status: 'pending' | 'conforming' | 'nonconforming' | 'observation';
+  evidenceIds: string[];
+  notes: string;
+  order: number;
+}
+
+export interface AuditChecklist {
+  id: string;
+  auditId: string;
+  standardId: string;
+  title: string;
+  summary: string;
+  progress: number;
+  itemCount: number;
+  items: AuditChecklistItem[];
+}
+
+export interface CorrectiveAction {
+  id: string;
+  title: string;
+  description: string;
+  sourceType: 'finding' | 'audit' | 'contract' | 'requirement' | 'evidence';
+  sourceId: string;
+  standardId: string | null;
+  auditId: string | null;
+  assignedTo: string;
+  dueDate: Date | null;
+  status: 'open' | 'in-progress' | 'verified' | 'closed';
+  priority: 'low' | 'medium' | 'high';
+  evidenceIds: string[];
+  verificationNotes: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
 
 export interface DocumentVersionEntry {
   id: string;
@@ -101,9 +294,7 @@ export interface Alert {
 
 export interface Settings {
   companyName: string;
-  standards: {
-    [key in ISOStandard]: boolean;
-  };
+  standards: Record<string, boolean>;
   defaultLanguage: string;
   timezone: string;
 }
@@ -242,11 +433,28 @@ export interface DashboardOverview {
   recentActivity: DashboardActivity[];
 }
 
+export interface GrcOverview {
+  standardsCount: number;
+  evidencesCount: number;
+  contractsCount: number;
+  correctiveActionsCount: number;
+  openCorrectiveActions: number;
+  approvedEvidences: number;
+}
+
+export interface PaginatedResult<T> {
+  items: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
 export interface ISOBootstrapData {
   dashboard: DashboardOverview;
   documents: Document[];
   tasks: Task[];
   audits: Audit[];
+  standards: StandardSummary[];
   alerts: Alert[];
   settings: Settings;
   notifications: NotificationSettings;
@@ -259,6 +467,7 @@ export interface ISOBootstrapData {
 
 export interface ISOBootstrapShellData {
   dashboard: DashboardOverview;
+  standards: StandardSummary[];
   alerts: Alert[];
   settings: Settings;
   notifications: NotificationSettings;

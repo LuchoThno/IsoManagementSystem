@@ -26,8 +26,8 @@ export class Audit {
   @Prop({ required: true, enum: ['internal', 'external'] })
   type!: 'internal' | 'external';
 
-  @Prop({ required: true, enum: ['ISO9001', 'ISO14001', 'ISO45001'] })
-  standard!: 'ISO9001' | 'ISO14001' | 'ISO45001';
+  @Prop({ required: true })
+  standard!: string;
 
   @Prop({ required: true })
   date!: Date;

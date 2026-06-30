@@ -1,5 +1,6 @@
 import React from 'react';
 import { CalendarClock, ClipboardPenLine, Flag, UserRound, X } from 'lucide-react';
+import { useStandardOptions } from '../../hooks/useStandardOptions';
 import type { ISOStandard, Task } from '../../types/iso';
 import { useISOStore } from '../../store/useISOStore';
 
@@ -30,6 +31,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
   onSubmit,
 }) => {
   const documents = useISOStore((state) => state.documents);
+  const standardOptions = useStandardOptions();
   const [formData, setFormData] = React.useState(emptyForm);
   const [submitting, setSubmitting] = React.useState(false);
 
@@ -207,9 +209,11 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                 }
                 className="admin-select mt-2 w-full"
               >
-                <option value="ISO9001">ISO 9001</option>
-                <option value="ISO14001">ISO 14001</option>
-                <option value="ISO45001">ISO 45001</option>
+                {standardOptions.map((standard) => (
+                  <option key={standard.id} value={standard.code}>
+                    {standard.code} · {standard.title}
+                  </option>
+                ))}
               </select>
             </label>
           </div>

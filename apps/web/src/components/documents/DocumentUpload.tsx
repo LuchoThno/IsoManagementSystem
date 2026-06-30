@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { FileUp, Sparkles, Upload, X } from 'lucide-react';
+import { useStandardOptions } from '../../hooks/useStandardOptions';
 import type { DocumentFormat, ISOStandard } from '../../types/iso';
 
 interface DocumentUploadProps {
@@ -43,13 +44,14 @@ const detectFormat = (fileName: string): DocumentFormat => {
 };
 
 export const DocumentUpload: React.FC<DocumentUploadProps> = ({ onUpload }) => {
+  const standardOptions = useStandardOptions();
   const [isOpen, setIsOpen] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
     topic: '',
     type: 'manual' as const,
     format: 'PDF' as DocumentFormat,
-    standard: 'ISO9001' as ISOStandard,
+    standard: standardOptions[0]?.code ?? ('ISO9001' as ISOStandard),
     version: '1.0',
     file: null as File | null,
   });
@@ -72,7 +74,7 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({ onUpload }) => {
         topic: '',
         type: 'manual',
         format: 'PDF',
-        standard: 'ISO9001',
+        standard: standardOptions[0]?.code ?? 'ISO9001',
         version: '1.0',
         file: null,
       });
@@ -166,9 +168,11 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({ onUpload }) => {
                       onChange={(e) => setFormData({ ...formData, standard: e.target.value as ISOStandard })}
                       className="admin-select mt-2 w-full"
                     >
-                      <option value="ISO9001">ISO 9001</option>
-                      <option value="ISO14001">ISO 14001</option>
-                      <option value="ISO45001">ISO 45001</option>
+                      {standardOptions.map((standard) => (
+                        <option key={standard.id} value={standard.code}>
+                          {standard.code} · {standard.title}
+                        </option>
+                      ))}
                     </select>
                   </div>
 

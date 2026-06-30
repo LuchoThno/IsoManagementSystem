@@ -13,13 +13,13 @@ type SyncableTask = {
   dueDate: Date;
   status: 'pending' | 'in-progress' | 'completed' | 'overdue';
   priority: 'low' | 'medium' | 'high';
-  standard: 'ISO9001' | 'ISO14001' | 'ISO45001';
+  standard: string;
 };
 
 type SyncableAudit = {
   _id: unknown;
   type: 'internal' | 'external';
-  standard: 'ISO9001' | 'ISO14001' | 'ISO45001';
+  standard: string;
   date: Date;
   status: 'planned' | 'in-progress' | 'completed';
   findings: Array<{

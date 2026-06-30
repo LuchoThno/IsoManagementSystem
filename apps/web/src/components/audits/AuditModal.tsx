@@ -1,5 +1,6 @@
 import React from 'react';
 import { ClipboardCheck, Plus, ShieldCheck, Trash2, X } from 'lucide-react';
+import { useStandardOptions } from '../../hooks/useStandardOptions';
 import type { Audit, Finding, ISOStandard } from '../../types/iso';
 
 interface AuditModalProps {
@@ -33,6 +34,7 @@ export const AuditModal: React.FC<AuditModalProps> = ({
   onClose,
   onSubmit,
 }) => {
+  const standardOptions = useStandardOptions();
   const [formData, setFormData] = React.useState(emptyForm);
   const [newFinding, setNewFinding] = React.useState(emptyFinding);
   const [submitting, setSubmitting] = React.useState(false);
@@ -156,9 +158,11 @@ export const AuditModal: React.FC<AuditModalProps> = ({
                 }
                 className="admin-select mt-2 w-full"
               >
-                <option value="ISO9001">ISO 9001</option>
-                <option value="ISO14001">ISO 14001</option>
-                <option value="ISO45001">ISO 45001</option>
+                {standardOptions.map((standard) => (
+                  <option key={standard.id} value={standard.code}>
+                    {standard.code} · {standard.title}
+                  </option>
+                ))}
               </select>
             </label>
 

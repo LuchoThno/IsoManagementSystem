@@ -40,8 +40,8 @@ export class DocumentEntity {
   })
   format!: 'PDF' | 'DOCX' | 'XLSX' | 'PPTX' | 'TXT' | 'PNG' | 'JPG' | 'WEBP' | 'GIF';
 
-  @Prop({ required: true, enum: ['ISO9001', 'ISO14001', 'ISO45001'] })
-  standard!: 'ISO9001' | 'ISO14001' | 'ISO45001';
+  @Prop({ required: true })
+  standard!: string;
 
   @Prop({ required: true, default: '1.0' })
   version!: string;

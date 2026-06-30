@@ -30,12 +30,14 @@ import type {
 import type {
   Alert,
   Audit,
+  GrcOverview,
   DashboardOverview,
   Document,
   EmailCampaign,
   EmailTemplate,
   NotificationSettings,
   Settings,
+  StandardSummary,
   Task,
 } from '../types/iso';
 
@@ -80,6 +82,7 @@ type ApiBootstrap = {
   documents: ApiDocument[];
   tasks: ApiTask[];
   audits: ApiAudit[];
+  standards: StandardSummary[];
   alerts: ApiAlert[];
   settings: Settings;
   notifications: NotificationSettings;
@@ -92,6 +95,7 @@ type ApiBootstrap = {
 
 type ApiBootstrapShell = {
   dashboard: DashboardOverview;
+  standards: StandardSummary[];
   alerts: ApiAlert[];
   settings: Settings;
   notifications: NotificationSettings;
@@ -146,7 +150,8 @@ export async function fetchBootstrap(): Promise<ISOBootstrapData> {
   }
 
   const request = (async () => {
-    const [bootstrap, users, chatThreads] = await Promise.all([
+    const [bootstrap, users, chatThreads] =
+      await Promise.all([
       requestIsoApi<ApiBootstrap>('/bootstrap'),
       storage.listUsers(),
       storage.listChatThreads(),
@@ -179,6 +184,7 @@ export async function fetchBootstrap(): Promise<ISOBootstrapData> {
           dueDate: new Date(finding.dueDate),
         })),
       })),
+      standards: bootstrap.standards,
       alerts: bootstrap.alerts.map((alert) => ({
         ...alert,
         date: new Date(alert.date),
@@ -227,6 +233,7 @@ export async function fetchBootstrapShell(options?: { force?: boolean }): Promis
     const bootstrap = await storage.fetchBootstrap();
     return {
       dashboard: bootstrap.dashboard,
+      standards: bootstrap.standards,
       alerts: bootstrap.alerts,
       settings: bootstrap.settings,
       notifications: bootstrap.notifications,
@@ -245,6 +252,7 @@ export async function fetchBootstrapShell(options?: { force?: boolean }): Promis
 
     return {
       dashboard: shell.dashboard,
+      standards: shell.standards,
       alerts: shell.alerts.map((alert) => ({
         ...alert,
         date: new Date(alert.date),
@@ -380,3 +388,6 @@ export const updateSettings = (payload: {
 export const updateTask = updateTaskApi;
 export const updateTaskStatus = updateTaskStatusApi;
 export const updateUser = storage.updateUser;
+
+export const fetchGrcOverview = () =>
+  requestIsoApi<GrcOverview>('/grc/summary');

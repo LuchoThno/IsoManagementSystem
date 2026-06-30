@@ -11,6 +11,7 @@ import type {
   ISOBootstrapData,
   NotificationSettings,
   Settings,
+  StandardSummary,
   Task,
   UserAccount,
   UserRole,
@@ -80,6 +81,13 @@ const toEmailCampaign = (
   ...campaign,
   createdAt: new Date(campaign.createdAt),
   sentAt: campaign.sentAt ? new Date(campaign.sentAt) : null,
+});
+
+const toStandard = (standard: PersistedISOData['standards'][number]): StandardSummary => ({
+  ...standard,
+  publishedAt: standard.publishedAt ? new Date(standard.publishedAt) : null,
+  createdAt: standard.createdAt ? new Date(standard.createdAt) : undefined,
+  updatedAt: standard.updatedAt ? new Date(standard.updatedAt) : undefined,
 });
 
 const toPersistedDocument = (document: Document): PersistedISOData['documents'][number] => ({
@@ -155,6 +163,12 @@ const mergeWithSeed = (rawData: Partial<PersistedISOData>): PersistedISOData => 
     documents: Array.isArray(rawData.documents) ? rawData.documents : seed.documents,
     tasks: Array.isArray(rawData.tasks) ? rawData.tasks : seed.tasks,
     audits: Array.isArray(rawData.audits) ? rawData.audits : seed.audits,
+    standards: Array.isArray(rawData.standards) ? rawData.standards : seed.standards,
+    evidences: Array.isArray(rawData.evidences) ? rawData.evidences : seed.evidences,
+    contracts: Array.isArray(rawData.contracts) ? rawData.contracts : seed.contracts,
+    correctiveActions: Array.isArray(rawData.correctiveActions)
+      ? rawData.correctiveActions
+      : seed.correctiveActions,
     users: Array.isArray(rawData.users) ? rawData.users : seed.users,
     chatThreads: Array.isArray(rawData.chatThreads) ? rawData.chatThreads : seed.chatThreads,
     emailTemplates: Array.isArray(rawData.emailTemplates)
@@ -298,6 +312,7 @@ const toBootstrap = (data: PersistedISOData): ISOBootstrapData => {
   const documents = data.documents.map(toDocument);
   const tasks = data.tasks.map(toTask);
   const audits = data.audits.map(toAudit);
+  const standards = data.standards.map(toStandard);
   const users = data.users.map(toUser).map(sanitizeUser);
   const chatThreads = data.chatThreads.map(toChatThread);
   const emailTemplates = data.emailTemplates.map(toEmailTemplate);
@@ -308,6 +323,7 @@ const toBootstrap = (data: PersistedISOData): ISOBootstrapData => {
     documents,
     tasks,
     audits,
+    standards,
     alerts: buildAlerts(tasks, audits),
     settings: data.settings,
     notifications: data.notifications,

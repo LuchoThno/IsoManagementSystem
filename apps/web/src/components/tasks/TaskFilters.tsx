@@ -1,5 +1,6 @@
 import React from 'react';
 import { Search, Filter } from 'lucide-react';
+import { useStandardOptions } from '../../hooks/useStandardOptions';
 import type { ISOStandard, Task } from '../../types/iso';
 
 interface TaskFiltersProps {
@@ -17,6 +18,7 @@ export const TaskFilters: React.FC<TaskFiltersProps> = ({
   onFilterStandard,
   searchValue = '',
 }) => {
+  const standardOptions = useStandardOptions();
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5">
@@ -60,9 +62,11 @@ export const TaskFilters: React.FC<TaskFiltersProps> = ({
           onChange={(e) => onFilterStandard(e.target.value as ISOStandard | 'all')}
         >
           <option value="all">Todas las normas</option>
-          <option value="ISO9001">ISO 9001</option>
-          <option value="ISO14001">ISO 14001</option>
-          <option value="ISO45001">ISO 45001</option>
+          {standardOptions.map((standard) => (
+            <option key={standard.id} value={standard.code}>
+              {standard.code}
+            </option>
+          ))}
         </select>
       </div>
     </div>
