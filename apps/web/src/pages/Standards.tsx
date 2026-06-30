@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { Network, PlusCircle, Scale, ShieldCheck } from 'lucide-react';
 import { createStandardApi, listStandards } from '../lib/standardsApi';
+import type { StandardSummary } from '../types/iso';
 
 const emptyStandard = {
   code: '',
@@ -17,6 +18,12 @@ const emptyStandard = {
   requirementCode: '',
   requirementTitle: '',
   requirementDescription: '',
+};
+
+const emptyStandardMetrics: NonNullable<StandardSummary['metrics']> = {
+  requirementsCount: 0,
+  evidencedCount: 0,
+  complianceRate: 0,
 };
 
 export const Standards: React.FC = () => {
@@ -69,7 +76,7 @@ export const Standards: React.FC = () => {
   const averageCompliance = standards.length
     ? Math.round(
         standards.reduce(
-          (total, standard) => total + ((standard as any).metrics?.complianceRate ?? 0),
+          (total, standard) => total + (standard.metrics?.complianceRate ?? 0),
           0
         ) / standards.length
       )
@@ -163,11 +170,7 @@ export const Standards: React.FC = () => {
         ) : (
           <div className="mt-6 grid gap-4 lg:grid-cols-2">
             {standards.map((standard) => {
-              const metrics = (standard as any).metrics ?? {
-                requirementsCount: 0,
-                evidencedCount: 0,
-                complianceRate: 0,
-              };
+              const metrics = standard.metrics ?? emptyStandardMetrics;
 
               return (
                 <Link

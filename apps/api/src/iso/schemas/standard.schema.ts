@@ -30,7 +30,7 @@ export class StandardEntity {
   @Prop({ required: true, default: 'Administrador ISO' })
   owner!: string;
 
-  @Prop()
+  @Prop({ type: Date, default: null })
   publishedAt?: Date | null;
 }
 

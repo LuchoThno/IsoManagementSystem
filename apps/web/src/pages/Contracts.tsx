@@ -27,7 +27,7 @@ export const Contracts: React.FC = () => {
     queryKey: ['contracts', page, deferredSearch],
     queryFn: () => listContracts({ page, pageSize, search: deferredSearch }),
   });
-  const contracts = data?.items ?? [];
+  const contracts = React.useMemo(() => data?.items ?? [], [data]);
   const total = data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const [selectedContractId, setSelectedContractId] = React.useState<string>('');
