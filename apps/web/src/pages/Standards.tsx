@@ -26,6 +26,24 @@ const emptyStandardMetrics: NonNullable<StandardSummary['metrics']> = {
   complianceRate: 0,
 };
 
+const iso27001HighLevelSections = [
+  'Alcance',
+  'Referencias normativas',
+  'Términos y definiciones',
+  'Contexto de la organización',
+  'Liderazgo',
+  'Planificación',
+  'Soporte',
+  'Operación',
+  'Evaluación del rendimiento',
+  'Mejora',
+].map((title, index) => ({
+  code: String(index + 1),
+  title,
+  description: `Cláusula ${index + 1} de la estructura de alto nivel (Anexo SL).`,
+  clauses: [],
+}));
+
 export const Standards: React.FC = () => {
   const queryClient = useQueryClient();
   const { data: standards = [], isLoading } = useQuery({
@@ -144,6 +162,24 @@ export const Standards: React.FC = () => {
             <input className="admin-input" placeholder="Título requisito" value={formData.requirementTitle} onChange={(event) => setFormData({ ...formData, requirementTitle: event.target.value })} />
             <textarea className="admin-input md:col-span-2 min-h-[84px]" placeholder="Descripción del requisito" value={formData.requirementDescription} onChange={(event) => setFormData({ ...formData, requirementDescription: event.target.value })} />
           </div>
+
+          <button
+            type="button"
+            onClick={() =>
+              createMutation.mutate({
+                code: 'ISO27001',
+                title: 'ISO/IEC 27001',
+                description: 'Sistema de gestión de seguridad de la información con estructura de alto nivel.',
+                version: '2022',
+                owner: formData.owner || 'Administrador ISO',
+                sections: iso27001HighLevelSections,
+              })
+            }
+            disabled={createMutation.isPending}
+            className="mt-4 w-full rounded-xl border border-slate-200 px-4 py-3 font-bold text-slate-700 transition hover:bg-slate-50 disabled:opacity-70"
+          >
+            Cargar plantilla ISO 27001 con 10 cláusulas HLS
+          </button>
 
           <button
             type="submit"

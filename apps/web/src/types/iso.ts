@@ -48,6 +48,7 @@ export interface StandardClause {
   title: string;
   description: string;
   order: number;
+  evidenceCount?: number;
 }
 
 export interface StandardRequirement {
@@ -62,6 +63,7 @@ export interface StandardRequirement {
   order: number;
   criticality: 'low' | 'medium' | 'high';
   status: 'draft' | 'active' | 'obsolete';
+  evidenceCount?: number;
 }
 
 export interface StandardAppendix {

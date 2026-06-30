@@ -15,6 +15,23 @@ import { StandardRequirementEntity } from './schemas/standard-requirement.schema
 import { StandardSectionEntity } from './schemas/standard-section.schema';
 import { StandardEntity } from './schemas/standard.schema';
 
+type StandardRequirementPayload = {
+  code: string;
+  title: string;
+  description?: string;
+  intent?: string;
+  criticality?: 'low' | 'medium' | 'high';
+  status?: 'draft' | 'active' | 'obsolete';
+};
+
+type StandardClausePayload = {
+  code: string;
+  title: string;
+  description?: string;
+  children?: StandardClausePayload[];
+  requirements?: StandardRequirementPayload[];
+};
+
 type StandardPayload = {
   code: string;
   title: string;
@@ -29,19 +46,7 @@ type StandardPayload = {
     code: string;
     title: string;
     description?: string;
-    clauses?: Array<{
-      code: string;
-      title: string;
-      description?: string;
-      requirements?: Array<{
-        code: string;
-        title: string;
-        description?: string;
-        intent?: string;
-        criticality?: 'low' | 'medium' | 'high';
-        status?: 'draft' | 'active' | 'obsolete';
-      }>;
-    }>;
+    clauses?: StandardClausePayload[];
   }>;
   appendices?: Array<{
     code: string;
@@ -124,6 +129,78 @@ export class GrcService implements OnModuleInit {
     return this.getStandardStructure(String(standard._id));
   }
 
+  async updateStandard(standardId: string, payload: StandardPayload) {
+    const standard = await this.standardModel.findById(standardId);
+    if (!standard) {
+      throw new NotFoundException('Standard not found');
+    }
+
+    standard.code = payload.code.trim();
+    standard.title = payload.title.trim();
+    standard.description = payload.description?.trim() ?? '';
+    standard.category = payload.category ?? standard.category ?? 'standard';
+    standard.status = payload.status ?? standard.status ?? 'active';
+    standard.version = payload.version?.trim() || standard.version || '1.0';
+    standard.enabled = payload.enabled ?? standard.enabled ?? true;
+    standard.owner = payload.owner?.trim() || standard.owner || 'Administrador ISO';
+    standard.publishedAt = payload.publishedAt ? new Date(payload.publishedAt) : null;
+    await standard.save();
+
+    await this.replaceStandardStructure(
+      standardId,
+      payload.sections ?? [],
+      payload.appendices ?? []
+    );
+
+    return this.getStandardStructure(standardId);
+  }
+
+  async deleteStandard(standardId: string) {
+    const standard = await this.standardModel.findById(standardId).lean();
+    if (!standard) {
+      throw new NotFoundException('Standard not found');
+    }
+
+    const [requirements, clauses, checklists] = await Promise.all([
+      this.standardRequirementModel.find({ standardId }).lean(),
+      this.standardClauseModel.find({ standardId }).lean(),
+      this.auditChecklistModel.find({ standardId }).lean(),
+    ]);
+
+    await Promise.all([
+      this.standardModel.deleteOne({ _id: standardId }),
+      this.standardSectionModel.deleteMany({ standardId }),
+      this.standardClauseModel.deleteMany({ standardId }),
+      this.standardRequirementModel.deleteMany({ standardId }),
+      this.standardAppendixModel.deleteMany({ standardId }),
+      this.evidenceModel.deleteMany({
+        $or: [
+          { standardId },
+          { requirementId: { $in: requirements.map((requirement) => String(requirement._id)) } },
+          { clauseId: { $in: clauses.map((clause) => String(clause._id)) } },
+        ],
+      }),
+      this.contractObligationModel.updateMany(
+        { standardId },
+        { $set: { standardId: null } }
+      ),
+      this.contractModel.updateMany(
+        { standardIds: standardId },
+        { $pull: { standardIds: standardId } }
+      ),
+      this.correctiveActionModel.updateMany(
+        { standardId },
+        { $set: { standardId: null } }
+      ),
+      this.auditChecklistModel.deleteMany({ standardId }),
+      this.auditChecklistItemModel.deleteMany({
+        checklistId: { $in: checklists.map((checklist) => String(checklist._id)) },
+      }),
+    ]);
+
+    return { success: true };
+  }
+
   async getStandardStructure(standardId: string) {
     const standard = await this.standardModel.findById(standardId).lean();
     if (!standard) {
@@ -138,10 +215,23 @@ export class GrcService implements OnModuleInit {
       this.evidenceModel.find({ standardId }).lean(),
     ]);
 
+    const evidenceCountByRequirementId = new Map<string, number>();
+    evidences.forEach((evidence) => {
+      evidenceCountByRequirementId.set(
+        evidence.requirementId,
+        (evidenceCountByRequirementId.get(evidence.requirementId) ?? 0) + 1
+      );
+    });
+
     const requirementsByClause = new Map<string, any[]>();
     requirements.forEach((requirement) => {
       const bucket = requirementsByClause.get(requirement.clauseId) ?? [];
-      bucket.push(this.serializeRequirement(requirement));
+      bucket.push(
+        this.serializeRequirement(
+          requirement,
+          evidenceCountByRequirementId.get(String(requirement._id)) ?? 0
+        )
+      );
       requirementsByClause.set(requirement.clauseId, bucket);
     });
 
@@ -156,13 +246,25 @@ export class GrcService implements OnModuleInit {
     const buildClauseTree = (parentKey: string): any[] =>
       (clausesByParent.get(parentKey) ?? [])
         .sort((left, right) => left.order - right.order)
-        .map((clause) => ({
-          ...this.serializeClause(clause),
-          requirements: (requirementsByClause.get(String(clause._id)) ?? []).sort(
+        .map((clause) => {
+          const clauseRequirements = (requirementsByClause.get(String(clause._id)) ?? []).sort(
             (left, right) => left.order - right.order
-          ),
-          children: buildClauseTree(String(clause._id)),
-        }));
+          );
+          const children = buildClauseTree(String(clause._id));
+          const evidenceCount =
+            clauseRequirements.reduce(
+              (total, requirement) => total + (requirement.evidenceCount ?? 0),
+              0
+            ) +
+            children.reduce((total, child) => total + (child.evidenceCount ?? 0), 0);
+
+          return {
+            ...this.serializeClause(clause),
+            requirements: clauseRequirements,
+            children,
+            evidenceCount,
+          };
+        });
 
     const evidencedRequirementIds = new Set(evidences.map((evidence) => evidence.requirementId));
     const totalRequirements = requirements.length;
@@ -546,32 +648,12 @@ export class GrcService implements OnModuleInit {
         order: sectionIndex + 1,
       });
 
-      for (const [clauseIndex, clause] of (section.clauses ?? []).entries()) {
-        const clauseDoc = await this.standardClauseModel.create({
-          standardId,
-          sectionId: String(sectionDoc._id),
-          parentClauseId: null,
-          code: clause.code,
-          title: clause.title,
-          description: clause.description ?? '',
-          order: clauseIndex + 1,
-        });
-
-        for (const [requirementIndex, requirement] of (clause.requirements ?? []).entries()) {
-          await this.standardRequirementModel.create({
-            standardId,
-            sectionId: String(sectionDoc._id),
-            clauseId: String(clauseDoc._id),
-            code: requirement.code,
-            title: requirement.title,
-            description: requirement.description ?? '',
-            intent: requirement.intent ?? '',
-            order: requirementIndex + 1,
-            criticality: requirement.criticality ?? 'medium',
-            status: requirement.status ?? 'active',
-          });
-        }
-      }
+      await this.createClauseTree(
+        standardId,
+        String(sectionDoc._id),
+        null,
+        section.clauses ?? []
+      );
     }
 
     if (appendices.length > 0) {
@@ -586,6 +668,49 @@ export class GrcService implements OnModuleInit {
           order: index + 1,
         }))
       );
+    }
+  }
+
+  private async createClauseTree(
+    standardId: string,
+    sectionId: string,
+    parentClauseId: string | null,
+    clauses: StandardClausePayload[]
+  ) {
+    for (const [clauseIndex, clause] of clauses.entries()) {
+      const clauseDoc = await this.standardClauseModel.create({
+        standardId,
+        sectionId,
+        parentClauseId,
+        code: clause.code,
+        title: clause.title,
+        description: clause.description ?? '',
+        order: clauseIndex + 1,
+      });
+
+      for (const [requirementIndex, requirement] of (clause.requirements ?? []).entries()) {
+        await this.standardRequirementModel.create({
+          standardId,
+          sectionId,
+          clauseId: String(clauseDoc._id),
+          code: requirement.code,
+          title: requirement.title,
+          description: requirement.description ?? '',
+          intent: requirement.intent ?? '',
+          order: requirementIndex + 1,
+          criticality: requirement.criticality ?? 'medium',
+          status: requirement.status ?? 'active',
+        });
+      }
+
+      if ((clause.children?.length ?? 0) > 0) {
+        await this.createClauseTree(
+          standardId,
+          sectionId,
+          String(clauseDoc._id),
+          clause.children ?? []
+        );
+      }
     }
   }
 
@@ -779,7 +904,7 @@ export class GrcService implements OnModuleInit {
     };
   }
 
-  private serializeRequirement(requirement: any) {
+  private serializeRequirement(requirement: any, evidenceCount = 0) {
     return {
       id: String(requirement._id),
       standardId: requirement.standardId,
@@ -792,6 +917,7 @@ export class GrcService implements OnModuleInit {
       order: requirement.order ?? 0,
       criticality: requirement.criticality ?? 'medium',
       status: requirement.status ?? 'active',
+      evidenceCount,
     };
   }
 

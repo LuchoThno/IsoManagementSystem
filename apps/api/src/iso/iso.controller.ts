@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Put, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Query, UseGuards } from '@nestjs/common';
 import { ClerkAuth } from './clerk-auth.decorator';
 import { ClerkAuthGuard } from './clerk-auth.guard';
 import { ChatGateway } from './chat.gateway';
@@ -47,6 +47,16 @@ export class IsoController {
   @Post('standards')
   createStandard(@Body() body: any) {
     return this.grcService.createStandard(body);
+  }
+
+  @Put('standards/:id')
+  updateStandard(@Param('id') id: string, @Body() body: any) {
+    return this.grcService.updateStandard(id, body);
+  }
+
+  @Delete('standards/:id')
+  deleteStandard(@Param('id') id: string) {
+    return this.grcService.deleteStandard(id);
   }
 
   @Get('standards/:id/structure')

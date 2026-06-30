@@ -28,6 +28,47 @@ type ApiEvidence = Omit<Evidence, 'dueDate' | 'collectedAt' | 'createdAt' | 'upd
   updatedAt: string;
 };
 
+export type StandardEditorRequirement = {
+  code: string;
+  title: string;
+  description?: string;
+  intent?: string;
+  criticality?: 'low' | 'medium' | 'high';
+  status?: 'draft' | 'active' | 'obsolete';
+};
+
+export type StandardEditorClause = {
+  code: string;
+  title: string;
+  description?: string;
+  children?: StandardEditorClause[];
+  requirements?: StandardEditorRequirement[];
+};
+
+export type StandardEditorPayload = {
+  code: string;
+  title: string;
+  description?: string;
+  category?: 'standard' | 'framework' | 'regulation' | 'contractual';
+  status?: 'draft' | 'active' | 'archived';
+  version?: string;
+  enabled?: boolean;
+  owner?: string;
+  sections?: Array<{
+    code: string;
+    title: string;
+    description?: string;
+    clauses?: StandardEditorClause[];
+  }>;
+  appendices?: Array<{
+    code: string;
+    title: string;
+    type?: 'annex' | 'appendix' | 'guide';
+    description?: string;
+    content?: string;
+  }>;
+};
+
 const toStandardSummary = (standard: ApiStandardSummary): StandardSummary & {
   metrics?: ApiStandardSummary['metrics'];
 } => ({
@@ -58,41 +99,7 @@ export async function fetchStandardStructure(standardId: string): Promise<Standa
   };
 }
 
-export async function createStandardApi(payload: {
-  code: string;
-  title: string;
-  description?: string;
-  category?: 'standard' | 'framework' | 'regulation' | 'contractual';
-  status?: 'draft' | 'active' | 'archived';
-  version?: string;
-  enabled?: boolean;
-  owner?: string;
-  sections?: Array<{
-    code: string;
-    title: string;
-    description?: string;
-    clauses?: Array<{
-      code: string;
-      title: string;
-      description?: string;
-      requirements?: Array<{
-        code: string;
-        title: string;
-        description?: string;
-        intent?: string;
-        criticality?: 'low' | 'medium' | 'high';
-        status?: 'draft' | 'active' | 'obsolete';
-      }>;
-    }>;
-  }>;
-  appendices?: Array<{
-    code: string;
-    title: string;
-    type?: 'annex' | 'appendix' | 'guide';
-    description?: string;
-    content?: string;
-  }>;
-}) {
+export async function createStandardApi(payload: StandardEditorPayload) {
   const structure = await requestIsoApi<ApiStandardStructure>('/standards', {
     method: 'POST',
     body: JSON.stringify(payload),
@@ -102,6 +109,24 @@ export async function createStandardApi(payload: {
     ...structure,
     standard: toStandardSummary(structure.standard),
   };
+}
+
+export async function updateStandardApi(standardId: string, payload: StandardEditorPayload) {
+  const structure = await requestIsoApi<ApiStandardStructure>(`/standards/${standardId}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
+
+  return {
+    ...structure,
+    standard: toStandardSummary(structure.standard),
+  };
+}
+
+export async function deleteStandardApi(standardId: string) {
+  return requestIsoApi<{ success: boolean }>(`/standards/${standardId}`, {
+    method: 'DELETE',
+  });
 }
 
 export async function listRequirementEvidences(requirementId: string): Promise<Evidence[]> {
