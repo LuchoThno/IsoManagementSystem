@@ -2,8 +2,9 @@ import { io, type Socket } from 'socket.io-client';
 import { getClerkSessionToken } from './clerkSession';
 
 const API_BASE = import.meta.env.VITE_API_URL || '/api';
+const PRODUCTION_FRONTEND_HOSTS = new Set(['iso.servasmar.cl', 'www.iso.servasmar.cl']);
 const isIsoProductionHost = () =>
-  typeof window !== 'undefined' && window.location.hostname === 'iso.servasmar.cl';
+  typeof window !== 'undefined' && PRODUCTION_FRONTEND_HOSTS.has(window.location.hostname);
 
 const getSocketBaseUrl = () => {
   if (isIsoProductionHost()) {

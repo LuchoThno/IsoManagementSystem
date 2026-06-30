@@ -11,8 +11,8 @@ Topologia objetivo:
 
 Configura estas variables en el proyecto del frontend:
 
-- `VITE_API_URL=https://api-iso.servasmar.cl/api`
-- `VITE_SOCKET_URL=https://api-iso.servasmar.cl`
+- `VITE_API_URL=/api`
+- `VITE_SOCKET_URL=/socket.io`
 - `VITE_CLERK_JWT_TEMPLATE=<template-opcional-si-tu-backend-lo-requiere>`
 - `VITE_CLERK_IS_SATELLITE=false` recomendado salvo que tu instancia Clerk esté montada como satellite
 - `VITE_CLERK_DOMAIN=<solo si usas satellite>`
@@ -26,6 +26,7 @@ Configura estas variables en el proyecto del frontend:
 Sugerencia:
 
 - Mantén estas variables en Vercel Project Settings o con `vercel env pull`.
+- Para `iso.servasmar.cl` y `www.iso.servasmar.cl`, el frontend puede usar rewrites same-origin de Vercel y no depender directamente del subdominio `api-iso`.
 - No subas secretos reales del frontend o Clerk a Git.
 - No cargues en Vercel secretos del backend como `CLERK_SECRET_KEY`, `CLERK_JWT_KEY`, `RESEND_API_KEY`, `SMTP_*` o `MONGODB_URI`.
 
@@ -51,6 +52,7 @@ Notas:
 - `.env.production` no viaja en el bundle del deploy. Debe existir en el VPS dentro de `/opt/iso-management-system`.
 - El script `deploy/vps/deploy-api.sh` ahora corta el despliegue si ese archivo no está presente.
 - Las variables `NEXT_PUBLIC_*` o `VITE_*` pueden existir en `.env.production` como referencia, pero el build real del frontend las toma desde Vercel.
+- Si `MONGODB_URI` apunta a Atlas u otra base externa, el `mongo` local del compose puede mantenerse solo como respaldo y su puerto no debería exponerse fuera de `127.0.0.1`.
 
 ### Checklist rapida
 
@@ -242,3 +244,4 @@ En la zona DNS de `servasmar.cl` crea:
 - Hoy el backend usa `PORT`, `MONGODB_URI`, `CORS_ORIGIN`, `CLERK_SECRET_KEY`, `CLERK_API_URL`, `CLERK_AUTHORIZED_PARTIES`, `CLERK_USE_STATIC_JWT_KEY` y opcionalmente `CLERK_JWT_KEY` para la autenticación con Clerk.
 - El frontend compila en build time, asi que sus variables se cargan en Vercel, no en el servidor Docker.
 - Si Cloudflare queda delante del frontend y del API, deja `VITE_API_URL` y `VITE_SOCKET_URL` con esas URLs públicas; el token de Clerk viaja al API y al socket como bearer/auth token.
+- Si `api-iso.servasmar.cl` falla pero `iso.servasmar.cl` sigue activo, revisa primero los rewrites de Vercel y el DNS/proxy del subdominio antes de tocar el backend.

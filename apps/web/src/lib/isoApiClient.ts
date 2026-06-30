@@ -1,11 +1,15 @@
 import { getClerkSessionToken } from './clerkSession';
 
 const API_FALLBACK_BASE = '/api';
+const PRODUCTION_FRONTEND_HOSTS = new Set(['iso.servasmar.cl', 'www.iso.servasmar.cl']);
 
 const getApiBase = () => {
   const configured = import.meta.env.VITE_API_URL?.trim();
 
-  if (typeof window !== 'undefined' && window.location.hostname === 'iso.servasmar.cl') {
+  if (
+    typeof window !== 'undefined' &&
+    PRODUCTION_FRONTEND_HOSTS.has(window.location.hostname)
+  ) {
     return API_FALLBACK_BASE;
   }
 

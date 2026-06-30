@@ -66,8 +66,8 @@ Configuracion recomendada:
 - Proyecto Vercel apuntando a la raiz del repo
 - Dominio del frontend en Vercel: `iso.servasmar.cl`
 - Variables en Vercel:
-  - `VITE_API_URL=https://api-iso.servasmar.cl/api`
-  - `VITE_SOCKET_URL=https://api-iso.servasmar.cl`
+  - `VITE_API_URL=/api`
+  - `VITE_SOCKET_URL=/socket.io`
   - `VITE_CLERK_JWT_TEMPLATE=...` si tu instancia de Clerk exige usar un JWT template explícito para el backend
   - `VITE_CLERK_IS_SATELLITE=false` recomendado para `iso.servasmar.cl` salvo que realmente uses Clerk satellite
   - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=...`
@@ -111,6 +111,8 @@ Variables recomendadas en el servidor Docker:
 - `RESEND_API_KEY=re_...` recomendado para el modulo Communications
 - `GMAIL_CLIENT_ID=...`, `GMAIL_CLIENT_SECRET=...`, `GMAIL_REFRESH_TOKEN=...` si prefieres Gmail API
 - `COMMUNICATIONS_WEBHOOK_URL=https://...` y `COMMUNICATIONS_WEBHOOK_TOKEN=...` si usas una pasarela propia
+
+Si en producción usas MongoDB Atlas u otra base externa en `MONGODB_URI`, el contenedor `mongo` local puede quedar solo como respaldo técnico y conviene que su puerto se publique solo en `127.0.0.1`.
 
 El modulo `Communications` ahora valida compatibilidad del proveedor desde backend. Para despliegues en Vercel + VPS/Docker, `Resend` es la opcion mas simple.
 
