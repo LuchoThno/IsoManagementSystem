@@ -40,9 +40,15 @@ export interface Document {
   createdAt: Date;
   updatedAt: Date;
   status: 'draft' | 'active' | 'archived';
-  url: string;
+  url?: string;
   versionHistory: DocumentVersionEntry[];
   auditTrail: DocumentAuditEntry[];
+}
+
+export interface DocumentAsset {
+  url: string;
+  fileName?: string;
+  mimeType?: string;
 }
 
 export interface Task {
@@ -246,6 +252,16 @@ export interface ISOBootstrapData {
   notifications: NotificationSettings;
   users: UserAccount[];
   chatThreads: ChatThread[];
+  emailTemplates: EmailTemplate[];
+  emailCampaigns: EmailCampaign[];
+  communicationSettings: CommunicationSettings;
+}
+
+export interface ISOBootstrapShellData {
+  dashboard: DashboardOverview;
+  alerts: Alert[];
+  settings: Settings;
+  notifications: NotificationSettings;
   emailTemplates: EmailTemplate[];
   emailCampaigns: EmailCampaign[];
   communicationSettings: CommunicationSettings;

@@ -55,7 +55,7 @@ export class IsoService implements OnModuleInit {
 
   async getDocuments() {
     const documents = await this.documentModel.find().sort({ updatedAt: -1 }).lean();
-    return documents.map((document) => this.serializeDocument(document));
+    return documents.map((document) => this.serializeDocumentSummary(document));
   }
 
   async getTasks() {
@@ -83,9 +83,38 @@ export class IsoService implements OnModuleInit {
 
     return {
       dashboard,
-      documents: documents.map((document) => this.serializeDocument(document)),
+      documents: documents.map((document) => this.serializeDocumentSummary(document)),
       tasks: tasks.map((task) => this.serializeTask(task)),
       audits: audits.map((audit) => this.serializeAudit(audit)),
+      alerts,
+      settings: {
+        companyName: settings.companyName,
+        standards: settings.standards,
+        defaultLanguage: settings.defaultLanguage,
+        timezone: settings.timezone,
+      },
+      notifications: this.normalizeNotifications(settings.notifications),
+      emailTemplates: emailTemplates.map((template) => this.serializeEmailTemplate(template)),
+      emailCampaigns: emailCampaigns.map((campaign) => this.serializeEmailCampaign(campaign)),
+      communicationSettings: this.normalizeCommunicationSettings(settings.communicationSettings),
+    };
+  }
+
+  async getBootstrapShell() {
+    const [documents, tasks, audits, emailTemplates, emailCampaigns, settings] = await Promise.all([
+      this.documentModel.find().sort({ updatedAt: -1 }).lean(),
+      this.taskModel.find().sort({ dueDate: 1 }).lean(),
+      this.auditModel.find().sort({ date: 1 }).lean(),
+      this.emailTemplateModel.find().sort({ updatedAt: -1 }).lean(),
+      this.emailCampaignModel.find().sort({ createdAt: -1 }).lean(),
+      this.getSettingsDocument(),
+    ]);
+
+    const alerts = this.buildAlerts(tasks, audits);
+    const dashboard = this.buildDashboard(documents, tasks, audits);
+
+    return {
+      dashboard,
       alerts,
       settings: {
         companyName: settings.companyName,
@@ -382,6 +411,19 @@ export class IsoService implements OnModuleInit {
     });
 
     return this.serializeDocument(document.toObject());
+  }
+
+  async getDocumentContent(id: string) {
+    const document = await this.documentModel.findById(id).lean();
+    if (!document) {
+      throw new NotFoundException('Document not found');
+    }
+
+    return {
+      url: document.url,
+      fileName: document.fileName ?? undefined,
+      mimeType: document.mimeType ?? undefined,
+    };
   }
 
   async updateDocument(
@@ -1056,6 +1098,14 @@ export class IsoService implements OnModuleInit {
         author: entry.author,
         details: entry.details,
       })),
+    };
+  }
+
+  private serializeDocumentSummary(document: any) {
+    const serialized = this.serializeDocument(document);
+    return {
+      ...serialized,
+      url: undefined,
     };
   }
 

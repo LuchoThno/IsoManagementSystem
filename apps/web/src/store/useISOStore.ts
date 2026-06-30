@@ -10,6 +10,7 @@ import type {
   EmailCampaign,
   EmailTemplate,
   ISOBootstrapData,
+  ISOBootstrapShellData,
   NotificationSettings,
   Settings,
   Task,
@@ -29,12 +30,17 @@ interface ISOStore {
   emailTemplates: EmailTemplate[];
   emailCampaigns: EmailCampaign[];
   communicationSettings: CommunicationSettings;
+  bootstrapped: boolean;
   loading: boolean;
   error: string | null;
 
   hydrate: (data: ISOBootstrapData) => void;
+  hydrateShell: (data: ISOBootstrapShellData) => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
+  replaceDocuments: (documents: Document[]) => void;
+  replaceTasks: (tasks: Task[]) => void;
+  replaceAudits: (audits: Audit[]) => void;
   addDocument: (document: Document) => void;
   addTask: (task: Task) => void;
   addAudit: (audit: Audit) => void;
@@ -104,6 +110,7 @@ export const useISOStore = create<ISOStore>((set) => ({
     apiBaseUrl: 'https://api.servasmar.cl/communications/send',
     apiKeyHint: 'configurado-en-servidor',
   },
+  bootstrapped: false,
   loading: true,
   error: null,
 
@@ -121,6 +128,26 @@ export const useISOStore = create<ISOStore>((set) => ({
       emailTemplates: data.emailTemplates,
       emailCampaigns: data.emailCampaigns,
       communicationSettings: data.communicationSettings,
+      bootstrapped: true,
+      loading: false,
+      error: null,
+    })),
+
+  hydrateShell: (data) =>
+    set((state) => ({
+      documents: state.documents,
+      tasks: state.tasks,
+      audits: state.audits,
+      users: state.users,
+      chatThreads: state.chatThreads,
+      dashboard: data.dashboard,
+      alerts: data.alerts,
+      settings: data.settings,
+      notifications: data.notifications,
+      emailTemplates: data.emailTemplates,
+      emailCampaigns: data.emailCampaigns,
+      communicationSettings: data.communicationSettings,
+      bootstrapped: true,
       loading: false,
       error: null,
     })),
@@ -128,6 +155,21 @@ export const useISOStore = create<ISOStore>((set) => ({
   setLoading: (loading) => set(() => ({ loading })),
 
   setError: (error) => set(() => ({ error, loading: false })),
+
+  replaceDocuments: (documents) =>
+    set(() => ({
+      documents,
+    })),
+
+  replaceTasks: (tasks) =>
+    set(() => ({
+      tasks,
+    })),
+
+  replaceAudits: (audits) =>
+    set(() => ({
+      audits,
+    })),
 
   addDocument: (document) =>
     set((state) => ({ documents: [...state.documents, document] })),

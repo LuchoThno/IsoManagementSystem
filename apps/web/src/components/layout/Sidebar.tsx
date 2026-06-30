@@ -1,6 +1,7 @@
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { BrandLockup, BrandMark } from '../brand/Brand';
+import { preloadRoute } from '../../lib/routePreload';
 import {
   AlertCircle,
   BellRing,
@@ -94,6 +95,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
       key={to}
       to={to}
       onClick={onCloseMobile}
+      onMouseEnter={() => preloadRoute(to)}
+      onFocus={() => preloadRoute(to)}
+      onTouchStart={() => preloadRoute(to)}
       title={collapsed ? label : undefined}
       className={({ isActive }) =>
         `mb-1.5 flex items-center rounded-xl px-3 py-2.5 transition-all ${

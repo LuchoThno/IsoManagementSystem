@@ -15,7 +15,7 @@ import {
 import {
   createEmailTemplate,
   deleteEmailTemplate,
-  fetchBootstrap,
+  fetchBootstrapShell,
   fetchCommunicationCompatibility,
   sendBulkTaskReminderCampaign,
   updateCommunicationSettings,
@@ -111,7 +111,7 @@ export const Communications: React.FC = () => {
   const campaigns = useISOStore((state) => state.emailCampaigns);
   const communicationSettings = useISOStore((state) => state.communicationSettings);
   const settings = useISOStore((state) => state.settings);
-  const hydrate = useISOStore((state) => state.hydrate);
+  const hydrateShell = useISOStore((state) => state.hydrateShell);
 
   const activeUsers = React.useMemo(() => users.filter((user) => user.active), [users]);
   const availableRoles = React.useMemo(
@@ -170,7 +170,7 @@ export const Communications: React.FC = () => {
   };
 
   const refreshData = async (successMessage?: string) => {
-    hydrate(await fetchBootstrap());
+    hydrateShell(await fetchBootstrapShell({ force: true }));
     if (successMessage) {
       showMessage(successMessage);
     }

@@ -10,6 +10,35 @@ export default defineConfig(({ mode }) => {
   return {
     envPrefix: ['VITE_', 'NEXT_PUBLIC_'],
     plugins: [react()],
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (!id.includes('node_modules')) {
+              return undefined;
+            }
+
+            if (id.includes('@clerk/')) {
+              return 'vendor-clerk';
+            }
+
+            if (id.includes('react-dom') || id.includes('react-router') || id.includes('/react/')) {
+              return 'vendor-react';
+            }
+
+            if (id.includes('socket.io-client') || id.includes('engine.io-client')) {
+              return 'vendor-realtime';
+            }
+
+            if (id.includes('date-fns')) {
+              return 'vendor-date';
+            }
+
+            return undefined;
+          },
+        },
+      },
+    },
     server: {
       host: '0.0.0.0',
       port: 5173,

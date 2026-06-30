@@ -62,7 +62,11 @@ const formatIcon: Record<Document['format'], React.ComponentType<{ className?: s
 
 const getDisplayFileName = (document: Document) => {
   if (document.fileName) return document.fileName;
-  if (document.url.startsWith('data:')) {
+  if (document.url?.startsWith('data:')) {
+    return `${document.title.toLowerCase().replace(/\s+/g, '-')}.${document.format.toLowerCase()}`;
+  }
+
+  if (!document.url) {
     return `${document.title.toLowerCase().replace(/\s+/g, '-')}.${document.format.toLowerCase()}`;
   }
 

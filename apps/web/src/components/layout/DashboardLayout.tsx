@@ -2,13 +2,14 @@ import React from 'react';
 import { Outlet } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
-import { fetchBootstrap } from '../../lib/api';
+import { fetchBootstrapShell } from '../../lib/api';
 import { useISOStore } from '../../store/useISOStore';
 
 export const DashboardLayout: React.FC = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = React.useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = React.useState(false);
-  const hydrate = useISOStore((state) => state.hydrate);
+  const bootstrapped = useISOStore((state) => state.bootstrapped);
+  const hydrateShell = useISOStore((state) => state.hydrateShell);
   const loading = useISOStore((state) => state.loading);
   const error = useISOStore((state) => state.error);
   const setLoading = useISOStore((state) => state.setLoading);
@@ -19,10 +20,12 @@ export const DashboardLayout: React.FC = () => {
 
     const load = async () => {
       try {
-        setLoading(true);
-        const data = await fetchBootstrap();
+        if (!bootstrapped) {
+          setLoading(true);
+        }
+        const data = await fetchBootstrapShell();
         if (mounted) {
-          hydrate(data);
+          hydrateShell(data);
         }
       } catch {
         if (mounted) {
@@ -36,7 +39,7 @@ export const DashboardLayout: React.FC = () => {
     return () => {
       mounted = false;
     };
-  }, [hydrate, setError, setLoading]);
+  }, [bootstrapped, hydrateShell, setError, setLoading]);
 
   return (
     <div className="min-h-screen bg-[#eef2f7] lg:flex">
@@ -53,16 +56,23 @@ export const DashboardLayout: React.FC = () => {
           onToggleCollapsed={() => setSidebarCollapsed((current) => !current)}
         />
         <main className="p-4 md:p-6 xl:p-7">
-          {loading ? (
+          {!bootstrapped && loading ? (
             <div className="panel-card p-10 text-center text-slate-500">
               Cargando panel ISO Manager...
             </div>
-          ) : error ? (
+          ) : !bootstrapped && error ? (
             <div className="panel-card border-red-200 bg-red-50 p-10 text-center text-red-700">
               {error}
             </div>
           ) : (
-            <Outlet />
+            <div className="space-y-4">
+              {error ? (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                  {error}
+                </div>
+              ) : null}
+              <Outlet />
+            </div>
           )}
         </main>
       </div>

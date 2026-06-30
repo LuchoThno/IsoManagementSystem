@@ -22,6 +22,11 @@ export class IsoController {
     return this.isoService.getDocuments();
   }
 
+  @Get('documents/:id/content')
+  getDocumentContent(@Param('id') id: string) {
+    return this.isoService.getDocumentContent(id);
+  }
+
   @Get('tasks')
   getTasks() {
     return this.isoService.getTasks();
@@ -35,6 +40,11 @@ export class IsoController {
   @Get('bootstrap')
   getBootstrap() {
     return this.isoService.getBootstrap();
+  }
+
+  @Get('bootstrap-shell')
+  getBootstrapShell() {
+    return this.isoService.getBootstrapShell();
   }
 
   @Get('calendar/status')

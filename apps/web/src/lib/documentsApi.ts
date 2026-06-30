@@ -1,4 +1,4 @@
-import type { Document } from '../types/iso';
+import type { Document, DocumentAsset } from '../types/iso';
 import { requestIsoApi } from './isoApiClient';
 
 type ApiDocument = Omit<Document, 'createdAt' | 'updatedAt' | 'versionHistory' | 'auditTrail'> & {
@@ -19,6 +19,8 @@ type ApiDocument = Omit<Document, 'createdAt' | 'updatedAt' | 'versionHistory' |
     details: string;
   }>;
 };
+
+type ApiDocumentAsset = DocumentAsset;
 
 const toDocument = (document: ApiDocument): Document => ({
   ...document,
@@ -82,4 +84,8 @@ export async function deleteDocumentApi(documentId: string): Promise<void> {
   await requestIsoApi(`/documents/${documentId}/delete`, {
     method: 'PATCH',
   });
+}
+
+export async function fetchDocumentAsset(documentId: string): Promise<DocumentAsset> {
+  return requestIsoApi<ApiDocumentAsset>(`/documents/${documentId}/content`);
 }

@@ -24,6 +24,7 @@ import { createTaskApi, deleteTaskApi, updateTaskApi, updateTaskStatusApi } from
 import type {
   CommunicationCompatibility,
   ISOBootstrapData,
+  ISOBootstrapShellData,
   UserAccount,
 } from '../types/iso';
 import type {
@@ -89,6 +90,21 @@ type ApiBootstrap = {
   communicationSettings: ISOBootstrapData['communicationSettings'];
 };
 
+type ApiBootstrapShell = {
+  dashboard: DashboardOverview;
+  alerts: ApiAlert[];
+  settings: Settings;
+  notifications: NotificationSettings;
+  emailTemplates: Array<Omit<EmailTemplate, 'createdAt' | 'updatedAt'> & { createdAt: string; updatedAt: string }>;
+  emailCampaigns: Array<
+    Omit<EmailCampaign, 'createdAt' | 'sentAt'> & { createdAt: string; sentAt: string | null }
+  >;
+  communicationSettings: ISOBootstrapData['communicationSettings'];
+};
+
+let bootstrapPromise: Promise<ISOBootstrapData> | null = null;
+let bootstrapShellPromise: Promise<ISOBootstrapShellData> | null = null;
+
 const mergeDirectoryUsers = (
   localUsers: UserAccount[],
   clerkUsers: UserAccount[]
@@ -125,70 +141,138 @@ export async function fetchBootstrap(): Promise<ISOBootstrapData> {
     return storage.fetchBootstrap();
   }
 
-  const [bootstrap, localBootstrap] = await Promise.all([
-    requestIsoApi<ApiBootstrap>('/bootstrap'),
-    storage.fetchBootstrap(),
-  ]);
-
-  const nextBootstrap: ISOBootstrapData = {
-    ...localBootstrap,
-    dashboard: bootstrap.dashboard,
-    documents: bootstrap.documents.map((document) => ({
-      ...document,
-      createdAt: new Date(document.createdAt),
-      updatedAt: new Date(document.updatedAt),
-      versionHistory: (document.versionHistory ?? []).map((entry) => ({
-        ...entry,
-        date: new Date(entry.date),
-      })),
-      auditTrail: (document.auditTrail ?? []).map((entry) => ({
-        ...entry,
-        date: new Date(entry.date),
-      })),
-    })),
-    tasks: bootstrap.tasks.map((task) => ({
-      ...task,
-      dueDate: new Date(task.dueDate),
-    })),
-    audits: bootstrap.audits.map((audit) => ({
-      ...audit,
-      date: new Date(audit.date),
-      findings: (audit.findings ?? []).map((finding) => ({
-        ...finding,
-        dueDate: new Date(finding.dueDate),
-      })),
-    })),
-    alerts: bootstrap.alerts.map((alert) => ({
-      ...alert,
-      date: new Date(alert.date),
-    })),
-    settings: bootstrap.settings,
-    notifications: bootstrap.notifications,
-    emailTemplates: bootstrap.emailTemplates.map((template) => ({
-      ...template,
-      createdAt: new Date(template.createdAt),
-      updatedAt: new Date(template.updatedAt),
-    })),
-    emailCampaigns: bootstrap.emailCampaigns.map((campaign) => ({
-      ...campaign,
-      createdAt: new Date(campaign.createdAt),
-      sentAt: campaign.sentAt ? new Date(campaign.sentAt) : null,
-    })),
-    communicationSettings: bootstrap.communicationSettings,
-  };
-
-  if (!isClerkEnabled) {
-    return nextBootstrap;
+  if (bootstrapPromise) {
+    return bootstrapPromise;
   }
 
-  try {
-    const clerkUsers = await listClerkDirectoryUsers();
-    return {
-      ...nextBootstrap,
-      users: mergeDirectoryUsers(nextBootstrap.users, clerkUsers),
+  const request = (async () => {
+    const [bootstrap, users, chatThreads] = await Promise.all([
+      requestIsoApi<ApiBootstrap>('/bootstrap'),
+      storage.listUsers(),
+      storage.listChatThreads(),
+    ]);
+
+    const nextBootstrap: ISOBootstrapData = {
+      dashboard: bootstrap.dashboard,
+      documents: bootstrap.documents.map((document) => ({
+        ...document,
+        createdAt: new Date(document.createdAt),
+        updatedAt: new Date(document.updatedAt),
+        versionHistory: (document.versionHistory ?? []).map((entry) => ({
+          ...entry,
+          date: new Date(entry.date),
+        })),
+        auditTrail: (document.auditTrail ?? []).map((entry) => ({
+          ...entry,
+          date: new Date(entry.date),
+        })),
+      })),
+      tasks: bootstrap.tasks.map((task) => ({
+        ...task,
+        dueDate: new Date(task.dueDate),
+      })),
+      audits: bootstrap.audits.map((audit) => ({
+        ...audit,
+        date: new Date(audit.date),
+        findings: (audit.findings ?? []).map((finding) => ({
+          ...finding,
+          dueDate: new Date(finding.dueDate),
+        })),
+      })),
+      alerts: bootstrap.alerts.map((alert) => ({
+        ...alert,
+        date: new Date(alert.date),
+      })),
+      settings: bootstrap.settings,
+      notifications: bootstrap.notifications,
+      users,
+      chatThreads,
+      emailTemplates: bootstrap.emailTemplates.map((template) => ({
+        ...template,
+        createdAt: new Date(template.createdAt),
+        updatedAt: new Date(template.updatedAt),
+      })),
+      emailCampaigns: bootstrap.emailCampaigns.map((campaign) => ({
+        ...campaign,
+        createdAt: new Date(campaign.createdAt),
+        sentAt: campaign.sentAt ? new Date(campaign.sentAt) : null,
+      })),
+      communicationSettings: bootstrap.communicationSettings,
     };
-  } catch {
-    return nextBootstrap;
+
+    try {
+      const clerkUsers = await listClerkDirectoryUsers();
+      return {
+        ...nextBootstrap,
+        users: mergeDirectoryUsers(nextBootstrap.users, clerkUsers),
+      };
+    } catch {
+      return nextBootstrap;
+    }
+  })();
+
+  bootstrapPromise = request;
+
+  try {
+    return await request;
+  } finally {
+    if (bootstrapPromise === request) {
+      bootstrapPromise = null;
+    }
+  }
+}
+
+export async function fetchBootstrapShell(options?: { force?: boolean }): Promise<ISOBootstrapShellData> {
+  if (!isClerkEnabled) {
+    const bootstrap = await storage.fetchBootstrap();
+    return {
+      dashboard: bootstrap.dashboard,
+      alerts: bootstrap.alerts,
+      settings: bootstrap.settings,
+      notifications: bootstrap.notifications,
+      emailTemplates: bootstrap.emailTemplates,
+      emailCampaigns: bootstrap.emailCampaigns,
+      communicationSettings: bootstrap.communicationSettings,
+    };
+  }
+
+  if (!options?.force && bootstrapShellPromise) {
+    return bootstrapShellPromise;
+  }
+
+  const request = (async () => {
+    const shell = await requestIsoApi<ApiBootstrapShell>('/bootstrap-shell');
+
+    return {
+      dashboard: shell.dashboard,
+      alerts: shell.alerts.map((alert) => ({
+        ...alert,
+        date: new Date(alert.date),
+      })),
+      settings: shell.settings,
+      notifications: shell.notifications,
+      emailTemplates: shell.emailTemplates.map((template) => ({
+        ...template,
+        createdAt: new Date(template.createdAt),
+        updatedAt: new Date(template.updatedAt),
+      })),
+      emailCampaigns: shell.emailCampaigns.map((campaign) => ({
+        ...campaign,
+        createdAt: new Date(campaign.createdAt),
+        sentAt: campaign.sentAt ? new Date(campaign.sentAt) : null,
+      })),
+      communicationSettings: shell.communicationSettings,
+    };
+  })();
+
+  bootstrapShellPromise = request;
+
+  try {
+    return await request;
+  } finally {
+    if (bootstrapShellPromise === request) {
+      bootstrapShellPromise = null;
+    }
   }
 }
 

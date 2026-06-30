@@ -1,7 +1,7 @@
 import React from 'react';
 import { Plus, Shield, Trash2, UserCog } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
-import { createUser, deleteUser, fetchBootstrap, getCurrentUser, updateUser } from '../../lib/api';
+import { createUser, deleteUser, getCurrentUser, listUsers, updateUser } from '../../lib/api';
 import { useISOStore } from '../../store/useISOStore';
 import { useAuthStore } from '../../store/useAuthStore';
 import type { UserAccount, UserRole } from '../../types/iso';
@@ -9,7 +9,7 @@ import type { UserAccount, UserRole } from '../../types/iso';
 export const SettingsUsers: React.FC = () => {
   const [searchParams] = useSearchParams();
   const users = useISOStore((state) => state.users);
-  const hydrate = useISOStore((state) => state.hydrate);
+  const replaceUsers = useISOStore((state) => state.replaceUsers);
   const setAuthUser = useAuthStore((state) => state.setUser);
   const [message, setMessage] = React.useState('');
   const [userQuery, setUserQuery] = React.useState(searchParams.get('q') ?? '');
@@ -57,7 +57,7 @@ export const SettingsUsers: React.FC = () => {
   };
 
   const syncUsers = async (successMessage: string) => {
-    hydrate(await fetchBootstrap());
+    replaceUsers(await listUsers());
     setAuthUser(await getCurrentUser());
     resetUserForm();
     showMessage(successMessage);

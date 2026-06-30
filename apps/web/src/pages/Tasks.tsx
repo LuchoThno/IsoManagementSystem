@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Plus } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
-import { fetchBootstrap } from '../lib/api';
+import { fetchBootstrapShell } from '../lib/api';
 import { TaskList } from '../components/tasks/TaskList';
 import { TaskFilters } from '../components/tasks/TaskFilters';
 import { TaskModal } from '../components/tasks/TaskModal';
@@ -9,13 +9,16 @@ import type { Task, ISOStandard } from '../types/iso';
 import {
   createTaskApi,
   deleteTaskApi,
+  listTasks,
   updateTaskApi,
 } from '../lib/tasksApi';
 import { useISOStore } from '../store/useISOStore';
 
 export const Tasks: React.FC = () => {
-  const hydrate = useISOStore((state) => state.hydrate);
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const tasks = useISOStore((state) => state.tasks);
+  const bootstrapped = useISOStore((state) => state.bootstrapped);
+  const hydrateShell = useISOStore((state) => state.hydrateShell);
+  const replaceTasks = useISOStore((state) => state.replaceTasks);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [searchParams] = useSearchParams();
@@ -27,10 +30,16 @@ export const Tasks: React.FC = () => {
   const [standardFilter, setStandardFilter] = useState<ISOStandard | 'all'>('all');
 
   const refreshTasks = useCallback(async () => {
-    const bootstrap = await fetchBootstrap();
-    hydrate(bootstrap);
-    setTasks(bootstrap.tasks);
-  }, [hydrate]);
+    replaceTasks(await listTasks());
+  }, [replaceTasks]);
+
+  const refreshShell = useCallback(() => {
+    void fetchBootstrapShell({ force: true })
+      .then((data) => {
+        hydrateShell(data);
+      })
+      .catch(() => {});
+  }, [hydrateShell]);
 
   useEffect(() => {
     setSearchQuery(searchParams.get('q') ?? '');
@@ -39,7 +48,7 @@ export const Tasks: React.FC = () => {
   useEffect(() => {
     const loadTasks = async () => {
       try {
-        setLoading(true);
+        setLoading(!bootstrapped || tasks.length === 0);
         setLoadError(null);
         await refreshTasks();
       } catch {
@@ -50,7 +59,7 @@ export const Tasks: React.FC = () => {
     };
 
     void loadTasks();
-  }, [refreshTasks]);
+  }, [bootstrapped, refreshTasks, tasks.length]);
 
   const filteredTasks = tasks.filter((task) => {
     const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -62,9 +71,9 @@ export const Tasks: React.FC = () => {
   });
 
   const handleCreateTask = async (taskData: Omit<Task, 'id'>) => {
-    const newTask = await createTaskApi(taskData);
-    setTasks((current) => [...current, newTask]);
+    await createTaskApi(taskData);
     await refreshTasks();
+    refreshShell();
   };
 
   const handleEditTask = async (task: Task) => {
@@ -78,6 +87,7 @@ export const Tasks: React.FC = () => {
 
     await deleteTaskApi(task.id);
     await refreshTasks();
+    refreshShell();
   };
 
   return (
@@ -150,6 +160,7 @@ export const Tasks: React.FC = () => {
           if (!editingTask) return;
           await updateTaskApi(editingTask.id, taskData);
           await refreshTasks();
+          refreshShell();
         }}
       />
     </div>

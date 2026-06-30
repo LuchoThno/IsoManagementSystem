@@ -2,19 +2,6 @@ import React from 'react';
 import { BrowserRouter, Navigate, Routes, Route } from 'react-router-dom';
 import { useAuth, useUser } from '@clerk/clerk-react';
 import { DashboardLayout } from './components/layout/DashboardLayout';
-import { Dashboard } from './pages/Dashboard';
-import { Documents } from './pages/Documents';
-import { Tasks } from './pages/Tasks';
-import { Audits } from './pages/Audits';
-import { Calendar } from './pages/Calendar';
-import { Alerts } from './pages/Alerts';
-import { Chat } from './pages/Chat';
-import { Communications } from './pages/Communications';
-import { Settings } from './pages/Settings';
-import { SettingsGeneral } from './pages/settings/SettingsGeneral';
-import { SettingsNotifications } from './pages/settings/SettingsNotifications';
-import { SettingsUsers } from './pages/settings/SettingsUsers';
-import { Login } from './pages/Login';
 import {
   clerkJwtTemplate,
   clerkSignInPath,
@@ -25,6 +12,63 @@ import { syncExternalUserSession } from './lib/api';
 import { fetchCurrentClerkUser } from './lib/clerkDirectoryApi';
 import { registerClerkTokenProvider } from './lib/clerkSession';
 import { useAuthStore } from './store/useAuthStore';
+
+const Dashboard = React.lazy(() =>
+  import('./pages/Dashboard').then((module) => ({ default: module.Dashboard }))
+);
+const Documents = React.lazy(() =>
+  import('./pages/Documents').then((module) => ({ default: module.Documents }))
+);
+const Tasks = React.lazy(() =>
+  import('./pages/Tasks').then((module) => ({ default: module.Tasks }))
+);
+const Audits = React.lazy(() =>
+  import('./pages/Audits').then((module) => ({ default: module.Audits }))
+);
+const Calendar = React.lazy(() =>
+  import('./pages/Calendar').then((module) => ({ default: module.Calendar }))
+);
+const Alerts = React.lazy(() =>
+  import('./pages/Alerts').then((module) => ({ default: module.Alerts }))
+);
+const Chat = React.lazy(() =>
+  import('./pages/Chat').then((module) => ({ default: module.Chat }))
+);
+const Communications = React.lazy(() =>
+  import('./pages/Communications').then((module) => ({ default: module.Communications }))
+);
+const Settings = React.lazy(() =>
+  import('./pages/Settings').then((module) => ({ default: module.Settings }))
+);
+const SettingsGeneral = React.lazy(() =>
+  import('./pages/settings/SettingsGeneral').then((module) => ({
+    default: module.SettingsGeneral,
+  }))
+);
+const SettingsNotifications = React.lazy(() =>
+  import('./pages/settings/SettingsNotifications').then((module) => ({
+    default: module.SettingsNotifications,
+  }))
+);
+const SettingsUsers = React.lazy(() =>
+  import('./pages/settings/SettingsUsers').then((module) => ({ default: module.SettingsUsers }))
+);
+const Login = React.lazy(() =>
+  import('./pages/Login').then((module) => ({ default: module.Login }))
+);
+
+const RouteFallback: React.FC<{ label: string }> = ({ label }) => (
+  <div className="rounded-[28px] border border-dashed border-slate-200 bg-white py-14 text-center shadow-sm">
+    <div className="mx-auto max-w-md">
+      <p className="text-lg font-extrabold text-slate-700">Cargando {label}...</p>
+      <p className="mt-2 text-sm text-slate-400">Estamos preparando el módulo para continuar.</p>
+    </div>
+  </div>
+);
+
+const withSuspense = (node: React.ReactNode, label: string) => (
+  <React.Suspense fallback={<RouteFallback label={label} />}>{node}</React.Suspense>
+);
 
 const LocalProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const initialized = useAuthStore((state) => state.initialized);
@@ -172,8 +216,10 @@ const AppRoutes: React.FC<{ protectedRoute: React.FC<{ children: React.ReactNode
 }) => (
   <BrowserRouter>
     <Routes>
-      <Route path="/login" element={<Login />} />
-      {clerkSignInPath !== '/login' ? <Route path={clerkSignInPath} element={<Login />} /> : null}
+      <Route path="/login" element={withSuspense(<Login />, 'inicio de sesión')} />
+      {clerkSignInPath !== '/login' ? (
+        <Route path={clerkSignInPath} element={withSuspense(<Login />, 'inicio de sesión')} />
+      ) : null}
       <Route
         path="/"
         element={
@@ -182,19 +228,28 @@ const AppRoutes: React.FC<{ protectedRoute: React.FC<{ children: React.ReactNode
           </ProtectedRoute>
         }
       >
-        <Route index element={<Dashboard />} />
-        <Route path="documents" element={<Documents />} />
-        <Route path="tasks" element={<Tasks />} />
-        <Route path="audits" element={<Audits />} />
-        <Route path="calendar" element={<Calendar />} />
-        <Route path="alerts" element={<Alerts />} />
-        <Route path="chat" element={<Chat />} />
-        <Route path="communications" element={<Communications />} />
-        <Route path="settings" element={<Settings />}>
+        <Route index element={withSuspense(<Dashboard />, 'dashboard')} />
+        <Route path="documents" element={withSuspense(<Documents />, 'documentos')} />
+        <Route path="tasks" element={withSuspense(<Tasks />, 'tareas')} />
+        <Route path="audits" element={withSuspense(<Audits />, 'auditorías')} />
+        <Route path="calendar" element={withSuspense(<Calendar />, 'calendario')} />
+        <Route path="alerts" element={withSuspense(<Alerts />, 'alertas')} />
+        <Route path="chat" element={withSuspense(<Chat />, 'chat')} />
+        <Route
+          path="communications"
+          element={withSuspense(<Communications />, 'comunicaciones')}
+        />
+        <Route path="settings" element={withSuspense(<Settings />, 'configuración')}>
           <Route index element={<Navigate to="/settings/general" replace />} />
-          <Route path="general" element={<SettingsGeneral />} />
-          <Route path="notifications" element={<SettingsNotifications />} />
-          <Route path="users" element={<SettingsUsers />} />
+          <Route
+            path="general"
+            element={withSuspense(<SettingsGeneral />, 'configuración general')}
+          />
+          <Route
+            path="notifications"
+            element={withSuspense(<SettingsNotifications />, 'notificaciones')}
+          />
+          <Route path="users" element={withSuspense(<SettingsUsers />, 'usuarios')} />
         </Route>
       </Route>
     </Routes>

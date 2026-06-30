@@ -9,10 +9,12 @@ import type { Document, ISOStandard } from '../types/iso';
 import {
   createDocumentApi,
   deleteDocumentApi,
+  fetchDocumentAsset,
+  listDocuments,
   registerDocumentViewApi,
   updateDocumentApi,
 } from '../lib/documentsApi';
-import { fetchBootstrap } from '../lib/api';
+import { fetchBootstrapShell } from '../lib/api';
 import { useISOStore } from '../store/useISOStore';
 
 const readFileAsDataUrl = (file: File) =>
@@ -23,9 +25,23 @@ const readFileAsDataUrl = (file: File) =>
     reader.readAsDataURL(file);
   });
 
+const openDocumentAsset = (url: string) => {
+  window.open(url, '_blank', 'noopener,noreferrer');
+};
+
+const downloadDocumentAsset = (url: string, fileName: string) => {
+  const anchor = window.document.createElement('a');
+  anchor.href = url;
+  anchor.download = fileName;
+  anchor.rel = 'noopener';
+  anchor.click();
+};
+
 export const Documents: React.FC = () => {
-  const hydrate = useISOStore((state) => state.hydrate);
-  const [documents, setDocuments] = useState<Document[]>([]);
+  const documents = useISOStore((state) => state.documents);
+  const bootstrapped = useISOStore((state) => state.bootstrapped);
+  const hydrateShell = useISOStore((state) => state.hydrateShell);
+  const replaceDocuments = useISOStore((state) => state.replaceDocuments);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [searchParams] = useSearchParams();
@@ -38,10 +54,16 @@ export const Documents: React.FC = () => {
   const [editingDocument, setEditingDocument] = useState<Document | null>(null);
 
   const refreshDocuments = useCallback(async () => {
-    const bootstrap = await fetchBootstrap();
-    hydrate(bootstrap);
-    setDocuments(bootstrap.documents);
-  }, [hydrate]);
+    replaceDocuments(await listDocuments());
+  }, [replaceDocuments]);
+
+  const refreshShell = useCallback(() => {
+    void fetchBootstrapShell({ force: true })
+      .then((data) => {
+        hydrateShell(data);
+      })
+      .catch(() => {});
+  }, [hydrateShell]);
 
   useEffect(() => {
     setSearchQuery(searchParams.get('q') ?? '');
@@ -50,7 +72,7 @@ export const Documents: React.FC = () => {
   useEffect(() => {
     const loadDocuments = async () => {
       try {
-        setLoading(true);
+        setLoading(!bootstrapped || documents.length === 0);
         setLoadError(null);
         await refreshDocuments();
       } catch {
@@ -61,7 +83,7 @@ export const Documents: React.FC = () => {
     };
 
     void loadDocuments();
-  }, [refreshDocuments]);
+  }, [bootstrapped, documents.length, refreshDocuments]);
 
   const activeDocuments = documents.filter((doc) => doc.status === 'active').length;
   const draftDocuments = documents.filter((doc) => doc.status === 'draft').length;
@@ -93,7 +115,7 @@ export const Documents: React.FC = () => {
     file: File;
   }) => {
     const fileContentUrl = await readFileAsDataUrl(data.file);
-    const newDocument = await createDocumentApi({
+    await createDocumentApi({
       title: data.title,
       topic: data.topic,
       type: data.type,
@@ -105,22 +127,24 @@ export const Documents: React.FC = () => {
       mimeType: data.file.type || 'application/octet-stream',
     });
 
-    setDocuments((current) => [newDocument, ...current]);
     await refreshDocuments();
+    refreshShell();
   };
 
   const handleViewDocument = async (doc: Document) => {
     await registerDocumentViewApi(doc.id);
+    const asset = await fetchDocumentAsset(doc.id);
     await refreshDocuments();
-    window.open(doc.url, '_blank', 'noopener,noreferrer');
+    refreshShell();
+    openDocumentAsset(asset.url);
   };
 
-  const handleDownloadDocument = (doc: Document) => {
-    const anchor = window.document.createElement('a');
-    anchor.href = doc.url;
-    anchor.download = doc.fileName ?? `${doc.title}.${doc.format.toLowerCase()}`;
-    anchor.rel = 'noopener';
-    anchor.click();
+  const handleDownloadDocument = async (doc: Document) => {
+    const asset = await fetchDocumentAsset(doc.id);
+    downloadDocumentAsset(
+      asset.url,
+      asset.fileName ?? doc.fileName ?? `${doc.title}.${doc.format.toLowerCase()}`
+    );
   };
 
   const handleEditDocument = async (doc: Document) => {
@@ -134,6 +158,7 @@ export const Documents: React.FC = () => {
 
     await deleteDocumentApi(doc.id);
     await refreshDocuments();
+    refreshShell();
     if (selectedVersionDocument?.id === doc.id) {
       setSelectedVersionDocument(null);
     }
@@ -395,6 +420,7 @@ export const Documents: React.FC = () => {
         onSubmit={async (documentId, updates) => {
           await updateDocumentApi(documentId, updates);
           await refreshDocuments();
+          refreshShell();
         }}
       />
     </div>

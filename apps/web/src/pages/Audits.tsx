@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Plus } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
-import { fetchBootstrap } from '../lib/api';
+import { fetchBootstrapShell } from '../lib/api';
 import { AuditList } from '../components/audits/AuditList';
 import { AuditFilters } from '../components/audits/AuditFilters';
 import { AuditModal } from '../components/audits/AuditModal';
@@ -9,13 +9,16 @@ import type { Audit, ISOStandard } from '../types/iso';
 import {
   createAuditApi,
   deleteAuditApi,
+  listAudits,
   updateAuditApi,
 } from '../lib/auditsApi';
 import { useISOStore } from '../store/useISOStore';
 
 export const Audits: React.FC = () => {
-  const hydrate = useISOStore((state) => state.hydrate);
-  const [audits, setAudits] = useState<Audit[]>([]);
+  const audits = useISOStore((state) => state.audits);
+  const bootstrapped = useISOStore((state) => state.bootstrapped);
+  const hydrateShell = useISOStore((state) => state.hydrateShell);
+  const replaceAudits = useISOStore((state) => state.replaceAudits);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [searchParams] = useSearchParams();
@@ -27,10 +30,16 @@ export const Audits: React.FC = () => {
   const [standardFilter, setStandardFilter] = useState<ISOStandard | 'all'>('all');
 
   const refreshAudits = useCallback(async () => {
-    const bootstrap = await fetchBootstrap();
-    hydrate(bootstrap);
-    setAudits(bootstrap.audits);
-  }, [hydrate]);
+    replaceAudits(await listAudits());
+  }, [replaceAudits]);
+
+  const refreshShell = useCallback(() => {
+    void fetchBootstrapShell({ force: true })
+      .then((data) => {
+        hydrateShell(data);
+      })
+      .catch(() => {});
+  }, [hydrateShell]);
 
   useEffect(() => {
     setSearchQuery(searchParams.get('q') ?? '');
@@ -39,7 +48,7 @@ export const Audits: React.FC = () => {
   useEffect(() => {
     const loadAudits = async () => {
       try {
-        setLoading(true);
+        setLoading(!bootstrapped || audits.length === 0);
         setLoadError(null);
         await refreshAudits();
       } catch {
@@ -50,7 +59,7 @@ export const Audits: React.FC = () => {
     };
 
     void loadAudits();
-  }, [refreshAudits]);
+  }, [audits.length, bootstrapped, refreshAudits]);
 
   const filteredAudits = audits.filter((audit) => {
     const matchesSearch =
@@ -67,9 +76,9 @@ export const Audits: React.FC = () => {
   });
 
   const handleCreateAudit = async (auditData: Omit<Audit, 'id'>) => {
-    const newAudit = await createAuditApi(auditData);
-    setAudits((current) => [...current, newAudit]);
+    await createAuditApi(auditData);
     await refreshAudits();
+    refreshShell();
   };
 
   const handleEditAudit = async (audit: Audit) => {
@@ -83,6 +92,7 @@ export const Audits: React.FC = () => {
 
     await deleteAuditApi(audit.id);
     await refreshAudits();
+    refreshShell();
   };
 
   return (
@@ -155,6 +165,7 @@ export const Audits: React.FC = () => {
           if (!editingAudit) return;
           await updateAuditApi(editingAudit.id, auditData);
           await refreshAudits();
+          refreshShell();
         }}
       />
     </div>
