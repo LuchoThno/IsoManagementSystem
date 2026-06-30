@@ -5,7 +5,7 @@ export class ContractObligationEntity {
   @Prop({ required: true, index: true })
   contractId!: string;
 
-  @Prop({ default: null })
+  @Prop({ type: String, default: null })
   standardId!: string | null;
 
   @Prop({ required: true })
@@ -17,7 +17,7 @@ export class ContractObligationEntity {
   @Prop({ required: true, default: '' })
   sourceClause!: string;
 
-  @Prop({ default: null })
+  @Prop({ type: Date, default: null })
   dueDate!: Date | null;
 
   @Prop({ required: true, enum: ['open', 'in-progress', 'fulfilled', 'overdue'], default: 'open' })

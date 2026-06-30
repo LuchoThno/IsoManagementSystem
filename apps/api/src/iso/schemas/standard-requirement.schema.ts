@@ -5,7 +5,7 @@ export class StandardRequirementEntity {
   @Prop({ required: true, index: true })
   standardId!: string;
 
-  @Prop({ default: null })
+  @Prop({ type: String, default: null })
   sectionId!: string | null;
 
   @Prop({ required: true, index: true })

@@ -8,10 +8,10 @@ export class AuditChecklistItemEntity {
   @Prop({ required: true, index: true })
   auditId!: string;
 
-  @Prop({ default: null })
+  @Prop({ type: String, default: null })
   requirementId!: string | null;
 
-  @Prop({ default: null })
+  @Prop({ type: String, default: null })
   clauseId!: string | null;
 
   @Prop({ required: true, default: '' })

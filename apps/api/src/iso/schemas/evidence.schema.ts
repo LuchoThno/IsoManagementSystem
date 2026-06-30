@@ -8,13 +8,13 @@ export class EvidenceEntity {
   @Prop({ required: true, default: '' })
   description!: string;
 
-  @Prop({ default: null })
+  @Prop({ type: String, default: null })
   standardId!: string | null;
 
   @Prop({ required: true, index: true })
   requirementId!: string;
 
-  @Prop({ default: null })
+  @Prop({ type: String, default: null })
   clauseId!: string | null;
 
   @Prop({ required: true, enum: ['missing', 'pending', 'approved', 'expired'], default: 'pending' })
@@ -30,7 +30,7 @@ export class EvidenceEntity {
   @Prop({ required: true, default: 'Administrador ISO' })
   owner!: string;
 
-  @Prop({ default: null })
+  @Prop({ type: String, default: null })
   sourceDocumentId!: string | null;
 
   @Prop({ type: [String], default: [] })
@@ -39,10 +39,10 @@ export class EvidenceEntity {
   @Prop({ type: [String], default: [] })
   linkedAuditIds!: string[];
 
-  @Prop({ default: null })
+  @Prop({ type: Date, default: null })
   dueDate!: Date | null;
 
-  @Prop({ default: null })
+  @Prop({ type: Date, default: null })
   collectedAt!: Date | null;
 
   @Prop({ required: true, default: '' })

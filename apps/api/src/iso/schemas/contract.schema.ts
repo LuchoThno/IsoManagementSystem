@@ -14,10 +14,10 @@ export class ContractEntity {
   @Prop({ required: true, enum: ['draft', 'active', 'expired', 'closed'], default: 'draft' })
   status!: 'draft' | 'active' | 'expired' | 'closed';
 
-  @Prop({ default: null })
+  @Prop({ type: Date, default: null })
   startDate!: Date | null;
 
-  @Prop({ default: null })
+  @Prop({ type: Date, default: null })
   endDate!: Date | null;
 
   @Prop({ type: [String], default: [] })

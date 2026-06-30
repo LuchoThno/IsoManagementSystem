@@ -17,16 +17,16 @@ export class CorrectiveActionEntity {
   @Prop({ required: true })
   sourceId!: string;
 
-  @Prop({ default: null })
+  @Prop({ type: String, default: null })
   standardId!: string | null;
 
-  @Prop({ default: null })
+  @Prop({ type: String, default: null })
   auditId!: string | null;
 
   @Prop({ required: true, default: 'Administrador ISO' })
   assignedTo!: string;
 
-  @Prop({ default: null })
+  @Prop({ type: Date, default: null })
   dueDate!: Date | null;
 
   @Prop({ required: true, enum: ['open', 'in-progress', 'verified', 'closed'], default: 'open' })

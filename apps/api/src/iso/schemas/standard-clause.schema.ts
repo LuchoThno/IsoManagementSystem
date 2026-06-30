@@ -8,7 +8,7 @@ export class StandardClauseEntity {
   @Prop({ required: true, index: true })
   sectionId!: string;
 
-  @Prop({ default: null })
+  @Prop({ type: String, default: null })
   parentClauseId!: string | null;
 
   @Prop({ required: true })
