@@ -163,14 +163,35 @@ export interface EmailTemplate {
   updatedAt: Date;
 }
 
+export type CommunicationProviderType = 'resend' | 'gmail' | 'custom';
+
 export interface CommunicationSettings {
   enabled: boolean;
+  providerType: CommunicationProviderType;
   providerName: string;
   senderName: string;
   senderEmail: string;
   replyTo: string;
   apiBaseUrl: string;
   apiKeyHint: string;
+}
+
+export interface CommunicationProviderCompatibility {
+  type: CommunicationProviderType;
+  label: string;
+  transport: 'sdk' | 'api';
+  configured: boolean;
+  selected: boolean;
+  missing: string[];
+  detail: string;
+}
+
+export interface CommunicationCompatibility {
+  activeProvider: CommunicationProviderType;
+  canSend: boolean;
+  checkedAt: Date;
+  recommendations: string[];
+  providers: CommunicationProviderCompatibility[];
 }
 
 export interface EmailCampaign {
@@ -185,7 +206,10 @@ export interface EmailCampaign {
   taskIds: string[];
   taskCount: number;
   daysAhead: number;
-  status: 'draft' | 'sent';
+  status: 'draft' | 'sent' | 'failed';
+  deliveryProvider: string;
+  deliveryReference: string | null;
+  errorMessage: string | null;
   createdAt: Date;
   sentAt: Date | null;
 }

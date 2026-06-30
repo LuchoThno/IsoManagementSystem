@@ -32,8 +32,17 @@ export class EmailCampaignEntity {
   @Prop({ required: true, default: 0 })
   daysAhead!: number;
 
-  @Prop({ required: true, enum: ['draft', 'sent'], default: 'sent' })
-  status!: 'draft' | 'sent';
+  @Prop({ required: true, enum: ['draft', 'sent', 'failed'], default: 'sent' })
+  status!: 'draft' | 'sent' | 'failed';
+
+  @Prop({ required: true, default: 'custom' })
+  deliveryProvider!: string;
+
+  @Prop({ type: String, default: null })
+  deliveryReference!: string | null;
+
+  @Prop({ type: String, default: null })
+  errorMessage!: string | null;
 
   @Prop({ type: Date, default: Date.now })
   sentAt!: Date | null;

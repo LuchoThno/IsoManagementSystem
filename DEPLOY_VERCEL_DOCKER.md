@@ -13,6 +13,21 @@ Configura estas variables en el proyecto del frontend:
 
 - `VITE_API_URL=https://api-iso.servasmar.cl/api`
 - `VITE_SOCKET_URL=https://api-iso.servasmar.cl`
+- `VITE_CLERK_JWT_TEMPLATE=<template-opcional-si-tu-backend-lo-requiere>`
+- `VITE_CLERK_IS_SATELLITE=false` recomendado salvo que tu instancia Clerk esté montada como satellite
+- `VITE_CLERK_DOMAIN=<solo si usas satellite>`
+- `VITE_CLERK_PRIMARY_ORIGIN=<solo si usas satellite>`
+- `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_live_...`
+- `NEXT_PUBLIC_CLERK_SIGN_IN_URL=/login`
+- `NEXT_PUBLIC_CLERK_SIGN_UP_URL=/login`
+- `NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL=/`
+- `NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL=/`
+
+Sugerencia:
+
+- Mantén estas variables en Vercel Project Settings o con `vercel env pull`.
+- No subas secretos reales del frontend o Clerk a Git.
+- No cargues en Vercel secretos del backend como `CLERK_SECRET_KEY`, `CLERK_JWT_KEY`, `RESEND_API_KEY`, `SMTP_*` o `MONGODB_URI`.
 
 ### Servidor Docker
 
@@ -27,7 +42,110 @@ MONGODB_URI=mongodb://mongo:27017/iso_manager
 CLERK_SECRET_KEY=sk_live_...
 CLERK_JWT_KEY=-----BEGIN PUBLIC KEY-----...
 CLERK_API_URL=https://api.clerk.com
+CLERK_AUTHORIZED_PARTIES=https://iso.servasmar.cl
+CLERK_USE_STATIC_JWT_KEY=false
 ```
+
+Notas:
+
+- `.env.production` no viaja en el bundle del deploy. Debe existir en el VPS dentro de `/opt/iso-management-system`.
+- El script `deploy/vps/deploy-api.sh` ahora corta el despliegue si ese archivo no está presente.
+- Las variables `NEXT_PUBLIC_*` o `VITE_*` pueden existir en `.env.production` como referencia, pero el build real del frontend las toma desde Vercel.
+
+### Checklist rapida
+
+Vercel:
+
+- `VITE_API_URL`
+- `VITE_SOCKET_URL`
+- `VITE_CLERK_JWT_TEMPLATE` solo si usas template
+- `VITE_CLERK_IS_SATELLITE` solo si usas satellite
+- `VITE_CLERK_DOMAIN` solo si usas satellite
+- `VITE_CLERK_PRIMARY_ORIGIN` solo si usas satellite
+- `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`
+- `NEXT_PUBLIC_CLERK_SIGN_IN_URL`
+- `NEXT_PUBLIC_CLERK_SIGN_UP_URL`
+- `NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL`
+- `NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL`
+
+VPS `.env.production`:
+
+- `NODE_ENV`
+- `API_PORT`
+- `PORT`
+- `MONGODB_URI`
+- `CORS_ORIGIN`
+- `CLERK_SECRET_KEY`
+- `CLERK_API_URL`
+- `CLERK_AUTHORIZED_PARTIES`
+- `CLERK_USE_STATIC_JWT_KEY`
+- `CLERK_JWT_KEY` solo si decides usar modo estático
+- `GOOGLE_*` si aplica
+- `SMTP_*` o `RESEND_*` si aplica
+
+### Variables detectadas hoy
+
+Frontend para Vercel:
+
+- `VITE_API_URL`
+- `VITE_SOCKET_URL`
+- `VITE_APP_NAME`
+- `VITE_CHAT_PROVIDER`
+- `VITE_GOOGLE_CALENDAR_ENABLED`
+- `VITE_USE_LOCAL_STORAGE`
+- `VITE_CLERK_JWT_TEMPLATE` solo si usas template
+- `VITE_CLERK_IS_SATELLITE` solo si usas satellite
+- `VITE_CLERK_DOMAIN` solo si usas satellite
+- `VITE_CLERK_PRIMARY_ORIGIN` solo si usas satellite
+- `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`
+- `NEXT_PUBLIC_CLERK_SIGN_IN_URL`
+- `NEXT_PUBLIC_CLERK_SIGN_UP_URL`
+- `NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL`
+- `NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL`
+- `NEXT_PUBLIC_CONTACT_EMAIL` solo si el frontend lo usa visualmente
+
+Backend solo en VPS o Docker:
+
+- `NODE_ENV`
+- `API_PORT`
+- `PORT`
+- `MONGODB_URI`
+- `MONGODB_DB`
+- `CORS_ORIGIN`
+- `CLERK_SECRET_KEY`
+- `CLERK_API_URL`
+- `CLERK_AUTHORIZED_PARTIES`
+- `CLERK_USE_STATIC_JWT_KEY`
+- `CLERK_JWT_KEY` solo si decides usar modo estático
+- `CLERK_ISSUER` solo si tu validación futura la usa
+- `CLERK_JWKS_URI` solo si tu validación futura la usa
+- `CLERK_WEBHOOK_SECRET` solo si procesas webhooks
+- `GOOGLE_CLIENT_ID`
+- `GOOGLE_CLIENT_SECRET`
+- `GOOGLE_REFRESH_TOKEN`
+- `GOOGLE_REDIRECT_URI`
+- `GOOGLE_CALLBACK_URL`
+- `GOOGLE_CALENDAR_ID`
+- `GOOGLE_DRIVE_ROOT_FOLDER_ID`
+- `MAIL_PROVIDER`
+- `MAIL_FROM`
+- `RESEND_API_KEY`
+- `GMAIL_CLIENT_ID`
+- `GMAIL_CLIENT_SECRET`
+- `GMAIL_REFRESH_TOKEN`
+- `COMMUNICATIONS_WEBHOOK_URL`
+- `COMMUNICATIONS_WEBHOOK_TOKEN`
+- `RESEND_FROM_EMAIL`
+- `SMTP_HOST`
+- `SMTP_PORT`
+- `SMTP_USER`
+- `SMTP_PASS`
+- `CONTACT_EMAIL`
+
+Variables que puedes tener en ambos lados como referencia, pero con usos distintos:
+
+- `NEXT_PUBLIC_*` y `VITE_*` en Vercel para compilar frontend.
+- Algunas de esas mismas claves pueden existir en `.env.production` local del repo como referencia operativa, pero no son las que usa Vercel en producción.
 
 ## 2. Levantar API + Mongo
 
@@ -41,8 +159,14 @@ Verificaciones:
 
 ```bash
 docker compose --env-file .env.production -f docker-compose.api.yml ps
-curl http://127.0.0.1:3000/api/iso/bootstrap
+curl http://127.0.0.1:3000/api/health
 ```
+
+Para el modulo `Communications`:
+
+- `Resend` es el provider recomendado para esta app.
+- `Gmail API` funciona como alternativa, pero requiere OAuth y mas cuidado operacional.
+- Si usas backend propio, carga `COMMUNICATIONS_WEBHOOK_URL` y opcionalmente `COMMUNICATIONS_WEBHOOK_TOKEN`.
 
 ## 2.1 Actualizaciones futuras con un comando
 
@@ -101,7 +225,7 @@ sudo certbot --nginx -d api-iso.servasmar.cl
 Luego prueba:
 
 ```bash
-curl https://api-iso.servasmar.cl/api/iso/bootstrap
+curl https://api-iso.servasmar.cl/api/health
 ```
 
 ## 5. DNS en Vercel
@@ -115,6 +239,6 @@ En la zona DNS de `servasmar.cl` crea:
 
 - `Socket.IO` usa el mismo host del backend, asi que `VITE_SOCKET_URL` debe quedar sin `/api`.
 - Si mas adelante quieres aceptar previews de Vercel en el backend, agrega origins separados por coma en `CORS_ORIGIN`.
-- Hoy el backend usa `PORT`, `MONGODB_URI`, `CORS_ORIGIN`, `CLERK_SECRET_KEY`, `CLERK_JWT_KEY` y `CLERK_API_URL` para la autenticación con Clerk.
+- Hoy el backend usa `PORT`, `MONGODB_URI`, `CORS_ORIGIN`, `CLERK_SECRET_KEY`, `CLERK_API_URL`, `CLERK_AUTHORIZED_PARTIES`, `CLERK_USE_STATIC_JWT_KEY` y opcionalmente `CLERK_JWT_KEY` para la autenticación con Clerk.
 - El frontend compila en build time, asi que sus variables se cargan en Vercel, no en el servidor Docker.
 - Si Cloudflare queda delante del frontend y del API, deja `VITE_API_URL` y `VITE_SOCKET_URL` con esas URLs públicas; el token de Clerk viaja al API y al socket como bearer/auth token.

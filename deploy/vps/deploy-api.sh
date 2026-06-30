@@ -28,6 +28,10 @@ ssh -i "${SSH_KEY_PATH}" -o StrictHostKeyChecking=accept-new "${REMOTE_HOST}" "
   mkdir -p '${REMOTE_DIR}'
   cd '${REMOTE_DIR}'
   tar xzf '/root/${APP_NAME}.tgz'
+  if [ ! -f '.env.production' ]; then
+    echo 'Missing .env.production in ${REMOTE_DIR}. Copy .env.production.example and fill production secrets before deploying.' >&2
+    exit 1
+  fi
   docker compose --env-file .env.production -f docker-compose.api.yml up -d --build
   docker compose --env-file .env.production -f docker-compose.api.yml ps
 "

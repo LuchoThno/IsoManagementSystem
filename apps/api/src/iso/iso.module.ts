@@ -4,6 +4,7 @@ import { ChatGateway } from './chat.gateway';
 import { ClerkAuthGuard } from './clerk-auth.guard';
 import { ClerkAuthService } from './clerk-auth.service';
 import { ClerkDirectoryService } from './clerk-directory.service';
+import { EmailDeliveryService } from './email-delivery.service';
 import { GoogleCalendarService } from './google-calendar.service';
 import { IsoController } from './iso.controller';
 import { IsoService } from './iso.service';
@@ -32,6 +33,7 @@ import { TaskEntity, TaskSchema } from './schemas/task.schema';
     IsoService,
     ChatGateway,
     GoogleCalendarService,
+    EmailDeliveryService,
     ClerkAuthService,
     ClerkAuthGuard,
     ClerkDirectoryService,

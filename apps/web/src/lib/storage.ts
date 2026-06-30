@@ -180,7 +180,10 @@ const mergeWithSeed = (rawData: Partial<PersistedISOData>): PersistedISOData => 
         ...rawData.notifications?.desktop,
       },
     },
-    communicationSettings: rawData.communicationSettings ?? seed.communicationSettings,
+    communicationSettings: {
+      ...seed.communicationSettings,
+      ...rawData.communicationSettings,
+    },
   };
 };
 
@@ -697,6 +700,8 @@ export async function sendBulkTaskReminderCampaign(payload: {
   templateId: string;
   daysAhead: number;
   recipientIds: string[];
+  recipientNames?: string[];
+  recipientEmails?: string[];
 }): Promise<EmailCampaign> {
   const data = getStorage();
   const template = data.emailTemplates.map(toEmailTemplate).find((item) => item.id === payload.templateId);
@@ -748,6 +753,9 @@ export async function sendBulkTaskReminderCampaign(payload: {
     taskCount: matchingTasks.length,
     daysAhead: payload.daysAhead,
     status: 'sent',
+    deliveryProvider: data.communicationSettings.providerType,
+    deliveryReference: null,
+    errorMessage: null,
     createdAt: new Date(),
     sentAt: new Date(),
   };

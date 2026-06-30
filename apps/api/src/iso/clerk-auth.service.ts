@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { createClerkClient, verifyToken } from '@clerk/backend';
 import type { ClerkSessionIdentity } from './clerk.types';
 
@@ -10,10 +10,12 @@ type RequestLike = {
 
 @Injectable()
 export class ClerkAuthService {
+  private readonly logger = new Logger(ClerkAuthService.name);
   private readonly secretKey = process.env.CLERK_SECRET_KEY?.trim() || '';
   private readonly apiUrl = process.env.CLERK_API_URL?.trim() || 'https://api.clerk.com';
   private readonly jwtKey = process.env.CLERK_JWT_KEY?.trim() || undefined;
-  private readonly authorizedParties = (process.env.CORS_ORIGIN ?? '')
+  private readonly useStaticJwtKey = process.env.CLERK_USE_STATIC_JWT_KEY?.trim() === 'true';
+  private readonly authorizedParties = (process.env.CLERK_AUTHORIZED_PARTIES ?? '')
     .split(',')
     .map((origin) => origin.trim())
     .filter(Boolean);
@@ -49,10 +51,21 @@ export class ClerkAuthService {
     const payload = await verifyToken(token, {
       secretKey: this.secretKey,
       apiUrl: this.apiUrl,
-      jwtKey: this.jwtKey,
+      ...(this.useStaticJwtKey && this.jwtKey ? { jwtKey: this.jwtKey } : {}),
       authorizedParties: this.authorizedParties.length ? this.authorizedParties : undefined,
-    }).catch(() => {
-      throw new UnauthorizedException('El token de Clerk no es válido para esta aplicación.');
+    }).catch((error: unknown) => {
+      const message = error instanceof Error ? error.message : 'unknown verification error';
+      const configuredParties = this.authorizedParties.length
+        ? this.authorizedParties.join(', ')
+        : 'not configured';
+
+      this.logger.warn(
+        `Clerk token rejected. apiUrl=${this.apiUrl} jwtKeyMode=${this.useStaticJwtKey ? 'static' : 'dynamic'} jwtKey=${this.jwtKey ? 'configured' : 'missing'} authorizedParties=${configuredParties} reason=${message}`
+      );
+
+      throw new UnauthorizedException(
+        'El token de Clerk no es válido para esta aplicación o su configuración de backend.'
+      );
     });
 
     if (!payload?.sub) {

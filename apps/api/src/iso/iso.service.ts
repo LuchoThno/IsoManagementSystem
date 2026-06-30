@@ -1,9 +1,16 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+  OnModuleInit,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Audit, Finding } from './schemas/audit.schema';
 import { ChatThreadEntity } from './schemas/chat-thread.schema';
 import { DocumentEntity } from './schemas/document.schema';
+import { EmailDeliveryService } from './email-delivery.service';
 import { EmailCampaignEntity } from './schemas/email-campaign.schema';
 import { EmailTemplateEntity } from './schemas/email-template.schema';
 import { SettingsEntity } from './schemas/settings.schema';
@@ -38,7 +45,8 @@ export class IsoService implements OnModuleInit {
     @InjectModel(EmailCampaignEntity.name)
     private readonly emailCampaignModel: Model<EmailCampaignEntity>,
     @InjectModel(SettingsEntity.name)
-    private readonly settingsModel: Model<SettingsEntity>
+    private readonly settingsModel: Model<SettingsEntity>,
+    private readonly emailDeliveryService: EmailDeliveryService
   ) {}
 
   async onModuleInit() {
@@ -88,7 +96,7 @@ export class IsoService implements OnModuleInit {
       notifications: this.normalizeNotifications(settings.notifications),
       emailTemplates: emailTemplates.map((template) => this.serializeEmailTemplate(template)),
       emailCampaigns: emailCampaigns.map((campaign) => this.serializeEmailCampaign(campaign)),
-      communicationSettings: settings.communicationSettings,
+      communicationSettings: this.normalizeCommunicationSettings(settings.communicationSettings),
     };
   }
 
@@ -133,6 +141,7 @@ export class IsoService implements OnModuleInit {
     daysAhead: number;
     recipientIds: string[];
     recipientNames: string[];
+    recipientEmails: string[];
   }) {
     const template = await this.emailTemplateModel.findById(payload.templateId).lean();
     if (!template) {
@@ -177,22 +186,60 @@ export class IsoService implements OnModuleInit {
       }
     );
 
-    const campaign = await this.emailCampaignModel.create({
-      name: payload.name,
-      templateId: String(template._id),
-      templateName: template.name,
-      subject: rendered.subject,
-      body: rendered.body,
-      recipientIds: payload.recipientIds,
-      recipientCount: payload.recipientIds.length,
-      taskIds: matchingTasks.map((task) => String(task._id)),
-      taskCount: matchingTasks.length,
-      daysAhead: payload.daysAhead,
-      status: 'sent',
-      sentAt: new Date(),
-    });
+    try {
+      const delivery = await this.emailDeliveryService.sendEmail({
+        settings: settings.communicationSettings,
+        recipients: payload.recipientEmails,
+        subject: rendered.subject,
+        html: rendered.body,
+      });
 
-    return this.serializeEmailCampaign(campaign.toObject());
+      const campaign = await this.emailCampaignModel.create({
+        name: payload.name,
+        templateId: String(template._id),
+        templateName: template.name,
+        subject: rendered.subject,
+        body: rendered.body,
+        recipientIds: payload.recipientIds,
+        recipientCount: payload.recipientIds.length,
+        taskIds: matchingTasks.map((task) => String(task._id)),
+        taskCount: matchingTasks.length,
+        daysAhead: payload.daysAhead,
+        status: 'sent',
+        deliveryProvider: delivery.provider,
+        deliveryReference: delivery.reference,
+        errorMessage: null,
+        sentAt: new Date(),
+      });
+
+      return this.serializeEmailCampaign(campaign.toObject());
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Error desconocido al enviar';
+      const failedCampaign = await this.emailCampaignModel.create({
+        name: payload.name,
+        templateId: String(template._id),
+        templateName: template.name,
+        subject: rendered.subject,
+        body: rendered.body,
+        recipientIds: payload.recipientIds,
+        recipientCount: payload.recipientIds.length,
+        taskIds: matchingTasks.map((task) => String(task._id)),
+        taskCount: matchingTasks.length,
+        daysAhead: payload.daysAhead,
+        status: 'failed',
+        deliveryProvider: settings.communicationSettings.providerType || 'custom',
+        deliveryReference: null,
+        errorMessage: message,
+        sentAt: null,
+      });
+
+      return this.serializeEmailCampaign(failedCampaign.toObject());
+    }
+  }
+
+  async getCommunicationCompatibility() {
+    const settings = await this.getSettingsDocument();
+    return this.emailDeliveryService.getCompatibility(settings.communicationSettings);
   }
 
   async getChatThreads(userId: string) {
@@ -210,7 +257,7 @@ export class IsoService implements OnModuleInit {
     ).sort();
 
     if (uniqueParticipants.length < 2) {
-      throw new Error('At least two participants are required');
+      throw new BadRequestException('At least two participants are required');
     }
 
     const existingThreads = await this.chatThreadModel
@@ -246,13 +293,20 @@ export class IsoService implements OnModuleInit {
     const thread = await this.chatThreadModel.findById(threadId);
 
     if (!thread) {
-      throw new Error('Conversation not found');
+      throw new NotFoundException('Conversation not found');
+    }
+
+    this.assertThreadParticipant(thread.participantIds, authorId);
+
+    const normalizedContent = content.trim();
+    if (!normalizedContent) {
+      throw new BadRequestException('Message content is required');
     }
 
     const nextMessage = {
       id: this.makeId('msg'),
       authorId,
-      content: content.trim(),
+      content: normalizedContent,
       createdAt: new Date(),
       readBy: [authorId],
     };
@@ -268,8 +322,10 @@ export class IsoService implements OnModuleInit {
     const thread = await this.chatThreadModel.findById(threadId);
 
     if (!thread) {
-      throw new Error('Conversation not found');
+      throw new NotFoundException('Conversation not found');
     }
+
+    this.assertThreadParticipant(thread.participantIds, userId);
 
     thread.messages = (thread.messages ?? []).map((message) => ({
       ...message,
@@ -596,7 +652,8 @@ export class IsoService implements OnModuleInit {
     communicationSettings: SettingsEntity['communicationSettings']
   ) {
     const current = await this.getSettingsDocument();
-    current.communicationSettings = communicationSettings;
+    current.communicationSettings = this.normalizeCommunicationSettings(communicationSettings);
+    current.markModified('communicationSettings');
     await current.save();
 
     return current.communicationSettings;
@@ -636,6 +693,7 @@ export class IsoService implements OnModuleInit {
         },
         communicationSettings: {
           enabled: true,
+          providerType: 'custom',
           providerName: 'Proveedor SMTP',
           senderName: 'Sistema ISO',
           senderEmail: 'notificaciones@servasmar.cl',
@@ -647,9 +705,27 @@ export class IsoService implements OnModuleInit {
     }
 
     const normalizedNotifications = this.normalizeNotifications(settings.notifications);
+    const normalizedCommunicationSettings = this.normalizeCommunicationSettings(
+      settings.communicationSettings
+    );
+    let shouldSave = false;
+
     if (JSON.stringify(settings.notifications) !== JSON.stringify(normalizedNotifications)) {
       settings.notifications = normalizedNotifications;
       settings.markModified('notifications');
+      shouldSave = true;
+    }
+
+    if (
+      JSON.stringify(settings.communicationSettings) !==
+      JSON.stringify(normalizedCommunicationSettings)
+    ) {
+      settings.communicationSettings = normalizedCommunicationSettings;
+      settings.markModified('communicationSettings');
+      shouldSave = true;
+    }
+
+    if (shouldSave) {
       await settings.save();
     }
 
@@ -677,6 +753,22 @@ export class IsoService implements OnModuleInit {
         chatMessages: notifications?.desktop?.chatMessages ?? true,
         connectionAlerts: notifications?.desktop?.connectionAlerts ?? true,
       },
+    };
+  }
+
+  private normalizeCommunicationSettings(
+    communicationSettings: Partial<SettingsEntity['communicationSettings']> | undefined
+  ): SettingsEntity['communicationSettings'] {
+    return {
+      enabled: communicationSettings?.enabled ?? true,
+      providerType: communicationSettings?.providerType ?? 'custom',
+      providerName: communicationSettings?.providerName ?? 'Proveedor SMTP',
+      senderName: communicationSettings?.senderName ?? 'Sistema ISO',
+      senderEmail: communicationSettings?.senderEmail ?? 'notificaciones@servasmar.cl',
+      replyTo: communicationSettings?.replyTo ?? 'calidad@servasmar.cl',
+      apiBaseUrl:
+        communicationSettings?.apiBaseUrl ?? 'https://api.servasmar.cl/communications/send',
+      apiKeyHint: communicationSettings?.apiKeyHint ?? 'configurado-en-servidor',
     };
   }
 
@@ -1003,7 +1095,10 @@ export class IsoService implements OnModuleInit {
     taskIds: string[];
     taskCount: number;
     daysAhead: number;
-    status: 'draft' | 'sent';
+    status: 'draft' | 'sent' | 'failed';
+    deliveryProvider?: string;
+    deliveryReference?: string | null;
+    errorMessage?: string | null;
     createdAt?: Date | string;
     sentAt?: Date | string | null;
   }) {
@@ -1020,6 +1115,9 @@ export class IsoService implements OnModuleInit {
       taskCount: campaign.taskCount,
       daysAhead: campaign.daysAhead,
       status: campaign.status,
+      deliveryProvider: campaign.deliveryProvider ?? 'custom',
+      deliveryReference: campaign.deliveryReference ?? null,
+      errorMessage: campaign.errorMessage ?? null,
       createdAt: new Date(campaign.createdAt ?? Date.now()).toISOString(),
       sentAt: campaign.sentAt ? new Date(campaign.sentAt).toISOString() : null,
     };
@@ -1176,5 +1274,11 @@ export class IsoService implements OnModuleInit {
         },
       ],
     };
+  }
+
+  private assertThreadParticipant(participantIds: string[] | undefined, userId: string) {
+    if (!(participantIds ?? []).includes(userId)) {
+      throw new ForbiddenException('You are not allowed to access this conversation');
+    }
   }
 }

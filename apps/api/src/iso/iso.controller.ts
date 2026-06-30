@@ -6,7 +6,6 @@ import { ClerkDirectoryService } from './clerk-directory.service';
 import { GoogleCalendarService } from './google-calendar.service';
 import { IsoService } from './iso.service';
 import type { ClerkSessionIdentity } from './clerk.types';
-import { Public } from './public.decorator';
 
 @Controller('iso')
 @UseGuards(ClerkAuthGuard)
@@ -34,7 +33,6 @@ export class IsoController {
   }
 
   @Get('bootstrap')
-  @Public()
   getBootstrap() {
     return this.isoService.getBootstrap();
   }
@@ -42,6 +40,11 @@ export class IsoController {
   @Get('calendar/status')
   getCalendarStatus() {
     return this.googleCalendarService.getStatus();
+  }
+
+  @Get('communications/compatibility')
+  getCommunicationCompatibility() {
+    return this.isoService.getCommunicationCompatibility();
   }
 
   @Get('users/clerk')
@@ -320,6 +323,7 @@ export class IsoController {
     @Body()
     body: {
       enabled: boolean;
+      providerType: 'resend' | 'gmail' | 'custom';
       providerName: string;
       senderName: string;
       senderEmail: string;
@@ -370,6 +374,7 @@ export class IsoController {
       daysAhead: number;
       recipientIds: string[];
       recipientNames: string[];
+      recipientEmails: string[];
     }
   ) {
     return this.isoService.sendBulkTaskReminderCampaign(body);

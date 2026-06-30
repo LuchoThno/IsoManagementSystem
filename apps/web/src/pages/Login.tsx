@@ -19,6 +19,12 @@ export const Login: React.FC = () => {
   const [loading, setLoading] = React.useState(false);
 
   const { isSignedIn } = useUser();
+  const loginBackdropStyle = {
+    backgroundImage:
+      "linear-gradient(135deg, rgba(11,15,25,0.78) 0%, rgba(15,23,42,0.68) 32%, rgba(30,41,59,0.56) 100%), url('/login_iso.png')",
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
+  } satisfies React.CSSProperties;
 
   React.useEffect(() => {
     if (!initialized && !isClerkEnabled) {
@@ -47,32 +53,44 @@ export const Login: React.FC = () => {
 
   if (isClerkEnabled) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#eef2f7] px-4">
-        <div className="grid w-full max-w-6xl overflow-hidden rounded-3xl bg-white shadow-2xl lg:grid-cols-[1.05fr_0.95fr]">
-          <div className="hidden bg-[#313a46] p-10 text-white lg:block">
+      <div
+        className="flex min-h-screen items-center justify-center px-4 py-8"
+        style={loginBackdropStyle}
+      >
+        <div className="grid w-full max-w-6xl overflow-hidden rounded-[36px] border border-white/15 bg-white/92 shadow-2xl backdrop-blur lg:grid-cols-[1.1fr_0.9fr]">
+          <div className="hidden px-10 py-12 text-white lg:block" style={loginBackdropStyle}>
             <BrandLockup inverse />
-            <h1 className="mt-4 text-4xl font-extrabold">Acceso corporativo Servasmar</h1>
-            <p className="mt-4 max-w-md text-white/75">
-              Inicia sesión con Clerk usando la misma base de identidad del CRM de Servasmar para entrar al panel ISO.
+            <h1 className="mt-6 max-w-lg text-4xl font-extrabold leading-tight">
+              Acceso corporativo con identidad visual ISO unificada
+            </h1>
+            <p className="mt-4 max-w-md text-white/80">
+              Inicia sesión con Clerk usando la misma base de identidad del ecosistema Servasmar
+              para entrar al panel ISO con una experiencia consistente y segura.
             </p>
-            <div className="mt-10 rounded-2xl bg-white/5 p-5">
+            <div className="mt-10 max-w-md rounded-[28px] border border-white/15 bg-white/10 p-5 backdrop-blur">
               <div className="flex items-center gap-3">
-                <ShieldCheck className="h-5 w-5 text-[#0acf97]" />
+                <ShieldCheck className="h-5 w-5 text-[#7dd3fc]" />
                 <p className="font-bold">Inicio de sesión centralizado</p>
               </div>
-              <p className="mt-3 text-sm text-white/80">
-                Si tu cuenta ya existe en el ecosistema Servasmar, Clerk la reutilizará aquí y sincronizará tu perfil al entorno ISO.
+              <p className="mt-3 text-sm leading-6 text-white/80">
+                Si tu cuenta ya existe en el ecosistema Servasmar, Clerk la reutilizará aquí y
+                sincronizará tu perfil al entorno ISO.
               </p>
             </div>
           </div>
 
-          <div className="flex items-center justify-center p-6 md:p-10">
-            <SignIn
-              path={clerkSignInPath}
-              routing="path"
-              signUpUrl={clerkSignUpPath}
-              fallbackRedirectUrl={clerkAfterSignInUrl}
-            />
+          <div className="flex items-center justify-center bg-white/88 p-6 md:p-10">
+            <div className="w-full max-w-md">
+              <div className="mb-6 lg:hidden">
+                <BrandLockup />
+              </div>
+              <SignIn
+                path={clerkSignInPath}
+                routing="path"
+                signUpUrl={clerkSignUpPath}
+                fallbackRedirectUrl={clerkAfterSignInUrl}
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -80,27 +98,36 @@ export const Login: React.FC = () => {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#eef2f7] px-4">
-      <div className="grid w-full max-w-5xl overflow-hidden rounded-3xl bg-white shadow-2xl lg:grid-cols-[1.1fr_0.9fr]">
-        <div className="hidden bg-[#313a46] p-10 text-white lg:block">
+    <div
+      className="flex min-h-screen items-center justify-center px-4 py-8"
+      style={loginBackdropStyle}
+    >
+      <div className="grid w-full max-w-5xl overflow-hidden rounded-[36px] border border-white/15 bg-white/92 shadow-2xl backdrop-blur lg:grid-cols-[1.1fr_0.9fr]">
+        <div className="hidden px-10 py-12 text-white lg:block" style={loginBackdropStyle}>
           <BrandLockup inverse />
-          <h1 className="mt-4 text-4xl font-extrabold">Acceso al panel ISO</h1>
-          <p className="mt-4 max-w-md text-white/75">
-            Inicia sesión para administrar documentos, tareas, auditorías, usuarios y configuración del sistema.
+          <h1 className="mt-6 max-w-lg text-4xl font-extrabold leading-tight">
+            Acceso al panel ISO con una experiencia visual más sólida
+          </h1>
+          <p className="mt-4 max-w-md text-white/80">
+            Inicia sesión para administrar documentos, tareas, auditorías, usuarios y
+            configuración del sistema en una interfaz alineada con la identidad ISO.
           </p>
-          <div className="mt-10 rounded-2xl bg-white/5 p-5">
+          <div className="mt-10 max-w-md rounded-[28px] border border-white/15 bg-white/10 p-5 backdrop-blur">
             <div className="flex items-center gap-3">
-              <ShieldCheck className="h-5 w-5 text-[#0acf97]" />
+              <ShieldCheck className="h-5 w-5 text-[#7dd3fc]" />
               <p className="font-bold">Acceso local</p>
             </div>
-            <p className="mt-3 text-sm text-white/80">
+            <p className="mt-3 text-sm leading-6 text-white/80">
               Usa las credenciales configuradas para este entorno cuando el acceso local esté habilitado.
             </p>
           </div>
         </div>
 
-        <div className="p-8 md:p-10">
+        <div className="bg-white/88 p-8 md:p-10">
           <div className="mx-auto max-w-md">
+            <div className="mb-6 lg:hidden">
+              <BrandLockup />
+            </div>
             <p className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-400">
               Bienvenido
             </p>

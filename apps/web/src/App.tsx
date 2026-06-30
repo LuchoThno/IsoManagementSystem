@@ -15,7 +15,12 @@ import { SettingsGeneral } from './pages/settings/SettingsGeneral';
 import { SettingsNotifications } from './pages/settings/SettingsNotifications';
 import { SettingsUsers } from './pages/settings/SettingsUsers';
 import { Login } from './pages/Login';
-import { clerkSignInPath, isClerkEnabled, resolveClerkRole } from './lib/clerk';
+import {
+  clerkJwtTemplate,
+  clerkSignInPath,
+  isClerkEnabled,
+  resolveClerkRole,
+} from './lib/clerk';
 import { syncExternalUserSession } from './lib/api';
 import { fetchCurrentClerkUser } from './lib/clerkDirectoryApi';
 import { registerClerkTokenProvider } from './lib/clerkSession';
@@ -62,7 +67,9 @@ const ClerkSessionSync: React.FC = () => {
       return;
     }
 
-    registerClerkTokenProvider(() => getToken());
+    registerClerkTokenProvider(() =>
+      clerkJwtTemplate ? getToken({ template: clerkJwtTemplate }) : getToken()
+    );
 
     return () => {
       registerClerkTokenProvider(null);

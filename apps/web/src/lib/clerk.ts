@@ -13,15 +13,12 @@ const rawPublishableKey =
   import.meta.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ||
   '';
 
-const getCurrentHostname = () =>
-  typeof window === 'undefined' ? '' : window.location.hostname;
-
 const getCurrentOrigin = () =>
   typeof window === 'undefined' ? '' : window.location.origin;
 
-const isIsoSatelliteHost = () => getCurrentHostname() === 'iso.servasmar.cl';
-const getClerkPrimaryOrigin = () =>
-  import.meta.env.VITE_CLERK_PRIMARY_ORIGIN?.trim() || 'https://servasmar.cl';
+const rawClerkPrimaryOrigin = import.meta.env.VITE_CLERK_PRIMARY_ORIGIN?.trim() || '';
+const rawClerkDomain = import.meta.env.VITE_CLERK_DOMAIN?.trim() || '';
+const rawClerkIsSatellite = import.meta.env.VITE_CLERK_IS_SATELLITE?.trim() || '';
 
 const toAbsoluteUrl = (path: string, originOverride?: string) => {
   const origin = originOverride || getCurrentOrigin();
@@ -30,8 +27,8 @@ const toAbsoluteUrl = (path: string, originOverride?: string) => {
 
 export const isClerkEnabled = rawPublishableKey.trim().length > 0;
 export const clerkPublishableKey = rawPublishableKey.trim();
-export const clerkDomain = import.meta.env.VITE_CLERK_DOMAIN?.trim() || 'servasmar.cl';
-export const clerkIsSatellite = isIsoSatelliteHost();
+export const clerkDomain = rawClerkDomain || undefined;
+export const clerkIsSatellite = rawClerkIsSatellite === 'true';
 const normalizedSignInPath = normalizePath(
   import.meta.env.VITE_CLERK_SIGN_IN_URL || import.meta.env.NEXT_PUBLIC_CLERK_SIGN_IN_URL,
   '/sign-in'
@@ -43,10 +40,10 @@ const normalizedSignUpPath = normalizePath(
 export const clerkSignInPath = normalizedSignInPath;
 export const clerkSignUpPath = normalizedSignUpPath;
 export const clerkSignInUrl = clerkIsSatellite
-  ? toAbsoluteUrl(normalizedSignInPath, getClerkPrimaryOrigin())
+  ? toAbsoluteUrl(normalizedSignInPath, rawClerkPrimaryOrigin || undefined)
   : normalizedSignInPath;
 export const clerkSignUpUrl = clerkIsSatellite
-  ? toAbsoluteUrl(normalizedSignUpPath, getClerkPrimaryOrigin())
+  ? toAbsoluteUrl(normalizedSignUpPath, rawClerkPrimaryOrigin || undefined)
   : normalizedSignUpPath;
 export const clerkAfterSignInUrl = normalizePath(
   import.meta.env.VITE_CLERK_AFTER_SIGN_IN_URL ||
@@ -58,6 +55,7 @@ export const clerkAfterSignUpUrl = normalizePath(
     import.meta.env.NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL,
   clerkAfterSignInUrl
 );
+export const clerkJwtTemplate = import.meta.env.VITE_CLERK_JWT_TEMPLATE?.trim() || '';
 
 const supportedRoles = new Set<UserRole>(['admin', 'manager', 'auditor', 'viewer']);
 

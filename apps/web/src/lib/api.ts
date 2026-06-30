@@ -21,7 +21,11 @@ import {
 import { requestIsoApi } from './isoApiClient';
 import * as storage from './storage';
 import { createTaskApi, deleteTaskApi, updateTaskApi, updateTaskStatusApi } from './tasksApi';
-import type { ISOBootstrapData, UserAccount } from '../types/iso';
+import type {
+  CommunicationCompatibility,
+  ISOBootstrapData,
+  UserAccount,
+} from '../types/iso';
 import type {
   Alert,
   Audit,
@@ -79,7 +83,9 @@ type ApiBootstrap = {
   settings: Settings;
   notifications: NotificationSettings;
   emailTemplates: Array<Omit<EmailTemplate, 'createdAt' | 'updatedAt'> & { createdAt: string; updatedAt: string }>;
-  emailCampaigns: Array<Omit<EmailCampaign, 'createdAt' | 'sentAt'> & { createdAt: string; sentAt: string | null }>;
+  emailCampaigns: Array<
+    Omit<EmailCampaign, 'createdAt' | 'sentAt'> & { createdAt: string; sentAt: string | null }
+  >;
   communicationSettings: ISOBootstrapData['communicationSettings'];
 };
 
@@ -115,6 +121,10 @@ const mergeDirectoryUsers = (
 };
 
 export async function fetchBootstrap(): Promise<ISOBootstrapData> {
+  if (!isClerkEnabled) {
+    return storage.fetchBootstrap();
+  }
+
   const [bootstrap, localBootstrap] = await Promise.all([
     requestIsoApi<ApiBootstrap>('/bootstrap'),
     storage.fetchBootstrap(),
@@ -238,11 +248,22 @@ export const sendBulkTaskReminderCampaign = (payload: {
   daysAhead: number;
   recipientIds: string[];
   recipientNames: string[];
+  recipientEmails: string[];
 }) =>
   requestIsoApi<EmailCampaign>('/communications/campaigns/send', {
     method: 'POST',
     body: JSON.stringify(payload),
   });
+export const fetchCommunicationCompatibility = async (): Promise<CommunicationCompatibility> => {
+  const response = await requestIsoApi<
+    Omit<CommunicationCompatibility, 'checkedAt'> & { checkedAt: string }
+  >('/communications/compatibility');
+
+  return {
+    ...response,
+    checkedAt: new Date(response.checkedAt),
+  };
+};
 export const sendChatMessage = sendChatMessageApi;
 export const syncExternalUserSession = storage.syncExternalUserSession;
 export const updateAudit = updateAuditApi;

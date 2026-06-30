@@ -1,11 +1,11 @@
 import React from 'react';
 import {
-  CalendarDays,
+  CheckCircle2,
   Layers3,
   MailCheck,
-  MessageSquareShare,
   Pencil,
   Send,
+  ShieldAlert,
   Sparkles,
   Trash2,
   Upload,
@@ -16,12 +16,19 @@ import {
   createEmailTemplate,
   deleteEmailTemplate,
   fetchBootstrap,
+  fetchCommunicationCompatibility,
   sendBulkTaskReminderCampaign,
   updateCommunicationSettings,
   updateEmailTemplate,
 } from '../lib/api';
 import { useISOStore } from '../store/useISOStore';
-import type { CommunicationSettings, EmailTemplate, UserRole } from '../types/iso';
+import type {
+  CommunicationCompatibility,
+  CommunicationProviderType,
+  CommunicationSettings,
+  EmailTemplate,
+  UserRole,
+} from '../types/iso';
 
 type DeliveryMode = 'personal' | 'group' | 'massive';
 
@@ -31,7 +38,7 @@ const baseEmailModel = {
   content: `<div style="font-family:Arial,sans-serif;color:#1e293b;line-height:1.6">
   <p style="font-size:13px;text-transform:uppercase;letter-spacing:.12em;color:#64748b;margin:0 0 12px">Comunicado operativo</p>
   <h1 style="font-size:24px;margin:0 0 16px">Hola {{userName}},</h1>
-  <p>Tienes <strong>{{taskCount}}</strong> tarea(s) con vencimiento dentro de los próximos <strong>{{daysAhead}}</strong> días.</p>
+  <p>Tienes <strong>{{taskCount}}</strong> tarea(s) con vencimiento dentro de los proximos <strong>{{daysAhead}}</strong> dias.</p>
   <p>{{dueSummary}}</p>
   <div style="margin:20px 0;padding:20px;border:1px solid #e2e8f0;border-radius:18px;background:#f8fafc">
     {{taskTable}}
@@ -41,37 +48,61 @@ const baseEmailModel = {
 </div>`,
 };
 
-const integrationCards = [
+const providerCards: Array<{
+  type: CommunicationProviderType;
+  title: string;
+  subtitle: string;
+  tone: string;
+  envs: string[];
+  detail: string;
+}> = [
   {
-    title: 'Correo saliente',
-    subtitle: 'SMTP corporativo o servicio administrado',
-    icon: MailCheck,
-    tone: 'bg-[#727cf5]/10 text-[#727cf5]',
-    envs: ['MAIL_PROVIDER', 'SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', 'SMTP_PASS'],
-    detail: 'Conecta el proveedor de correo saliente que utilice la operación para despachar notificaciones.',
+    type: 'resend',
+    title: 'Resend',
+    subtitle: 'SDK oficial para Node',
+    tone: 'from-[#0f172a] via-[#1e293b] to-[#334155] text-white',
+    envs: ['RESEND_API_KEY'],
+    detail: 'Es la opcion mas directa para Vercel, VPS y despliegues dockerizados.',
   },
   {
-    title: 'Calendario',
-    subtitle: 'Google Calendar',
-    icon: CalendarDays,
-    tone: 'bg-[#39afd1]/10 text-[#39afd1]',
-    envs: [
-      'GOOGLE_CALENDAR_CLIENT_ID',
-      'GOOGLE_CALENDAR_CLIENT_SECRET',
-      'GOOGLE_CALENDAR_REFRESH_TOKEN',
-      'GOOGLE_CALENDAR_ID',
-    ],
-    detail: 'Ideal para publicar auditorías y vencimientos en un calendario compartido del equipo.',
+    type: 'gmail',
+    title: 'Gmail API',
+    subtitle: 'OAuth con googleapis',
+    tone: 'from-[#2563eb] via-[#0ea5e9] to-[#22c55e] text-white',
+    envs: ['GMAIL_CLIENT_ID', 'GMAIL_CLIENT_SECRET', 'GMAIL_REFRESH_TOKEN'],
+    detail: 'Compatible con Google Workspace, aunque su configuracion es mas sensible.',
   },
   {
-    title: 'Chat y alertas',
-    subtitle: 'Canales internos y webhooks',
-    icon: MessageSquareShare,
-    tone: 'bg-[#0acf97]/10 text-[#0acf97]',
-    envs: ['CHAT_PROVIDER', 'VITE_SOCKET_URL', 'GOOGLE_CHAT_WEBHOOK_URL'],
-    detail: 'Socket.IO cubre el chat interno en tiempo real; Google Chat puede complementar alertas externas.',
+    type: 'custom',
+    title: 'Webhook propio',
+    subtitle: 'Pasarela interna o backend existente',
+    tone: 'from-[#f97316] via-[#fb7185] to-[#f43f5e] text-white',
+    envs: ['COMMUNICATIONS_WEBHOOK_URL', 'COMMUNICATIONS_WEBHOOK_TOKEN'],
+    detail: 'Mantiene compatibilidad con un orquestador de correo externo o legado.',
   },
 ];
+
+const providerLabels: Record<CommunicationProviderType, string> = {
+  resend: 'Resend',
+  gmail: 'Gmail API',
+  custom: 'Webhook personalizado',
+};
+
+const renderTemplate = (
+  template: Pick<EmailTemplate, 'subject' | 'content'> | typeof baseEmailModel,
+  context: Record<string, string | number>
+) => {
+  const replace = (value: string) =>
+    Object.entries(context).reduce(
+      (current, [key, replacement]) => current.replaceAll(`{{${key}}}`, String(replacement)),
+      value
+    );
+
+  return {
+    subject: replace(template.subject),
+    body: replace(template.content),
+  };
+};
 
 export const Communications: React.FC = () => {
   const users = useISOStore((state) => state.users);
@@ -79,6 +110,7 @@ export const Communications: React.FC = () => {
   const templates = useISOStore((state) => state.emailTemplates);
   const campaigns = useISOStore((state) => state.emailCampaigns);
   const communicationSettings = useISOStore((state) => state.communicationSettings);
+  const settings = useISOStore((state) => state.settings);
   const hydrate = useISOStore((state) => state.hydrate);
 
   const activeUsers = React.useMemo(() => users.filter((user) => user.active), [users]);
@@ -94,6 +126,8 @@ export const Communications: React.FC = () => {
   const [deliveryMode, setDeliveryMode] = React.useState<DeliveryMode>('massive');
   const [selectedRole, setSelectedRole] = React.useState<UserRole | 'all'>('all');
   const [selectedRecipientId, setSelectedRecipientId] = React.useState<string>('');
+  const [compatibility, setCompatibility] = React.useState<CommunicationCompatibility | null>(null);
+  const [compatibilityLoading, setCompatibilityLoading] = React.useState(true);
   const [campaignForm, setCampaignForm] = React.useState({
     name: 'Comunicado de tareas por vencer',
     templateId: templates[0]?.id ?? '',
@@ -117,15 +151,37 @@ export const Communications: React.FC = () => {
     }
   }, [activeUsers, selectedRecipientId]);
 
+  React.useEffect(() => {
+    const loadCompatibility = async () => {
+      try {
+        setCompatibilityLoading(true);
+        setCompatibility(await fetchCommunicationCompatibility());
+      } finally {
+        setCompatibilityLoading(false);
+      }
+    };
+
+    void loadCompatibility();
+  }, []);
+
   const showMessage = (value: string) => {
     setMessage(value);
-    window.setTimeout(() => setMessage(''), 2500);
+    window.setTimeout(() => setMessage(''), 3000);
   };
 
   const refreshData = async (successMessage?: string) => {
     hydrate(await fetchBootstrap());
     if (successMessage) {
       showMessage(successMessage);
+    }
+  };
+
+  const refreshCompatibility = async () => {
+    setCompatibilityLoading(true);
+    try {
+      setCompatibility(await fetchCommunicationCompatibility());
+    } finally {
+      setCompatibilityLoading(false);
     }
   };
 
@@ -166,14 +222,52 @@ export const Communications: React.FC = () => {
 
   const recipientModeLabel =
     deliveryMode === 'personal'
-      ? 'Envío personalizado'
+      ? 'Envio personalizado'
       : deliveryMode === 'group'
-        ? 'Envío por grupo'
-        : 'Envío masivo';
+        ? 'Envio por grupo'
+        : 'Envio masivo';
+
+  const selectedTemplate =
+    templates.find((template) => template.id === campaignForm.templateId) ?? templates[0] ?? null;
+  const previewSource = editingTemplateId ? templateForm : selectedTemplate ?? templateForm;
+  const previewContext = React.useMemo(() => {
+    const sampleRecipient = resolvedRecipients[0];
+    const sampleTasks = dueSoonTasks
+      .filter((task) =>
+        sampleRecipient ? task.assignedTo === sampleRecipient.name : true
+      )
+      .slice(0, 4);
+
+    return {
+      companyName: settings.companyName,
+      userName: sampleRecipient?.name ?? 'Equipo ISO',
+      taskCount: sampleTasks.length,
+      daysAhead: campaignForm.daysAhead,
+      dueSummary:
+        sampleTasks.length > 0
+          ? sampleTasks.map((task) => `${task.title} (${task.assignedTo})`).join(', ')
+          : 'Sin tareas por vencer en este rango.',
+      taskTable:
+        sampleTasks.length > 0
+          ? `<ul style="padding-left:20px;margin:0">${sampleTasks
+              .map(
+                (task) =>
+                  `<li style="margin:0 0 8px"><strong>${task.title}</strong> - ${task.assignedTo} - ${task.dueDate.toLocaleDateString(
+                    'es-CL'
+                  )}</li>`
+              )
+              .join('')}</ul>`
+          : '<p style="margin:0">No hay tareas por vencer.</p>',
+    };
+  }, [campaignForm.daysAhead, dueSoonTasks, resolvedRecipients, settings.companyName]);
+
+  const previewEmail = renderTemplate(previewSource, previewContext);
+  const selectedProviderCompatibility =
+    compatibility?.providers.find((provider) => provider.selected) ?? null;
 
   const handleSaveIntegration = async () => {
     await updateCommunicationSettings(settingsForm);
-    await refreshData('Integración de comunicados actualizada.');
+    await Promise.all([refreshData('Integracion de comunicados actualizada.'), refreshCompatibility()]);
   };
 
   const handleTemplateSubmit = async (event: React.FormEvent) => {
@@ -226,92 +320,98 @@ export const Communications: React.FC = () => {
 
   const handleSendCampaign = async (event: React.FormEvent) => {
     event.preventDefault();
-    await sendBulkTaskReminderCampaign({
+    const result = await sendBulkTaskReminderCampaign({
       ...campaignForm,
       recipientNames: resolvedRecipients.map((user) => user.name),
+      recipientEmails: resolvedRecipients.map((user) => user.email),
     });
-    await refreshData(`${recipientModeLabel} enviado correctamente.`);
+
+    await refreshData(
+      result.status === 'failed'
+        ? `El envio quedo registrado como fallido: ${result.errorMessage || 'sin detalle'}`
+        : `${recipientModeLabel} enviado por ${providerLabels[settingsForm.providerType]}.`
+    );
+    await refreshCompatibility();
   };
 
   return (
     <div className="space-y-6">
-      <div className="rounded-[32px] border border-slate-200 bg-[radial-gradient(circle_at_top_left,#ffffff_0%,#f8fbff_42%,#eef4fb_100%)] p-6 shadow-sm">
-        <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
-          <div className="max-w-3xl">
+      <div className="overflow-hidden rounded-[36px] border border-slate-200 bg-[linear-gradient(135deg,#fff8ef_0%,#fffef9_30%,#eef6ff_68%,#f7fbff_100%)] shadow-sm">
+        <div className="grid gap-6 px-6 py-7 xl:grid-cols-[1.3fr_0.8fr] xl:px-8 xl:py-8">
+          <div className="relative">
+            <div className="absolute -left-10 top-8 h-24 w-24 rounded-full bg-[#fb7185]/10 blur-2xl" />
+            <div className="absolute left-40 top-0 h-28 w-28 rounded-full bg-[#38bdf8]/10 blur-2xl" />
             <p className="text-xs font-extrabold uppercase tracking-[0.22em] text-slate-400">
-              Centro de comunicados
+              Communication studio
             </p>
-            <h2 className="mt-3 text-3xl font-extrabold text-slate-700">
-              Diseña campañas listas para grupos, envíos masivos o mensajes personalizados
+            <h2 className="relative mt-3 max-w-3xl text-3xl font-extrabold leading-tight text-slate-800 xl:text-[2.55rem]">
+              Diseña correos operativos con una interfaz más editorial, más clara y lista para envío real
             </h2>
-            <p className="mt-3 text-sm leading-6 text-slate-500">
-              Este módulo está pensado para conectar correo saliente, calendario y chat de trabajo
-              desde variables de entorno claras, con una base compatible con Gmail, Google Calendar,
-              infraestructura propia o servicios administrados según la operación del equipo.
+            <p className="relative mt-4 max-w-2xl text-sm leading-6 text-slate-500 xl:text-[15px]">
+              Esta vista se centra en componer, validar y despachar mensajes sin ruido visual.
+              El proveedor se revisa contra backend real y el contenido se trabaja con una
+              experiencia más cercana a un estudio de email que a un tablero técnico.
             </p>
+            <div className="relative mt-6 flex flex-wrap gap-3">
+              <span className="rounded-full border border-white/80 bg-white/75 px-4 py-2 text-xs font-bold uppercase tracking-[0.16em] text-slate-600 shadow-sm backdrop-blur">
+                {resolvedRecipients.length} destinatarios activos
+              </span>
+              <span className="rounded-full border border-white/80 bg-white/75 px-4 py-2 text-xs font-bold uppercase tracking-[0.16em] text-slate-600 shadow-sm backdrop-blur">
+                {templates.length} plantillas listas
+              </span>
+              <span className="rounded-full border border-white/80 bg-white/75 px-4 py-2 text-xs font-bold uppercase tracking-[0.16em] text-slate-600 shadow-sm backdrop-blur">
+                Provider {providerLabels[settingsForm.providerType]}
+              </span>
+            </div>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-3">
-            <div className="rounded-2xl bg-white/80 px-4 py-4 shadow-sm ring-1 ring-slate-200/70">
-              <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Destinatarios</p>
-              <p className="mt-2 text-2xl font-extrabold text-slate-700">{resolvedRecipients.length}</p>
-            </div>
-            <div className="rounded-2xl bg-white/80 px-4 py-4 shadow-sm ring-1 ring-slate-200/70">
-              <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Plantillas</p>
-              <p className="mt-2 text-2xl font-extrabold text-slate-700">{templates.length}</p>
-            </div>
-            <div className="rounded-2xl bg-white/80 px-4 py-4 shadow-sm ring-1 ring-slate-200/70">
-              <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Campañas</p>
-              <p className="mt-2 text-2xl font-extrabold text-slate-700">{campaigns.length}</p>
+          <div className="rounded-[30px] border border-white/70 bg-white/70 p-5 shadow-sm backdrop-blur">
+            <div className="flex items-start gap-4">
+              <div className="rounded-[22px] bg-slate-900 px-4 py-3 text-white shadow-sm">
+                <p className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-white/70">
+                  Estado actual
+                </p>
+                <p className="mt-2 text-lg font-extrabold">{recipientModeLabel}</p>
+                <p className="mt-1 text-sm text-white/70">
+                  {compatibility?.canSend ? 'Listo para envío real' : 'Pendiente de validación'}
+                </p>
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-slate-400">
+                  Diagnóstico rápido
+                </p>
+                <p className="mt-2 text-sm leading-6 text-slate-600">
+                  {selectedProviderCompatibility?.detail ||
+                    'La compatibilidad del provider se mostrará aquí cuando el backend responda.'}
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {(selectedProviderCompatibility?.missing.length
+                    ? selectedProviderCompatibility.missing
+                    : ['Configuración detectada']).map((item) => (
+                    <span
+                      key={item}
+                      className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-600"
+                    >
+                      {item}
+                    </span>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-3">
-        {integrationCards.map((card) => {
-          const Icon = card.icon;
-          return (
-            <section
-              key={card.title}
-              className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm"
-            >
-              <div className="flex items-center gap-3">
-                <div className={`rounded-2xl p-3 ${card.tone}`}>
-                  <Icon className="h-5 w-5" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-extrabold text-slate-700">{card.title}</h3>
-                  <p className="mt-1 text-sm text-slate-400">{card.subtitle}</p>
-                </div>
-              </div>
-
-              <p className="mt-4 text-sm leading-6 text-slate-500">{card.detail}</p>
-              <div className="mt-4 flex flex-wrap gap-2">
-                {card.envs.map((item) => (
-                  <span
-                    key={item}
-                    className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-600"
-                  >
-                    {item}
-                  </span>
-                ))}
-              </div>
-            </section>
-          );
-        })}
-      </div>
-
       <div className="grid gap-6 xl:grid-cols-[360px_1fr]">
         <aside className="space-y-6">
-          <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+          <section className="rounded-[30px] border border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#fbfdff_100%)] p-5 shadow-sm">
             <div className="flex items-center gap-3">
               <div className="rounded-2xl bg-[#727cf5]/10 p-3 text-[#727cf5]">
                 <MailCheck className="h-5 w-5" />
               </div>
               <div>
                 <h3 className="text-lg font-extrabold text-slate-700">Canal activo</h3>
-                <p className="mt-1 text-sm text-slate-400">Proveedor y remitente del módulo</p>
+                <p className="mt-1 text-sm text-slate-400">Proveedor y remitente del modulo</p>
               </div>
             </div>
 
@@ -319,8 +419,9 @@ export const Communications: React.FC = () => {
               <div className="rounded-2xl bg-slate-50 px-4 py-4">
                 <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Proveedor</p>
                 <p className="mt-2 text-lg font-extrabold text-slate-700">
-                  {settingsForm.providerName || 'Sin definir'}
+                  {providerLabels[settingsForm.providerType]}
                 </p>
+                <p className="mt-1 text-sm text-slate-400">{settingsForm.providerName}</p>
               </div>
               <div className="rounded-2xl bg-slate-50 px-4 py-4">
                 <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Remitente</p>
@@ -328,7 +429,7 @@ export const Communications: React.FC = () => {
                 <p className="mt-1 text-xs text-slate-400">{settingsForm.senderEmail}</p>
               </div>
               <label className="flex items-center justify-between rounded-2xl border border-slate-200 px-4 py-4">
-                <span className="font-semibold text-slate-700">Integración habilitada</span>
+                <span className="font-semibold text-slate-700">Integracion habilitada</span>
                 <input
                   type="checkbox"
                   checked={settingsForm.enabled}
@@ -341,13 +442,13 @@ export const Communications: React.FC = () => {
             </div>
           </section>
 
-          <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+          <section className="rounded-[30px] border border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#fbfdff_100%)] p-5 shadow-sm">
             <div className="flex items-center gap-3">
               <div className="rounded-2xl bg-[#39afd1]/10 p-3 text-[#39afd1]">
                 <Sparkles className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="text-lg font-extrabold text-slate-700">Modelo de envío</h3>
+                <h3 className="text-lg font-extrabold text-slate-700">Modelo de envio</h3>
                 <p className="mt-1 text-sm text-slate-400">Personal, grupo o masivo</p>
               </div>
             </div>
@@ -426,7 +527,7 @@ export const Communications: React.FC = () => {
                 </p>
                 <p className="mt-2 text-lg font-extrabold text-slate-700">{recipientModeLabel}</p>
                 <p className="mt-2 text-sm text-slate-500">
-                  {resolvedRecipients.length} destinatario(s) activos seleccionados para el envío.
+                  {resolvedRecipients.length} destinatario(s) activos seleccionados para el envio.
                 </p>
               </div>
             </div>
@@ -434,12 +535,13 @@ export const Communications: React.FC = () => {
         </aside>
 
         <div className="space-y-6">
-          <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+          <section className="rounded-[30px] border border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#fcfdff_100%)] p-6 shadow-sm">
             <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
               <div>
-                <h3 className="text-lg font-extrabold text-slate-700">Configuración del proveedor</h3>
+                <h3 className="text-lg font-extrabold text-slate-700">Proveedor de correo</h3>
                 <p className="mt-2 text-sm text-slate-400">
-                  Mapea aquí el proveedor visible del módulo y persiste los secretos reales en `env`.
+                  Resend es la integracion mas amigable para esta app; Gmail queda como alternativa y
+                  el webhook propio mantiene compatibilidad con una pasarela existente.
                 </p>
               </div>
               <button
@@ -447,20 +549,96 @@ export const Communications: React.FC = () => {
                 onClick={() => void handleSaveIntegration()}
                 className="rounded-xl bg-[#727cf5] px-5 py-3 font-bold text-white transition hover:bg-[#636df0]"
               >
-                Guardar integración
+                Guardar integracion
               </button>
+            </div>
+
+            <div className="mt-6 grid gap-4 xl:grid-cols-3">
+              {providerCards.map((provider) => {
+                const currentCompatibility =
+                  compatibility?.providers.find((item) => item.type === provider.type) ?? null;
+                const isSelected = settingsForm.providerType === provider.type;
+                return (
+                  <button
+                    key={provider.type}
+                    type="button"
+                    onClick={() =>
+                      setSettingsForm((current) => ({
+                        ...current,
+                        providerType: provider.type,
+                        providerName: provider.title,
+                      }))
+                    }
+                    className={`overflow-hidden rounded-[30px] border text-left transition ${
+                      isSelected
+                        ? 'border-slate-900 shadow-lg shadow-slate-200/70'
+                        : 'border-slate-200 shadow-sm hover:-translate-y-1 hover:shadow-lg'
+                    }`}
+                  >
+                    <div className={`bg-gradient-to-br p-5 ${provider.tone}`}>
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-xs font-extrabold uppercase tracking-[0.22em] text-white/70">
+                            {provider.subtitle}
+                          </p>
+                          <h4 className="mt-2 text-2xl font-extrabold">{provider.title}</h4>
+                        </div>
+                        {currentCompatibility?.configured ? (
+                          <CheckCircle2 className="h-5 w-5" />
+                        ) : (
+                          <ShieldAlert className="h-5 w-5" />
+                        )}
+                      </div>
+                      <p className="mt-3 text-sm leading-6 text-white/85">{provider.detail}</p>
+                    </div>
+
+                    <div className="space-y-4 bg-white p-5">
+                      <div className="flex flex-wrap gap-2">
+                        {provider.envs.map((item) => (
+                          <span
+                            key={item}
+                            className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-600"
+                          >
+                            {item}
+                          </span>
+                        ))}
+                      </div>
+
+                      <div className="rounded-2xl bg-slate-50 px-4 py-4">
+                        <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">
+                          Compatibilidad
+                        </p>
+                        <p
+                          className={`mt-2 text-sm font-bold ${
+                            currentCompatibility?.configured ? 'text-emerald-600' : 'text-amber-600'
+                          }`}
+                        >
+                          {currentCompatibility?.configured
+                            ? 'Listo para enviar'
+                            : 'Faltan variables o configuracion'}
+                        </p>
+                        {!currentCompatibility?.configured && currentCompatibility?.missing.length ? (
+                          <p className="mt-2 text-xs text-slate-500">
+                            {currentCompatibility.missing.join(', ')}
+                          </p>
+                        ) : null}
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
 
             <div className="mt-6 grid gap-4 md:grid-cols-2">
               <div>
-                <label className="block text-sm font-bold text-slate-600">Proveedor</label>
+                <label className="block text-sm font-bold text-slate-600">Nombre visible del proveedor</label>
                 <input
                   value={settingsForm.providerName}
                   onChange={(event) =>
                     setSettingsForm({ ...settingsForm, providerName: event.target.value })
                   }
                   className="admin-input mt-2"
-                  placeholder="gmail_smtp / render_webhook / smtp_custom"
+                  placeholder="Resend / Gmail API / Mail Gateway"
                 />
               </div>
               <div>
@@ -471,7 +649,7 @@ export const Communications: React.FC = () => {
                     setSettingsForm({ ...settingsForm, apiBaseUrl: event.target.value })
                   }
                   className="admin-input mt-2"
-                  placeholder="https://tu-servicio.onrender.com/api/mail/send"
+                  placeholder="https://tu-servicio/api/mail/send"
                 />
               </div>
               <div>
@@ -512,14 +690,66 @@ export const Communications: React.FC = () => {
                     setSettingsForm({ ...settingsForm, apiKeyHint: event.target.value })
                   }
                   className="admin-input mt-2"
-                  placeholder="google-refresh-token / render-secret / smtp-pass"
+                  placeholder="RESEND_API_KEY / GMAIL_REFRESH_TOKEN / secret interno"
                 />
+              </div>
+            </div>
+
+            <div className="mt-6 rounded-[28px] border border-slate-200 bg-[linear-gradient(135deg,#f8fbff_0%,#ffffff_100%)] p-5">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-slate-400">
+                    Estado del backend
+                  </p>
+                  <h4 className="mt-2 text-lg font-extrabold text-slate-700">
+                    {compatibilityLoading
+                      ? 'Verificando compatibilidad...'
+                      : selectedProviderCompatibility?.configured
+                        ? 'Proveedor compatible con la app'
+                        : 'Proveedor aun no listo'}
+                  </h4>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void refreshCompatibility()}
+                  className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-100"
+                >
+                  Revalidar
+                </button>
+              </div>
+
+              <div className="mt-4 grid gap-3 xl:grid-cols-[1fr_0.9fr]">
+                <div className="rounded-2xl bg-white px-4 py-4 ring-1 ring-slate-200">
+                  <p className="text-sm font-semibold text-slate-700">
+                    {selectedProviderCompatibility?.detail ||
+                      'Aun no hay diagnostico del backend para este proveedor.'}
+                  </p>
+                  <p className="mt-2 text-sm text-slate-500">
+                    {compatibility?.canSend
+                      ? 'La app puede intentar un envio real con la configuracion actual.'
+                      : 'La app seguira registrando la campaña, pero si faltan env o credenciales el envio quedara como fallido.'}
+                  </p>
+                </div>
+                <div className="rounded-2xl bg-white px-4 py-4 ring-1 ring-slate-200">
+                  <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-slate-400">
+                    Recomendaciones
+                  </p>
+                  <div className="mt-3 space-y-2">
+                    {(compatibility?.recommendations ?? ['No hay recomendaciones adicionales por ahora.']).map(
+                      (item) => (
+                        <p key={item} className="text-sm leading-6 text-slate-500">
+                          {item}
+                        </p>
+                      )
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           </section>
 
           <div className="grid gap-6 2xl:grid-cols-[1fr_0.95fr]">
-            <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+            <section className="rounded-[30px] border border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#fcfdff_100%)] p-6 shadow-sm">
               <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
                 <div>
                   <h3 className="text-lg font-extrabold text-slate-700">Constructor de plantillas</h3>
@@ -552,7 +782,7 @@ export const Communications: React.FC = () => {
                 <div className="flex items-center gap-2 text-slate-500">
                   <Layers3 className="h-4 w-4" />
                   <p className="text-sm font-semibold">
-                    Modelo recomendado: saludo contextual, resumen de vencimientos y bloque de tareas.
+                    Diseno recomendado: cabecera clara, resumen ejecutivo y bloque de tareas escaneable.
                   </p>
                 </div>
               </div>
@@ -579,7 +809,7 @@ export const Communications: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-slate-600">Contenido</label>
+                  <label className="block text-sm font-bold text-slate-600">Contenido HTML</label>
                   <textarea
                     value={templateForm.content}
                     onChange={(event) =>
@@ -610,46 +840,67 @@ export const Communications: React.FC = () => {
               </form>
             </section>
 
-            <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
-              <h3 className="text-lg font-extrabold text-slate-700">Plantillas guardadas</h3>
-              <div className="mt-5 space-y-3">
-                {templates.map((template) => (
-                  <div key={template.id} className="rounded-2xl border border-slate-200 p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="font-bold text-slate-700">{template.name}</p>
-                        <p className="mt-1 truncate text-sm text-slate-400">{template.subject}</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => handleEditTemplate(template)}
-                          className="rounded-lg border border-slate-200 bg-white p-2 text-slate-600 transition hover:bg-slate-50"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => void handleDeleteTemplate(template)}
-                          className="rounded-lg border border-rose-200 bg-rose-50 p-2 text-rose-600 transition hover:bg-rose-100"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
+            <section className="rounded-[30px] border border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#fcfdff_100%)] p-6 shadow-sm">
+              <h3 className="text-lg font-extrabold text-slate-700">Vista previa de correo</h3>
+              <div className="mt-5 overflow-hidden rounded-[30px] border border-slate-200 bg-[linear-gradient(180deg,#f8fafc_0%,#f1f5f9_100%)] shadow-inner">
+                <div className="border-b border-slate-200 bg-white px-5 py-4">
+                  <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-slate-400">Asunto</p>
+                  <p className="mt-2 text-base font-bold text-slate-700">{previewEmail.subject}</p>
+                  <p className="mt-2 text-sm text-slate-400">
+                    De {settingsForm.senderName} &lt;{settingsForm.senderEmail}&gt;
+                  </p>
+                </div>
+                <div className="p-5">
+                  <div
+                    className="rounded-[26px] bg-white p-6 shadow-sm ring-1 ring-slate-200"
+                    dangerouslySetInnerHTML={{ __html: previewEmail.body }}
+                  />
+                </div>
+              </div>
+
+              <div className="mt-6 border-t border-slate-100 pt-5">
+                <h4 className="text-sm font-extrabold uppercase tracking-[0.2em] text-slate-400">
+                  Plantillas guardadas
+                </h4>
+                <div className="mt-4 space-y-3">
+                  {templates.map((template) => (
+                    <div key={template.id} className="rounded-2xl border border-slate-200 p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="font-bold text-slate-700">{template.name}</p>
+                          <p className="mt-1 truncate text-sm text-slate-400">{template.subject}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleEditTemplate(template)}
+                            className="rounded-lg border border-slate-200 bg-white p-2 text-slate-600 transition hover:bg-slate-50"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void handleDeleteTemplate(template)}
+                            className="rounded-lg border border-rose-200 bg-rose-50 p-2 text-rose-600 transition hover:bg-rose-100"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             </section>
           </div>
 
           <div className="grid gap-6 2xl:grid-cols-[1.05fr_0.95fr]">
-            <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+            <section className="rounded-[30px] border border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#fcfdff_100%)] p-6 shadow-sm">
               <div className="flex items-center justify-between gap-4">
                 <div>
-                  <h3 className="text-lg font-extrabold text-slate-700">Composición de campaña</h3>
+                  <h3 className="text-lg font-extrabold text-slate-700">Composicion de campaña</h3>
                   <p className="mt-2 text-sm text-slate-400">
-                    Prepara un envío alineado al modo seleccionado y al rango de tareas por vencer.
+                    Prepara un envio alineado al modo seleccionado y al rango de tareas por vencer.
                   </p>
                 </div>
                 <Send className="h-5 w-5 text-[#0acf97]" />
@@ -657,7 +908,7 @@ export const Communications: React.FC = () => {
 
               <form onSubmit={handleSendCampaign} className="mt-6 space-y-4">
                 <div>
-                  <label className="block text-sm font-bold text-slate-600">Nombre del envío</label>
+                  <label className="block text-sm font-bold text-slate-600">Nombre del envio</label>
                   <input
                     value={campaignForm.name}
                     onChange={(event) => setCampaignForm({ ...campaignForm, name: event.target.value })}
@@ -684,7 +935,7 @@ export const Communications: React.FC = () => {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-bold text-slate-600">Días hacia adelante</label>
+                    <label className="block text-sm font-bold text-slate-600">Dias hacia adelante</label>
                     <input
                       type="number"
                       min={1}
@@ -702,7 +953,7 @@ export const Communications: React.FC = () => {
                 </div>
 
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
-                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Alcance del envío</p>
+                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Alcance del envio</p>
                   <p className="mt-2 text-lg font-extrabold text-slate-700">{recipientModeLabel}</p>
                   <p className="mt-2 text-sm text-slate-500">
                     {resolvedRecipients.length} destinatario(s) · {dueSoonTasks.length} tarea(s) dentro de la ventana definida.
@@ -728,12 +979,12 @@ export const Communications: React.FC = () => {
                   disabled={!campaignForm.templateId || resolvedRecipients.length === 0}
                   className="rounded-xl bg-[#0acf97] px-5 py-3 font-bold text-white transition hover:bg-[#09b685] disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  Enviar comunicado de prueba
+                  Enviar campaña desde {providerLabels[settingsForm.providerType]}
                 </button>
               </form>
             </section>
 
-            <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+            <section className="rounded-[30px] border border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#fcfdff_100%)] p-6 shadow-sm">
               <h3 className="text-lg font-extrabold text-slate-700">Vista operativa</h3>
               <div className="mt-5 space-y-3">
                 {dueSoonTasks.slice(0, 5).map((task) => (
@@ -761,18 +1012,42 @@ export const Communications: React.FC = () => {
 
               <div className="mt-6 border-t border-slate-100 pt-5">
                 <p className="mb-3 text-sm font-extrabold uppercase tracking-[0.2em] text-slate-400">
-                  Últimos envíos
+                  Ultimos envios
                 </p>
                 <div className="space-y-3">
                   {campaigns.map((campaign) => (
                     <div key={campaign.id} className="rounded-2xl bg-slate-50 p-4">
-                      <p className="font-bold text-slate-700">{campaign.name}</p>
-                      <p className="mt-1 text-sm text-slate-500">
-                        {campaign.recipientCount} destinatario(s) · {campaign.taskCount} tarea(s)
-                      </p>
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="font-bold text-slate-700">{campaign.name}</p>
+                          <p className="mt-1 text-sm text-slate-500">
+                            {campaign.recipientCount} destinatario(s) · {campaign.taskCount} tarea(s)
+                          </p>
+                        </div>
+                        <span
+                          className={`rounded-full px-3 py-1 text-xs font-bold ${
+                            campaign.status === 'failed'
+                              ? 'bg-rose-100 text-rose-700'
+                              : 'bg-emerald-100 text-emerald-700'
+                          }`}
+                        >
+                          {campaign.status}
+                        </span>
+                      </div>
                       <p className="mt-2 text-xs text-slate-400">
-                        Enviado {campaign.sentAt?.toLocaleString('es-CL')}
+                        Provider: {campaign.deliveryProvider}
+                        {campaign.deliveryReference ? ` · Ref: ${campaign.deliveryReference}` : ''}
                       </p>
+                      <p className="mt-1 text-xs text-slate-400">
+                        {campaign.sentAt
+                          ? `Enviado ${campaign.sentAt.toLocaleString('es-CL')}`
+                          : 'Sin confirmacion de envio'}
+                      </p>
+                      {campaign.errorMessage ? (
+                        <p className="mt-2 text-xs font-medium text-rose-600">
+                          {campaign.errorMessage}
+                        </p>
+                      ) : null}
                     </div>
                   ))}
                 </div>

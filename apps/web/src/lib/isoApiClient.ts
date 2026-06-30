@@ -12,6 +12,37 @@ const getApiBase = () => {
   return configured || API_FALLBACK_BASE;
 };
 
+const readErrorMessage = async (response: Response) => {
+  const rawBody = await response.text();
+
+  if (!rawBody) {
+    return `Request failed with status ${response.status}`;
+  }
+
+  try {
+    const parsed = JSON.parse(rawBody) as {
+      message?: string | string[];
+      error?: string;
+    };
+
+    if (Array.isArray(parsed.message) && parsed.message.length > 0) {
+      return parsed.message.join(', ');
+    }
+
+    if (typeof parsed.message === 'string' && parsed.message.trim()) {
+      return parsed.message;
+    }
+
+    if (typeof parsed.error === 'string' && parsed.error.trim()) {
+      return parsed.error;
+    }
+  } catch {
+    return rawBody;
+  }
+
+  return rawBody;
+};
+
 export async function requestIsoApi<T>(path: string, init?: RequestInit): Promise<T> {
   const token = await getClerkSessionToken();
   const response = await fetch(`${getApiBase()}/iso${path}`, {
@@ -24,8 +55,7 @@ export async function requestIsoApi<T>(path: string, init?: RequestInit): Promis
   });
 
   if (!response.ok) {
-    const message = await response.text();
-    throw new Error(message || `Request failed with status ${response.status}`);
+    throw new Error(await readErrorMessage(response));
   }
 
   return response.json() as Promise<T>;

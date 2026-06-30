@@ -28,9 +28,11 @@ Servicios:
 Variables realmente usadas hoy:
 
 - Frontend: `VITE_API_URL`, `VITE_SOCKET_URL`
+- Frontend Clerk opcional: `VITE_CLERK_JWT_TEMPLATE`, `VITE_CLERK_IS_SATELLITE`, `VITE_CLERK_DOMAIN`, `VITE_CLERK_PRIMARY_ORIGIN`
 - Frontend auth: `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `NEXT_PUBLIC_CLERK_SIGN_IN_URL`, `NEXT_PUBLIC_CLERK_SIGN_UP_URL`, `NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL`, `NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL`
-- API: `PORT`, `MONGODB_URI`, `CORS_ORIGIN`, `CLERK_SECRET_KEY`, `CLERK_JWT_KEY`, `CLERK_API_URL`
+- API: `PORT`, `MONGODB_URI`, `CORS_ORIGIN`, `CLERK_SECRET_KEY`, `CLERK_API_URL`, `CLERK_AUTHORIZED_PARTIES`, `CLERK_JWT_KEY`, `CLERK_USE_STATIC_JWT_KEY`
 - API Google Calendar opcional: `GOOGLE_CALENDAR_CLIENT_ID` o `GOOGLE_CLIENT_ID`, `GOOGLE_CALENDAR_CLIENT_SECRET` o `GOOGLE_CLIENT_SECRET`, `GOOGLE_CALENDAR_REFRESH_TOKEN` o `GOOGLE_REFRESH_TOKEN`, `GOOGLE_CALENDAR_ID`
+- API Communications opcional: `RESEND_API_KEY`, `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, `GMAIL_REFRESH_TOKEN`, `COMMUNICATIONS_WEBHOOK_URL`, `COMMUNICATIONS_WEBHOOK_TOKEN`
 
 El resto de variables de `.env.example` son referencias para integraciones opcionales.
 
@@ -66,6 +68,8 @@ Configuracion recomendada:
 - Variables en Vercel:
   - `VITE_API_URL=https://api-iso.servasmar.cl/api`
   - `VITE_SOCKET_URL=https://api-iso.servasmar.cl`
+  - `VITE_CLERK_JWT_TEMPLATE=...` si tu instancia de Clerk exige usar un JWT template explícito para el backend
+  - `VITE_CLERK_IS_SATELLITE=false` recomendado para `iso.servasmar.cl` salvo que realmente uses Clerk satellite
   - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=...`
   - `NEXT_PUBLIC_CLERK_SIGN_IN_URL=/login`
   - `NEXT_PUBLIC_CLERK_SIGN_UP_URL=/login`
@@ -96,12 +100,19 @@ Variables recomendadas en el servidor Docker:
 - `MONGODB_URI=mongodb://mongo:27017/iso_manager`
 - `CORS_ORIGIN=https://iso.servasmar.cl`
 - `CLERK_SECRET_KEY=sk_live_...`
-- `CLERK_JWT_KEY=-----BEGIN PUBLIC KEY-----...`
+- `CLERK_JWT_KEY=-----BEGIN PUBLIC KEY-----...` solo si quieres forzar validación estática
+- `CLERK_USE_STATIC_JWT_KEY=false` recomendado; usa `true` solo si quieres obligar esa clave pública fija
 - `CLERK_API_URL=https://api.clerk.com`
+- `CLERK_AUTHORIZED_PARTIES=https://iso.servasmar.cl` solo si quieres restringir explícitamente el `azp/aud` de los tokens
 - `GOOGLE_CALENDAR_CLIENT_ID=...` o `GOOGLE_CLIENT_ID=...`
 - `GOOGLE_CALENDAR_CLIENT_SECRET=...` o `GOOGLE_CLIENT_SECRET=...`
 - `GOOGLE_CALENDAR_REFRESH_TOKEN=...` o `GOOGLE_REFRESH_TOKEN=...`
 - `GOOGLE_CALENDAR_ID=primary` o el ID compartido que quieras sincronizar
+- `RESEND_API_KEY=re_...` recomendado para el modulo Communications
+- `GMAIL_CLIENT_ID=...`, `GMAIL_CLIENT_SECRET=...`, `GMAIL_REFRESH_TOKEN=...` si prefieres Gmail API
+- `COMMUNICATIONS_WEBHOOK_URL=https://...` y `COMMUNICATIONS_WEBHOOK_TOKEN=...` si usas una pasarela propia
+
+El modulo `Communications` ahora valida compatibilidad del proveedor desde backend. Para despliegues en Vercel + VPS/Docker, `Resend` es la opcion mas simple.
 
 Comando:
 

@@ -96,6 +96,7 @@ export const useISOStore = create<ISOStore>((set) => ({
   },
   communicationSettings: {
     enabled: true,
+    providerType: 'custom',
     providerName: 'Proveedor SMTP',
     senderName: 'Sistema ISO',
     senderEmail: 'notificaciones@servasmar.cl',

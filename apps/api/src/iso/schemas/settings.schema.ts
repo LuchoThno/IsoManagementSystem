@@ -68,6 +68,7 @@ export class SettingsEntity {
   @Prop(
     raw({
       enabled: { type: Boolean, default: true },
+      providerType: { type: String, default: 'custom' },
       providerName: { type: String, default: 'Proveedor SMTP' },
       senderName: { type: String, default: 'Sistema ISO' },
       senderEmail: { type: String, default: 'notificaciones@servasmar.cl' },
@@ -81,6 +82,7 @@ export class SettingsEntity {
   )
   communicationSettings!: {
     enabled: boolean;
+    providerType: 'resend' | 'gmail' | 'custom';
     providerName: string;
     senderName: string;
     senderEmail: string;
