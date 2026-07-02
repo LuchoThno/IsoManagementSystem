@@ -1,5 +1,13 @@
+import { AuditsController } from './audits.controller';
+import { AuthController } from './auth.controller';
+import { BootstrapController } from './bootstrap.controller';
+import { CollaborationController } from './collaboration.controller';
+import { CommunicationsController } from './communications.controller';
+import { DocumentsController } from './documents.controller';
+import { GrcController } from './grc.controller';
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
+import { AuthModeService } from './auth-mode.service';
 import { GrcService } from './grc.service';
 import { ChatGateway } from './chat.gateway';
 import { ClerkAuthGuard } from './clerk-auth.guard';
@@ -7,8 +15,9 @@ import { ClerkAuthService } from './clerk-auth.service';
 import { ClerkDirectoryService } from './clerk-directory.service';
 import { EmailDeliveryService } from './email-delivery.service';
 import { GoogleCalendarService } from './google-calendar.service';
-import { IsoController } from './iso.controller';
 import { IsoService } from './iso.service';
+import { PlatformAuditService } from './platform-audit.service';
+import { RolesGuard } from './roles.guard';
 import { Audit, AuditSchema } from './schemas/audit.schema';
 import { AuditChecklistEntity, AuditChecklistSchema } from './schemas/audit-checklist.schema';
 import {
@@ -27,6 +36,10 @@ import { DocumentEntity, DocumentSchema } from './schemas/document.schema';
 import { EmailCampaignEntity, EmailCampaignSchema } from './schemas/email-campaign.schema';
 import { EmailTemplateEntity, EmailTemplateSchema } from './schemas/email-template.schema';
 import { EvidenceEntity, EvidenceSchema } from './schemas/evidence.schema';
+import {
+  PlatformAuditLogEntity,
+  PlatformAuditLogSchema,
+} from './schemas/platform-audit-log.schema';
 import { SettingsEntity, SettingsSchema } from './schemas/settings.schema';
 import { StandardAppendixEntity, StandardAppendixSchema } from './schemas/standard-appendix.schema';
 import { StandardClauseEntity, StandardClauseSchema } from './schemas/standard-clause.schema';
@@ -36,7 +49,10 @@ import {
 } from './schemas/standard-requirement.schema';
 import { StandardSectionEntity, StandardSectionSchema } from './schemas/standard-section.schema';
 import { StandardEntity, StandardSchema } from './schemas/standard.schema';
+import { SettingsController } from './settings.controller';
 import { TaskEntity, TaskSchema } from './schemas/task.schema';
+import { UsersController } from './users.controller';
+import { TasksController } from './tasks.controller';
 
 @Module({
   imports: [
@@ -47,6 +63,7 @@ import { TaskEntity, TaskSchema } from './schemas/task.schema';
       { name: ChatThreadEntity.name, schema: ChatThreadSchema },
       { name: EmailTemplateEntity.name, schema: EmailTemplateSchema },
       { name: EmailCampaignEntity.name, schema: EmailCampaignSchema },
+      { name: PlatformAuditLogEntity.name, schema: PlatformAuditLogSchema },
       { name: SettingsEntity.name, schema: SettingsSchema },
       { name: StandardEntity.name, schema: StandardSchema },
       { name: StandardSectionEntity.name, schema: StandardSectionSchema },
@@ -62,16 +79,30 @@ import { TaskEntity, TaskSchema } from './schemas/task.schema';
       { name: CorrectiveActionEntity.name, schema: CorrectiveActionSchema },
     ]),
   ],
-  controllers: [IsoController],
+  controllers: [
+    AuthController,
+    UsersController,
+    DocumentsController,
+    AuditsController,
+    TasksController,
+    CommunicationsController,
+    GrcController,
+    CollaborationController,
+    SettingsController,
+    BootstrapController,
+  ],
   providers: [
     IsoService,
     GrcService,
     ChatGateway,
     GoogleCalendarService,
     EmailDeliveryService,
+    AuthModeService,
+    PlatformAuditService,
     ClerkAuthService,
     ClerkAuthGuard,
     ClerkDirectoryService,
+    RolesGuard,
   ],
 })
 export class IsoModule {}

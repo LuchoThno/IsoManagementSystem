@@ -72,19 +72,19 @@ export const TaskList: React.FC<TaskListProps> = ({ tasks, onEdit, onDelete }) =
   };
 
   const actionButtonClassName =
-    'inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700';
+    'inline-flex h-10 w-10 items-center justify-center rounded-xl border border-app-border bg-app-surface text-slate-500 transition hover:border-slate-300 hover:bg-app-surface-alt hover:text-slate-700';
 
   return (
-    <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
+    <div className="overflow-hidden rounded-[28px] border border-app-border bg-app-surface shadow-panel">
       <div className="flex items-center justify-between border-b border-slate-100 px-6 py-5">
         <div>
-          <h3 className="text-lg font-extrabold text-slate-700">Backlog operativo</h3>
-          <p className="mt-1 text-sm text-slate-400">
+          <h3 className="text-lg font-extrabold text-app-text">Backlog operativo</h3>
+          <p className="mt-1 text-sm text-app-muted">
             {tasks.length} tareas visibles con responsables, prioridad y seguimiento.
           </p>
         </div>
       </div>
-      <div className="hidden grid-cols-[1.9fr_1fr_150px_170px_120px] gap-4 border-b border-slate-100 bg-slate-50 px-6 py-4 text-xs font-extrabold uppercase tracking-[0.18em] text-slate-500 lg:grid">
+      <div className="hidden grid-cols-[1.9fr_1fr_150px_170px_120px] gap-4 border-b border-slate-100 bg-app-surface-alt px-6 py-4 text-xs font-extrabold uppercase tracking-[0.18em] text-slate-500 lg:grid">
         <span>Tarea</span>
         <span>Responsable</span>
         <span>Fecha límite</span>
@@ -98,19 +98,19 @@ export const TaskList: React.FC<TaskListProps> = ({ tasks, onEdit, onDelete }) =
         >
           <div className="min-w-0">
             <div className="flex items-start gap-4">
-              <div className="rounded-2xl bg-[#727cf5]/10 p-3 text-[#727cf5]">
+              <div className="app-icon-chip">
                 {getStatusIcon(task.status)}
               </div>
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
-                  <h3 className="text-base font-extrabold text-slate-700">{task.title}</h3>
+                  <h3 className="text-base font-extrabold text-app-text">{task.title}</h3>
                   <span
                     className={`rounded-full px-2.5 py-1 text-xs font-bold ${getPriorityColor(task.priority)}`}
                   >
                     {task.priority === 'high' ? 'Alta' : task.priority === 'medium' ? 'Media' : 'Baja'}
                   </span>
                 </div>
-                <p className="mt-2 text-sm leading-6 text-slate-400">{task.description}</p>
+                <p className="mt-2 text-sm leading-6 text-app-muted">{task.description}</p>
                 <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-400">
                   <span>{task.standard}</span>
                   <span className="h-1 w-1 rounded-full bg-slate-300" />
@@ -125,7 +125,7 @@ export const TaskList: React.FC<TaskListProps> = ({ tasks, onEdit, onDelete }) =
                       .map((document) => (
                         <span
                           key={document!.id}
-                          className="rounded-full bg-[#727cf5]/10 px-3 py-1 text-xs font-bold text-[#727cf5]"
+                          className="rounded-full bg-app-primary/10 px-3 py-1 text-xs font-bold text-app-primary"
                         >
                           {document!.title}
                         </span>
@@ -185,10 +185,10 @@ export const TaskList: React.FC<TaskListProps> = ({ tasks, onEdit, onDelete }) =
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 text-slate-400">
             <AlertCircle className="h-6 w-6" />
           </div>
-          <p className="mt-4 text-lg font-extrabold text-slate-700">
+          <p className="mt-4 text-lg font-extrabold text-app-text">
             No se encontraron tareas con esos filtros
           </p>
-          <p className="mt-2 text-sm text-slate-400">
+          <p className="mt-2 text-sm text-app-muted">
             Ajusta la búsqueda o cambia estado, prioridad y norma para encontrar resultados.
           </p>
         </div>

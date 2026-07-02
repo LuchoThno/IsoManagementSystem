@@ -20,19 +20,19 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ events, onDateSelect
   return (
     <div className="panel-card overflow-hidden">
       <div className="flex items-center justify-between border-b border-slate-100 p-4">
-        <h3 className="text-lg font-extrabold text-slate-700">
+        <h3 className="text-lg font-extrabold text-app-text">
           {format(currentDate, 'MMMM yyyy')}
         </h3>
         <div className="space-x-2">
           <button
             onClick={() => setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth() - 1)))}
-            className="rounded-lg bg-slate-100 px-3 py-1.5 text-sm font-bold text-slate-600 hover:bg-slate-200"
+            className="rounded-lg bg-app-surface-alt px-3 py-1.5 text-sm font-bold text-slate-600 hover:bg-slate-200"
           >
             Anterior
           </button>
           <button
             onClick={() => setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth() + 1)))}
-            className="rounded-lg bg-slate-100 px-3 py-1.5 text-sm font-bold text-slate-600 hover:bg-slate-200"
+            className="rounded-lg bg-app-surface-alt px-3 py-1.5 text-sm font-bold text-slate-600 hover:bg-slate-200"
           >
             Siguiente
           </button>
@@ -52,11 +52,11 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ events, onDateSelect
             <div
               key={day.toISOString()}
               onClick={() => onDateSelect(day)}
-              className={`min-h-[110px] cursor-pointer bg-white p-3 hover:bg-slate-50 ${
-                dayEvents.length > 0 ? 'bg-[#727cf5]/[0.04]' : ''
+              className={`min-h-[110px] cursor-pointer bg-app-surface p-3 hover:bg-app-surface-alt ${
+                dayEvents.length > 0 ? 'bg-app-primary/5' : ''
               }`}
             >
-              <div className="text-sm font-extrabold text-slate-700">
+              <div className="text-sm font-extrabold text-app-text">
                 {format(day, 'd')}
               </div>
               <div className="mt-1 space-y-1">
@@ -66,14 +66,14 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ events, onDateSelect
                     className={`rounded px-2 py-1 text-xs font-bold ${
                       event.type === 'task'
                         ? 'bg-amber-100 text-amber-700'
-                        : 'bg-indigo-100 text-indigo-700'
+                        : 'bg-app-primary/10 text-app-primary'
                     }`}
                   >
                     {event.title}
                   </div>
                 ))}
                 {dayEvents.length > 2 && (
-                  <div className="text-xs text-gray-500">
+                  <div className="text-xs text-slate-500">
                     +{dayEvents.length - 2} more
                   </div>
                 )}

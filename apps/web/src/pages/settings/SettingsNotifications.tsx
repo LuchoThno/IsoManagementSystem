@@ -53,12 +53,12 @@ export const SettingsNotifications: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="flex items-start gap-3">
-        <div className="rounded-2xl bg-[#39afd1]/10 p-3 text-[#39afd1]">
+        <div className="rounded-2xl bg-app-info/10 p-3 text-app-info">
           <BellRing className="h-5 w-5" />
         </div>
         <div>
-          <h2 className="text-2xl font-extrabold text-slate-700">Notificaciones</h2>
-          <p className="mt-1 text-sm text-slate-400">
+          <h2 className="text-2xl font-extrabold text-app-text">Notificaciones</h2>
+          <p className="mt-1 text-sm text-app-muted">
             Define recordatorios internos y por correo para tareas, auditorías y documentos.
           </p>
         </div>
@@ -66,7 +66,7 @@ export const SettingsNotifications: React.FC = () => {
 
       <div className="grid gap-6 xl:grid-cols-2">
         {(['email', 'inApp'] as const).map((channel) => (
-          <section key={channel} className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+          <section key={channel} className="rounded-[28px] border border-app-border bg-app-surface p-6 shadow-panel">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="panel-title">
@@ -96,7 +96,7 @@ export const SettingsNotifications: React.FC = () => {
               {(['taskReminders', 'auditReminders', 'documentUpdates'] as const).map((field) => (
                 <label
                   key={field}
-                  className="flex items-center justify-between rounded-2xl border border-slate-200 px-4 py-4"
+                  className="flex items-center justify-between rounded-2xl border border-app-border px-4 py-4"
                 >
                   <span className="font-semibold text-slate-700">
                     {field === 'taskReminders'
@@ -126,10 +126,10 @@ export const SettingsNotifications: React.FC = () => {
         ))}
       </div>
 
-      <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+      <section className="rounded-[28px] border border-app-border bg-app-surface p-6 shadow-panel">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-start gap-3">
-            <div className="rounded-2xl bg-[#727cf5]/10 p-3 text-[#727cf5]">
+            <div className="app-icon-chip">
               <MonitorSmartphone className="h-5 w-5" />
             </div>
             <div>
@@ -165,7 +165,7 @@ export const SettingsNotifications: React.FC = () => {
               type="button"
               onClick={() => void handleRequestPermission()}
               disabled={!isBrowserNotificationsSupported()}
-              className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+              className="app-button-secondary px-4 py-2.5 text-sm disabled:cursor-not-allowed disabled:opacity-60"
             >
               Solicitar permiso
             </button>
@@ -173,7 +173,7 @@ export const SettingsNotifications: React.FC = () => {
         </div>
 
         <div className="mt-5 grid gap-3 md:grid-cols-3">
-          <label className="flex items-center justify-between rounded-2xl border border-slate-200 px-4 py-4">
+          <label className="flex items-center justify-between rounded-2xl border border-app-border px-4 py-4">
             <span className="font-semibold text-slate-700">Activar canal</span>
             <input
               type="checkbox"
@@ -191,7 +191,7 @@ export const SettingsNotifications: React.FC = () => {
             />
           </label>
 
-          <label className="flex items-center justify-between rounded-2xl border border-slate-200 px-4 py-4">
+          <label className="flex items-center justify-between rounded-2xl border border-app-border px-4 py-4">
             <span className="font-semibold text-slate-700">Mensajes de chat</span>
             <input
               type="checkbox"
@@ -209,7 +209,7 @@ export const SettingsNotifications: React.FC = () => {
             />
           </label>
 
-          <label className="flex items-center justify-between rounded-2xl border border-slate-200 px-4 py-4">
+          <label className="flex items-center justify-between rounded-2xl border border-app-border px-4 py-4">
             <span className="font-semibold text-slate-700">Alertas de conexión</span>
             <input
               type="checkbox"
@@ -232,7 +232,7 @@ export const SettingsNotifications: React.FC = () => {
       <button
         type="button"
         onClick={() => void handleSave()}
-        className="inline-flex items-center gap-2 rounded-xl bg-[#727cf5] px-5 py-3 font-bold text-white transition hover:bg-[#636df0]"
+        className="app-button-primary inline-flex items-center gap-2 px-5 py-3"
       >
         <Save className="h-4 w-4" />
         Guardar cambios

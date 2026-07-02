@@ -22,8 +22,8 @@ export const Alerts: React.FC = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-extrabold text-slate-700">Alertas</h2>
-        <p className="mt-1 text-sm text-slate-400">
+        <h2 className="text-2xl font-extrabold text-app-text">Alertas</h2>
+        <p className="mt-1 text-sm text-app-muted">
           Prioriza riesgos, vencimientos y acciones que requieren seguimiento inmediato.
         </p>
       </div>

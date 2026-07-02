@@ -7,6 +7,20 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
+import type {
+  CreateAuditDto,
+  UpdateAuditDto,
+} from './dto/audits.dto';
+import type {
+  CreateEmailTemplateDto,
+  SendBulkTaskReminderCampaignDto,
+  UpdateCommunicationSettingsDto,
+  UpdateEmailTemplateDto,
+} from './dto/communications.dto';
+import type { CreateDocumentDto, UpdateDocumentDto } from './dto/documents.dto';
+import type { UpdateSettingsDto } from './dto/settings.dto';
+import type { TaskStatus } from './domain.constants';
+import type { CreateTaskDto, UpdateTaskDto } from './dto/tasks.dto';
 import { GrcService } from './grc.service';
 import { Audit, Finding } from './schemas/audit.schema';
 import { ChatThreadEntity } from './schemas/chat-thread.schema';
@@ -135,26 +149,18 @@ export class IsoService implements OnModuleInit {
     };
   }
 
-  async createEmailTemplate(payload: {
-    name: string;
-    subject: string;
-    content: string;
-  }) {
+  async createEmailTemplate(payload: CreateEmailTemplateDto) {
     const template = await this.emailTemplateModel.create(payload);
     return this.serializeEmailTemplate(template.toObject());
   }
 
   async updateEmailTemplate(
     id: string,
-    updates: Partial<{
-      name: string;
-      subject: string;
-      content: string;
-    }>
+    updates: UpdateEmailTemplateDto
   ) {
     const template = await this.emailTemplateModel.findById(id);
     if (!template) {
-      throw new Error('Template not found');
+      throw new NotFoundException('Template not found');
     }
 
     if (typeof updates.name === 'string') template.name = updates.name;
@@ -170,17 +176,10 @@ export class IsoService implements OnModuleInit {
     return { success: true };
   }
 
-  async sendBulkTaskReminderCampaign(payload: {
-    name: string;
-    templateId: string;
-    daysAhead: number;
-    recipientIds: string[];
-    recipientNames: string[];
-    recipientEmails: string[];
-  }) {
+  async sendBulkTaskReminderCampaign(payload: SendBulkTaskReminderCampaignDto) {
     const template = await this.emailTemplateModel.findById(payload.templateId).lean();
     if (!template) {
-      throw new Error('Template not found');
+      throw new NotFoundException('Template not found');
     }
 
     const settings = await this.getSettingsDocument();
@@ -373,17 +372,7 @@ export class IsoService implements OnModuleInit {
     return this.serializeChatThread(thread.toObject());
   }
 
-  async createDocument(payload: {
-    title: string;
-    topic: string;
-    type: 'manual' | 'procedure' | 'record';
-    format: DocumentFormat;
-    standard: Standard;
-    version: string;
-    fileName: string;
-    mimeType: string;
-    fileContentUrl: string;
-  }) {
+  async createDocument(payload: CreateDocumentDto) {
     const now = new Date();
     const document = await this.documentModel.create({
       title: payload.title,
@@ -434,18 +423,12 @@ export class IsoService implements OnModuleInit {
 
   async updateDocument(
     id: string,
-    updates: {
-      title?: string;
-      topic?: string;
-      format?: DocumentFormat;
-      version?: string;
-      status?: DocumentStatus;
-    }
+    updates: UpdateDocumentDto
   ) {
     const document = await this.documentModel.findById(id);
 
     if (!document) {
-      throw new Error('Document not found');
+      throw new NotFoundException('Document not found');
     }
 
     const previousVersion = document.version;
@@ -487,7 +470,7 @@ export class IsoService implements OnModuleInit {
     const document = await this.documentModel.findById(id);
 
     if (!document) {
-      throw new Error('Document not found');
+      throw new NotFoundException('Document not found');
     }
 
     document.auditTrail = [
@@ -510,16 +493,7 @@ export class IsoService implements OnModuleInit {
     return { success: true };
   }
 
-  async createTask(payload: {
-    title: string;
-    description: string;
-    assignedTo: string;
-    dueDate: string;
-    status: 'pending' | 'in-progress' | 'completed' | 'overdue';
-    priority: 'low' | 'medium' | 'high';
-    standard: Standard;
-    relatedDocuments: string[];
-  }) {
+  async createTask(payload: CreateTaskDto) {
     const task = await this.taskModel.create({
       ...payload,
       dueDate: new Date(payload.dueDate),
@@ -530,7 +504,7 @@ export class IsoService implements OnModuleInit {
 
   async updateTaskStatus(
     id: string,
-    status: 'pending' | 'in-progress' | 'completed' | 'overdue'
+    status: TaskStatus
   ) {
     const task = await this.taskModel.findByIdAndUpdate(
       id,
@@ -539,7 +513,7 @@ export class IsoService implements OnModuleInit {
     );
 
     if (!task) {
-      throw new Error('Task not found');
+      throw new NotFoundException('Task not found');
     }
 
     return this.serializeTask(task.toObject());
@@ -547,21 +521,12 @@ export class IsoService implements OnModuleInit {
 
   async updateTask(
     id: string,
-    updates: {
-      title?: string;
-      description?: string;
-      assignedTo?: string;
-      dueDate?: string;
-      status?: 'pending' | 'in-progress' | 'completed' | 'overdue';
-      priority?: 'low' | 'medium' | 'high';
-      standard?: Standard;
-      relatedDocuments?: string[];
-    }
+    updates: UpdateTaskDto
   ) {
     const task = await this.taskModel.findById(id);
 
     if (!task) {
-      throw new Error('Task not found');
+      throw new NotFoundException('Task not found');
     }
 
     if (typeof updates.title === 'string') task.title = updates.title;
@@ -582,20 +547,7 @@ export class IsoService implements OnModuleInit {
     return { success: true };
   }
 
-  async createAudit(payload: {
-    type: 'internal' | 'external';
-    standard: Standard;
-    date: string;
-    status: 'planned' | 'in-progress' | 'completed';
-    findings: Array<{
-      id: string;
-      type: Finding['type'];
-      description: string;
-      status: Finding['status'];
-      dueDate: string;
-      assignedTo: string;
-    }>;
-  }) {
+  async createAudit(payload: CreateAuditDto) {
     const audit = await this.auditModel.create({
       ...payload,
       date: new Date(payload.date),
@@ -619,7 +571,7 @@ export class IsoService implements OnModuleInit {
     );
 
     if (!audit) {
-      throw new Error('Audit not found');
+      throw new NotFoundException('Audit not found');
     }
 
     return this.serializeAudit(audit.toObject());
@@ -627,25 +579,12 @@ export class IsoService implements OnModuleInit {
 
   async updateAudit(
     id: string,
-    updates: {
-      type?: 'internal' | 'external';
-      standard?: Standard;
-      date?: string;
-      status?: 'planned' | 'in-progress' | 'completed';
-      findings?: Array<{
-        id: string;
-        type: Finding['type'];
-        description: string;
-        status: Finding['status'];
-        dueDate: string;
-        assignedTo: string;
-      }>;
-    }
+    updates: UpdateAuditDto
   ) {
     const audit = await this.auditModel.findById(id);
 
     if (!audit) {
-      throw new Error('Audit not found');
+      throw new NotFoundException('Audit not found');
     }
 
     if (typeof updates.type === 'string') audit.type = updates.type;
@@ -669,13 +608,8 @@ export class IsoService implements OnModuleInit {
   }
 
   async updateSettings(
-    settings: {
-      companyName: string;
-      standards: Record<string, boolean>;
-      defaultLanguage: string;
-      timezone: string;
-    },
-    notifications: SettingsEntity['notifications']
+    settings: UpdateSettingsDto['settings'],
+    notifications: UpdateSettingsDto['notifications']
   ) {
     const current = await this.getSettingsDocument();
     current.companyName = settings.companyName;
@@ -693,7 +627,7 @@ export class IsoService implements OnModuleInit {
   }
 
   async updateCommunicationSettings(
-    communicationSettings: SettingsEntity['communicationSettings']
+    communicationSettings: UpdateCommunicationSettingsDto
   ) {
     const current = await this.getSettingsDocument();
     current.communicationSettings = this.normalizeCommunicationSettings(communicationSettings);

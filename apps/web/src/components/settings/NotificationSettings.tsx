@@ -32,12 +32,12 @@ export const NotificationSettings: React.FC<NotificationSettingsProps> = ({ onSa
   };
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white p-6 rounded-lg border border-gray-200">
-      <h3 className="text-lg font-medium text-gray-900 mb-6">Notification Settings</h3>
+    <form onSubmit={handleSubmit} className="rounded-lg border border-app-border bg-app-surface p-6 shadow-panel">
+      <h3 className="mb-6 text-lg font-medium text-app-text">Notification Settings</h3>
       
       <div className="space-y-6">
         <div>
-          <h4 className="text-sm font-medium text-gray-700 mb-4">Email Notifications</h4>
+          <h4 className="mb-4 text-sm font-medium text-slate-700">Email Notifications</h4>
           <div className="space-y-2">
             <label className="flex items-center">
               <input
@@ -49,7 +49,7 @@ export const NotificationSettings: React.FC<NotificationSettingsProps> = ({ onSa
                 })}
                 className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
               />
-              <span className="ml-2 text-sm text-gray-700">Enable Email Notifications</span>
+              <span className="ml-2 text-sm text-slate-700">Enable Email Notifications</span>
             </label>
             
             {settings.email.enabled && (
@@ -64,7 +64,7 @@ export const NotificationSettings: React.FC<NotificationSettingsProps> = ({ onSa
                     })}
                     className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                   />
-                  <span className="ml-2 text-sm text-gray-700">Task Reminders</span>
+                  <span className="ml-2 text-sm text-slate-700">Task Reminders</span>
                 </label>
                 
                 <label className="flex items-center">
@@ -77,7 +77,7 @@ export const NotificationSettings: React.FC<NotificationSettingsProps> = ({ onSa
                     })}
                     className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                   />
-                  <span className="ml-2 text-sm text-gray-700">Audit Reminders</span>
+                  <span className="ml-2 text-sm text-slate-700">Audit Reminders</span>
                 </label>
                 
                 <label className="flex items-center">
@@ -90,7 +90,7 @@ export const NotificationSettings: React.FC<NotificationSettingsProps> = ({ onSa
                     })}
                     className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                   />
-                  <span className="ml-2 text-sm text-gray-700">Document Updates</span>
+                  <span className="ml-2 text-sm text-slate-700">Document Updates</span>
                 </label>
               </div>
             )}
@@ -98,7 +98,7 @@ export const NotificationSettings: React.FC<NotificationSettingsProps> = ({ onSa
         </div>
 
         <div>
-          <h4 className="text-sm font-medium text-gray-700 mb-4">In-App Notifications</h4>
+          <h4 className="mb-4 text-sm font-medium text-slate-700">In-App Notifications</h4>
           <div className="space-y-2">
             <label className="flex items-center">
               <input
@@ -110,7 +110,7 @@ export const NotificationSettings: React.FC<NotificationSettingsProps> = ({ onSa
                 })}
                 className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
               />
-              <span className="ml-2 text-sm text-gray-700">Enable In-App Notifications</span>
+              <span className="ml-2 text-sm text-slate-700">Enable In-App Notifications</span>
             </label>
             
             {settings.inApp.enabled && (
@@ -125,7 +125,7 @@ export const NotificationSettings: React.FC<NotificationSettingsProps> = ({ onSa
                     })}
                     className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                   />
-                  <span className="ml-2 text-sm text-gray-700">Task Reminders</span>
+                  <span className="ml-2 text-sm text-slate-700">Task Reminders</span>
                 </label>
                 
                 <label className="flex items-center">
@@ -138,7 +138,7 @@ export const NotificationSettings: React.FC<NotificationSettingsProps> = ({ onSa
                     })}
                     className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                   />
-                  <span className="ml-2 text-sm text-gray-700">Audit Reminders</span>
+                  <span className="ml-2 text-sm text-slate-700">Audit Reminders</span>
                 </label>
                 
                 <label className="flex items-center">
@@ -151,7 +151,7 @@ export const NotificationSettings: React.FC<NotificationSettingsProps> = ({ onSa
                     })}
                     className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                   />
-                  <span className="ml-2 text-sm text-gray-700">Document Updates</span>
+                  <span className="ml-2 text-sm text-slate-700">Document Updates</span>
                 </label>
               </div>
             )}
@@ -160,7 +160,7 @@ export const NotificationSettings: React.FC<NotificationSettingsProps> = ({ onSa
 
         <button
           type="submit"
-          className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+          className="app-button-primary w-full"
         >
           Save Notification Settings
         </button>

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, ServiceUnavailableException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { google, type calendar_v3 } from 'googleapis';
 import { Model } from 'mongoose';
@@ -79,7 +79,7 @@ export class GoogleCalendarService {
     const status = this.getStatus();
 
     if (!status.configured) {
-      throw new Error(
+      throw new ServiceUnavailableException(
         `Google Calendar no está configurado. Faltan: ${status.missing.join(', ')}`
       );
     }

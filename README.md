@@ -31,10 +31,37 @@ Variables realmente usadas hoy:
 - Frontend Clerk opcional: `VITE_CLERK_JWT_TEMPLATE`, `VITE_CLERK_IS_SATELLITE`, `VITE_CLERK_DOMAIN`, `VITE_CLERK_PRIMARY_ORIGIN`
 - Frontend auth: `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `NEXT_PUBLIC_CLERK_SIGN_IN_URL`, `NEXT_PUBLIC_CLERK_SIGN_UP_URL`, `NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL`, `NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL`
 - API: `PORT`, `MONGODB_URI`, `CORS_ORIGIN`, `CLERK_SECRET_KEY`, `CLERK_API_URL`, `CLERK_AUTHORIZED_PARTIES`, `CLERK_JWT_KEY`, `CLERK_USE_STATIC_JWT_KEY`
+- API auth mode opcional: `APP_AUTH_MODE=clerk|demo|disabled`
 - API Google Calendar opcional: `GOOGLE_CALENDAR_CLIENT_ID` o `GOOGLE_CLIENT_ID`, `GOOGLE_CALENDAR_CLIENT_SECRET` o `GOOGLE_CLIENT_SECRET`, `GOOGLE_CALENDAR_REFRESH_TOKEN` o `GOOGLE_REFRESH_TOKEN`, `GOOGLE_CALENDAR_ID`
 - API Communications opcional: `RESEND_API_KEY`, `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, `GMAIL_REFRESH_TOKEN`, `COMMUNICATIONS_WEBHOOK_URL`, `COMMUNICATIONS_WEBHOOK_TOKEN`
 
 El resto de variables de `.env.example` son referencias para integraciones opcionales.
+
+Comportamiento de autenticacion y permisos:
+
+- `APP_AUTH_MODE=clerk`: exige tokens de Clerk en backend y habilita RBAC por rol.
+- `APP_AUTH_MODE=demo`: mantiene el flujo local/demo sin requerir Clerk.
+- `APP_AUTH_MODE=disabled`: rechaza endpoints protegidos.
+
+Endpoints operativos nuevos:
+
+- `GET /api/iso/auth/config`: expone el modo de autenticacion activo, el proveedor y las capacidades operativas del entorno.
+- `GET /api/iso/auth/session`: expone la sesion resuelta por el backend.
+- `GET /api/iso/security/posture`: expone controles y politicas activas de seguridad, solo `admin`.
+- `GET /api/iso/platform/audit-logs?limit=50`: lista auditoria de plataforma, solo `admin` en modo Clerk.
+
+Politica operativa de autenticacion:
+
+- `APP_AUTH_MODE=clerk`: MFA, contraseñas y sesiones quedan delegadas a Clerk. Es el modo esperado para producción.
+- `APP_AUTH_MODE=demo`: mantiene autenticacion local simplificada, con contraseña minima local y sin MFA. Solo debe usarse en desarrollo, demo o validaciones internas controladas.
+- `APP_AUTH_MODE=disabled`: no habilita autenticacion ni sesiones para endpoints protegidos.
+
+Capacidades expuestas por `GET /api/iso/auth/config`:
+
+- `provider`: origen operativo de autenticacion para el entorno actual.
+- `capabilities.directoryProvider`: `clerk`, `local` o `none`.
+- `capabilities.manualUserManagement`: indica si el panel puede crear/editar/eliminar usuarios localmente.
+- `capabilities.authenticatedRoutesAvailable`: indica si las rutas protegidas deberian estar operativas.
 
 En entornos sin TTY, como CI o automatizaciones, usa:
 
@@ -133,6 +160,13 @@ Si el frontend y el API pasan por Cloudflare en producción:
 Guia paso a paso:
 
 - [DEPLOY_VERCEL_DOCKER.md](/Users/mac/Documents/Desarrollos_Apps/IsoManagementSystem/DEPLOY_VERCEL_DOCKER.md:1)
+- [ISO_Manager_Backup_Restore_Runbook.md](/Users/mac/Documents/Desarrollos_Apps/IsoManagementSystem/docs/upgrade/ISO_Manager_Backup_Restore_Runbook.md:1)
+
+Comandos operativos versionados:
+
+- `pnpm backup:mongo -- --env prod`
+- `pnpm restore:mongo -- --archive backups/<archivo>.archive.gz --temp-suffix restore_check`
+- `pnpm smoke:rbac` con `SMOKE_ADMIN_TOKEN`, `SMOKE_MANAGER_TOKEN`, `SMOKE_AUDITOR_TOKEN` y/o `SMOKE_VIEWER_TOKEN`
 
 ## GitHub Actions
 

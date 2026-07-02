@@ -21,12 +21,12 @@ export const TaskFilters: React.FC<TaskFiltersProps> = ({
   const standardOptions = useStandardOptions();
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5">
-        <Search className="h-4 w-4 text-slate-400" />
+      <div className="flex items-center gap-3 rounded-lg border border-app-border bg-app-surface-alt px-3 py-2.5">
+        <Search className="h-4 w-4 text-app-muted" />
         <input
           type="text"
           placeholder="Buscar tareas..."
-          className="w-full border-none bg-transparent text-sm text-slate-600 outline-none placeholder:text-slate-400"
+          className="w-full border-none bg-transparent text-sm text-app-text outline-none placeholder:text-app-muted"
           value={searchValue}
           onChange={(e) => onSearch(e.target.value)}
         />
@@ -34,7 +34,7 @@ export const TaskFilters: React.FC<TaskFiltersProps> = ({
       
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
         <div className="flex items-center gap-2">
-          <Filter className="h-4 w-4 text-slate-400" />
+          <Filter className="h-4 w-4 text-app-muted" />
           <select
             className="admin-select"
             onChange={(e) => onFilterStatus(e.target.value as Task['status'] | 'all')}

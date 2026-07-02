@@ -1,13 +1,17 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
+import { AuthModeService } from './auth-mode.service';
 import { ClerkAuthService } from './clerk-auth.service';
 import type { DirectoryUser } from './clerk.types';
 
 @Injectable()
 export class ClerkDirectoryService {
-  constructor(private readonly clerkAuthService: ClerkAuthService) {}
+  constructor(
+    private readonly authModeService: AuthModeService,
+    private readonly clerkAuthService: ClerkAuthService
+  ) {}
 
   async listUsers(): Promise<DirectoryUser[]> {
-    if (!this.clerkAuthService.isEnabled()) {
+    if (!this.authModeService.isClerkMode()) {
       return [];
     }
 
@@ -18,11 +22,14 @@ export class ClerkDirectoryService {
   }
 
   async getCurrentUser(userId: string): Promise<DirectoryUser> {
+    this.authModeService.assertClerkReady();
     const user = await this.clerkAuthService.getClerkUser(userId);
     const directoryUser = this.toDirectoryUser(user);
 
     if (!directoryUser) {
-      throw new Error('El usuario de Clerk no tiene un correo principal disponible.');
+      throw new BadRequestException(
+        'El usuario de Clerk no tiene un correo principal disponible.'
+      );
     }
 
     return directoryUser;

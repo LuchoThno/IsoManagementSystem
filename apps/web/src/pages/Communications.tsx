@@ -336,7 +336,7 @@ export const Communications: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="overflow-hidden rounded-[36px] border border-slate-200 bg-[linear-gradient(135deg,#fff8ef_0%,#fffef9_30%,#eef6ff_68%,#f7fbff_100%)] shadow-sm">
+      <div className="overflow-hidden rounded-[36px] border border-app-border bg-[linear-gradient(135deg,#fff8ef_0%,#fffef9_30%,#eef6ff_68%,#f7fbff_100%)] shadow-panel">
         <div className="grid gap-6 px-6 py-7 xl:grid-cols-[1.3fr_0.8fr] xl:px-8 xl:py-8">
           <div className="relative">
             <div className="absolute -left-10 top-8 h-24 w-24 rounded-full bg-[#fb7185]/10 blur-2xl" />
@@ -365,7 +365,7 @@ export const Communications: React.FC = () => {
             </div>
           </div>
 
-          <div className="rounded-[30px] border border-white/70 bg-white/70 p-5 shadow-sm backdrop-blur">
+          <div className="rounded-[30px] border border-white/70 bg-white/70 p-5 shadow-panel backdrop-blur">
             <div className="flex items-start gap-4">
               <div className="rounded-[22px] bg-slate-900 px-4 py-3 text-white shadow-sm">
                 <p className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-white/70">
@@ -404,9 +404,9 @@ export const Communications: React.FC = () => {
 
       <div className="grid gap-6 xl:grid-cols-[360px_1fr]">
         <aside className="space-y-6">
-          <section className="rounded-[30px] border border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#fbfdff_100%)] p-5 shadow-sm">
+          <section className="rounded-[30px] border border-app-border bg-[linear-gradient(180deg,#ffffff_0%,#fbfdff_100%)] p-5 shadow-panel">
             <div className="flex items-center gap-3">
-              <div className="rounded-2xl bg-[#727cf5]/10 p-3 text-[#727cf5]">
+              <div className="app-icon-chip">
                 <MailCheck className="h-5 w-5" />
               </div>
               <div>
@@ -416,19 +416,19 @@ export const Communications: React.FC = () => {
             </div>
 
             <div className="mt-5 space-y-3">
-              <div className="rounded-2xl bg-slate-50 px-4 py-4">
+              <div className="rounded-2xl bg-app-surface-alt px-4 py-4">
                 <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Proveedor</p>
                 <p className="mt-2 text-lg font-extrabold text-slate-700">
                   {providerLabels[settingsForm.providerType]}
                 </p>
                 <p className="mt-1 text-sm text-slate-400">{settingsForm.providerName}</p>
               </div>
-              <div className="rounded-2xl bg-slate-50 px-4 py-4">
+              <div className="rounded-2xl bg-app-surface-alt px-4 py-4">
                 <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Remitente</p>
                 <p className="mt-2 text-sm font-bold text-slate-700">{settingsForm.senderName}</p>
                 <p className="mt-1 text-xs text-slate-400">{settingsForm.senderEmail}</p>
               </div>
-              <label className="flex items-center justify-between rounded-2xl border border-slate-200 px-4 py-4">
+              <label className="flex items-center justify-between rounded-2xl border border-app-border px-4 py-4">
                 <span className="font-semibold text-slate-700">Integracion habilitada</span>
                 <input
                   type="checkbox"
@@ -442,9 +442,9 @@ export const Communications: React.FC = () => {
             </div>
           </section>
 
-          <section className="rounded-[30px] border border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#fbfdff_100%)] p-5 shadow-sm">
+          <section className="rounded-[30px] border border-app-border bg-[linear-gradient(180deg,#ffffff_0%,#fbfdff_100%)] p-5 shadow-panel">
             <div className="flex items-center gap-3">
-              <div className="rounded-2xl bg-[#39afd1]/10 p-3 text-[#39afd1]">
+              <div className="rounded-2xl bg-app-info/10 p-3 text-app-info">
                 <Sparkles className="h-5 w-5" />
               </div>
               <div>
@@ -467,8 +467,8 @@ export const Communications: React.FC = () => {
                     onClick={() => setDeliveryMode(option.value as DeliveryMode)}
                     className={`flex items-center justify-between rounded-2xl px-4 py-4 text-left transition ${
                       deliveryMode === option.value
-                        ? 'bg-[#727cf5] text-white shadow-sm'
-                        : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
+                        ? 'bg-app-primary text-white shadow-sm'
+                        : 'bg-app-surface-alt text-slate-600 hover:bg-slate-100'
                     }`}
                   >
                     <div className="flex items-center gap-3">
@@ -521,7 +521,7 @@ export const Communications: React.FC = () => {
                 </div>
               )}
 
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
+              <div className="rounded-2xl border border-app-border bg-app-surface-alt px-4 py-4">
                 <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">
                   Alcance actual
                 </p>
@@ -535,7 +535,7 @@ export const Communications: React.FC = () => {
         </aside>
 
         <div className="space-y-6">
-          <section className="rounded-[30px] border border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#fcfdff_100%)] p-6 shadow-sm">
+          <section className="rounded-[30px] border border-app-border bg-[linear-gradient(180deg,#ffffff_0%,#fcfdff_100%)] p-6 shadow-panel">
             <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
               <div>
                 <h3 className="text-lg font-extrabold text-slate-700">Proveedor de correo</h3>
@@ -547,7 +547,7 @@ export const Communications: React.FC = () => {
               <button
                 type="button"
                 onClick={() => void handleSaveIntegration()}
-                className="rounded-xl bg-[#727cf5] px-5 py-3 font-bold text-white transition hover:bg-[#636df0]"
+                className="app-button-primary px-5 py-3"
               >
                 Guardar integracion
               </button>
@@ -592,7 +592,7 @@ export const Communications: React.FC = () => {
                       <p className="mt-3 text-sm leading-6 text-white/85">{provider.detail}</p>
                     </div>
 
-                    <div className="space-y-4 bg-white p-5">
+                    <div className="space-y-4 bg-app-surface p-5">
                       <div className="flex flex-wrap gap-2">
                         {provider.envs.map((item) => (
                           <span
@@ -604,7 +604,7 @@ export const Communications: React.FC = () => {
                         ))}
                       </div>
 
-                      <div className="rounded-2xl bg-slate-50 px-4 py-4">
+                      <div className="rounded-2xl bg-app-surface-alt px-4 py-4">
                         <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">
                           Compatibilidad
                         </p>
@@ -695,7 +695,7 @@ export const Communications: React.FC = () => {
               </div>
             </div>
 
-            <div className="mt-6 rounded-[28px] border border-slate-200 bg-[linear-gradient(135deg,#f8fbff_0%,#ffffff_100%)] p-5">
+            <div className="mt-6 rounded-[28px] border border-app-border bg-[linear-gradient(135deg,#f8fbff_0%,#ffffff_100%)] p-5">
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-slate-400">
@@ -712,7 +712,7 @@ export const Communications: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => void refreshCompatibility()}
-                  className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-100"
+                  className="app-button-secondary px-4 py-2.5 text-sm"
                 >
                   Revalidar
                 </button>

@@ -70,7 +70,7 @@ export const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4">
-      <div className="w-full max-w-2xl overflow-hidden rounded-[30px] bg-white shadow-2xl">
+      <div className="w-full max-w-2xl overflow-hidden rounded-[30px] bg-app-surface shadow-floating">
         <div className="bg-[linear-gradient(135deg,#313a46_0%,#3f4d5f_100%)] px-6 py-5 text-white">
           <div className="flex items-start justify-between gap-4">
             <div>
@@ -169,22 +169,22 @@ export const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
             </label>
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-500">
-            Archivo actual: <span className="font-semibold text-slate-700">{document.fileName ?? document.title}</span>
+          <div className="rounded-2xl border border-app-border bg-app-surface-alt px-4 py-4 text-sm text-slate-500">
+            Archivo actual: <span className="font-semibold text-app-text">{document.fileName ?? document.title}</span>
           </div>
 
           <div className="flex gap-3">
             <button
               type="button"
               onClick={onClose}
-              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 font-bold text-slate-600 transition hover:bg-slate-50"
+              className="app-button-secondary w-full"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="w-full rounded-xl bg-[#727cf5] px-4 py-3 font-bold text-white transition hover:bg-[#636df0] disabled:cursor-not-allowed disabled:opacity-70"
+              className="app-button-primary w-full disabled:cursor-not-allowed disabled:opacity-70"
             >
               {submitting ? 'Guardando...' : 'Guardar cambios'}
             </button>

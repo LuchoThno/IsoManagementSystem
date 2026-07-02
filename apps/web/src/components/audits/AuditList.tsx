@@ -70,19 +70,19 @@ export const AuditList: React.FC<AuditListProps> = ({
   };
 
   const actionButtonClassName =
-    'inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700';
+    'inline-flex h-10 w-10 items-center justify-center rounded-xl border border-app-border bg-app-surface text-slate-500 transition hover:border-slate-300 hover:bg-app-surface-alt hover:text-slate-700';
 
   return (
-    <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
+    <div className="overflow-hidden rounded-[28px] border border-app-border bg-app-surface shadow-panel">
       <div className="flex items-center justify-between border-b border-slate-100 px-6 py-5">
         <div>
-          <h3 className="text-lg font-extrabold text-slate-700">Agenda de auditorías</h3>
-          <p className="mt-1 text-sm text-slate-400">
+          <h3 className="text-lg font-extrabold text-app-text">Agenda de auditorías</h3>
+          <p className="mt-1 text-sm text-app-muted">
             {audits.length} auditorías visibles con seguimiento de hallazgos y avance operativo.
           </p>
         </div>
       </div>
-      <div className="hidden grid-cols-[1.9fr_150px_1.1fr_150px_120px] gap-4 border-b border-slate-100 bg-slate-50 px-6 py-4 text-xs font-extrabold uppercase tracking-[0.18em] text-slate-500 lg:grid">
+      <div className="hidden grid-cols-[1.9fr_150px_1.1fr_150px_120px] gap-4 border-b border-slate-100 bg-app-surface-alt px-6 py-4 text-xs font-extrabold uppercase tracking-[0.18em] text-slate-500 lg:grid">
         <span>Auditoría</span>
         <span>Fecha</span>
         <span>Hallazgos</span>
@@ -102,14 +102,14 @@ export const AuditList: React.FC<AuditListProps> = ({
         >
           <div className="min-w-0">
             <div className="flex items-start gap-4">
-              <div className="rounded-2xl bg-[#727cf5]/10 p-3 text-[#727cf5]">
+              <div className="app-icon-chip">
                 {getStatusIcon(audit.status)}
               </div>
               <div className="min-w-0">
-                <h3 className="text-base font-extrabold text-slate-700">
+                <h3 className="text-base font-extrabold text-app-text">
                   {audit.type === 'internal' ? 'Auditoria interna' : 'Auditoria externa'} - {audit.standard}
                 </h3>
-                <p className="mt-2 text-sm text-slate-400">
+                <p className="mt-2 text-sm text-app-muted">
                   Alcance y seguimiento del proceso auditado
                 </p>
                 <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-400">
@@ -132,7 +132,7 @@ export const AuditList: React.FC<AuditListProps> = ({
 
           <div className="space-y-2">
             {audit.findings.slice(0, 2).map((finding) => (
-              <div key={finding.id} className="rounded-2xl bg-slate-50 px-3 py-3">
+              <div key={finding.id} className="rounded-2xl bg-app-surface-alt px-3 py-3">
                 <span
                   className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide ${getFindingTone(finding.type)}`}
                 >
@@ -192,10 +192,10 @@ export const AuditList: React.FC<AuditListProps> = ({
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 text-slate-400">
             <AlertCircle className="h-6 w-6" />
           </div>
-          <p className="mt-4 text-lg font-extrabold text-slate-700">
+          <p className="mt-4 text-lg font-extrabold text-app-text">
             No se encontraron auditorías con esos filtros
           </p>
-          <p className="mt-2 text-sm text-slate-400">
+          <p className="mt-2 text-sm text-app-muted">
             Ajusta la búsqueda o cambia estado, tipo y norma para encontrar resultados.
           </p>
         </div>

@@ -78,7 +78,7 @@ const getDisplayFileName = (document: Document) => {
 };
 
 const actionButtonClassName =
-  'inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700';
+  'inline-flex h-10 w-10 items-center justify-center rounded-xl border border-app-border bg-app-surface text-slate-500 transition hover:border-slate-300 hover:bg-app-surface-alt hover:text-slate-700';
 
 export const DocumentTable: React.FC<DocumentTableProps> = ({
   documents,
@@ -90,11 +90,11 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
   onShowAudit,
 }) => {
   return (
-    <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
+    <div className="overflow-hidden rounded-[28px] border border-app-border bg-app-surface shadow-panel">
       <div className="flex items-center justify-between border-b border-slate-100 px-6 py-5">
         <div>
-          <h3 className="text-lg font-extrabold text-slate-700">Repositorio documental</h3>
-          <p className="mt-1 text-sm text-slate-400">
+          <h3 className="text-lg font-extrabold text-app-text">Repositorio documental</h3>
+          <p className="mt-1 text-sm text-app-muted">
             {documents.length} documentos visibles con acceso a trazabilidad y control de versiones.
           </p>
         </div>
@@ -102,7 +102,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
 
       <div className="overflow-x-auto">
         <table className="min-w-full">
-          <thead className="bg-slate-50 text-left text-xs font-extrabold uppercase tracking-[0.18em] text-slate-500">
+          <thead className="bg-app-surface-alt text-left text-xs font-extrabold uppercase tracking-[0.18em] text-slate-500">
             <tr>
               <th className="px-6 py-4">Documento</th>
               <th className="px-5 py-4">Clasificación</th>
@@ -123,11 +123,11 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
               >
                 <td className="px-6 py-5">
                   <div className="flex items-start gap-4">
-                    <div className="rounded-2xl bg-[#727cf5]/10 p-3 text-[#727cf5]">
+                    <div className="app-icon-chip">
                       <TypeIcon className="h-5 w-5" />
                     </div>
                     <div className="min-w-0">
-                      <p className="font-extrabold text-slate-700">{document.title}</p>
+                      <p className="font-extrabold text-app-text">{document.title}</p>
                       <div className="mt-2 flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-400">
                         <span>{typeLabel[document.type]}</span>
                         <span className="h-1 w-1 rounded-full bg-slate-300" />
@@ -154,7 +154,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                     <button
                       type="button"
                       onClick={() => onShowVersions(document)}
-                      className="inline-flex items-center gap-2 rounded-full bg-[#727cf5]/10 px-3 py-1.5 text-xs font-bold text-[#727cf5] transition hover:bg-[#727cf5]/15"
+                      className="inline-flex items-center gap-2 rounded-full bg-app-primary/10 px-3 py-1.5 text-xs font-bold text-app-primary transition hover:bg-app-primary/15"
                     >
                       <History className="h-3.5 w-3.5" />
                       v{document.version}

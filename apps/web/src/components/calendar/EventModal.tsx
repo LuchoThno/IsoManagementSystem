@@ -20,15 +20,15 @@ export const EventModal: React.FC<EventModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4">
-      <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-2xl">
-        <div className="flex items-center justify-between mb-4">
+      <div className="w-full max-w-md rounded-xl bg-app-surface p-6 shadow-floating">
+        <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <CalendarIcon className="w-5 h-5 text-slate-400" />
-            <h3 className="text-lg font-extrabold text-slate-700">
+            <CalendarIcon className="w-5 h-5 text-app-muted" />
+            <h3 className="text-lg font-extrabold text-app-text">
               {format(selectedDate, 'MMMM d, yyyy')}
             </h3>
           </div>
-          <button onClick={onClose}>
+          <button onClick={onClose} className="rounded-lg p-1 text-slate-500 transition hover:bg-app-surface-alt hover:text-slate-700">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -40,11 +40,11 @@ export const EventModal: React.FC<EventModalProps> = ({
                 className={`rounded-xl p-3 ${
                   event.type === 'task'
                     ? 'border border-amber-100 bg-amber-50'
-                    : 'border border-indigo-100 bg-indigo-50'
+                    : 'border border-app-primary/10 bg-app-primary/5'
                 }`}
               >
                 <div className="flex items-center justify-between">
-                <h4 className="font-bold text-slate-700">{event.title}</h4>
+                <h4 className="font-bold text-app-text">{event.title}</h4>
                 <span className="rounded-full bg-white px-2 py-1 text-xs font-bold text-slate-500">
                   {event.type}
                 </span>
@@ -57,7 +57,7 @@ export const EventModal: React.FC<EventModalProps> = ({
           ))}
 
               {events.length === 0 && (
-            <p className="text-center text-gray-500 py-4">
+            <p className="py-4 text-center text-slate-500">
               No hay eventos programados para este dia
             </p>
           )}

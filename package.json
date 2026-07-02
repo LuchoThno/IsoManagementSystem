@@ -9,6 +9,13 @@
     "dev:api": "pnpm --filter @iso-manager/api dev",
     "build": "pnpm --filter @iso-manager/api build && pnpm --filter @iso-manager/web build",
     "lint": "pnpm --filter @iso-manager/web lint",
+    "backup:mongo": "node scripts/backup-mongo.mjs",
+    "restore:mongo": "node scripts/restore-mongo.mjs",
+    "smoke:api": "node scripts/smoke-api.mjs",
+    "smoke:api:routes": "node scripts/smoke-api-routes.mjs",
+    "smoke:rbac": "node scripts/smoke-rbac.mjs",
+    "smoke:socket": "node scripts/smoke-socket.mjs",
+    "smoke:backend": "pnpm smoke:api && pnpm smoke:api:routes && pnpm smoke:socket",
     "preview": "pnpm --filter @iso-manager/web preview"
   }
 }

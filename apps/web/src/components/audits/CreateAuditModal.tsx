@@ -70,10 +70,10 @@ export const CreateAuditModal: React.FC<CreateAuditModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-950/50 p-4">
-      <div className="my-8 w-full max-w-2xl rounded-xl bg-white p-6 shadow-2xl">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-extrabold text-slate-700">Programar auditoria</h3>
-          <button onClick={onClose}>
+      <div className="my-8 w-full max-w-2xl rounded-xl bg-app-surface p-6 shadow-floating">
+        <div className="mb-4 flex items-center justify-between">
+          <h3 className="text-lg font-extrabold text-app-text">Programar auditoria</h3>
+          <button onClick={onClose} className="rounded-lg p-1 text-slate-500 transition hover:bg-app-surface-alt hover:text-slate-700">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -81,7 +81,7 @@ export const CreateAuditModal: React.FC<CreateAuditModalProps> = ({
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700">Tipo</label>
+              <label className="block text-sm font-medium text-slate-700">Tipo</label>
               <select
                 value={formData.type}
                 onChange={(e) => setFormData({ ...formData, type: e.target.value as Audit['type'] })}
@@ -93,7 +93,7 @@ export const CreateAuditModal: React.FC<CreateAuditModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">Norma</label>
+              <label className="block text-sm font-medium text-slate-700">Norma</label>
               <select
                 value={formData.standard}
                 onChange={(e) => setFormData({ ...formData, standard: e.target.value as ISOStandard })}
@@ -106,7 +106,7 @@ export const CreateAuditModal: React.FC<CreateAuditModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">Fecha</label>
+              <label className="block text-sm font-medium text-slate-700">Fecha</label>
               <input
                 type="date"
                 value={formData.date}
@@ -118,11 +118,11 @@ export const CreateAuditModal: React.FC<CreateAuditModalProps> = ({
           </div>
 
           <div className="border-t border-gray-200 pt-4">
-            <h4 className="text-sm font-medium text-gray-700 mb-4">Hallazgos</h4>
+            <h4 className="mb-4 text-sm font-medium text-slate-700">Hallazgos</h4>
             
             <div className="space-y-4 mb-4">
               {formData.findings.map((finding, index) => (
-                <div key={index} className="flex items-center space-x-2 rounded-lg bg-slate-50 p-3">
+                <div key={index} className="flex items-center space-x-2 rounded-lg bg-app-surface-alt p-3">
                   <span className={`px-2 py-1 text-xs rounded-full ${
                     finding.type === 'nonconformity' ? 'bg-red-100 text-red-800' :
                     finding.type === 'observation' ? 'bg-yellow-100 text-yellow-800' :
@@ -130,7 +130,7 @@ export const CreateAuditModal: React.FC<CreateAuditModalProps> = ({
                   }`}>
                     {finding.type}
                   </span>
-                  <span className="flex-1 text-sm">{finding.description}</span>
+                  <span className="flex-1 text-sm text-app-text">{finding.description}</span>
                   <button
                     type="button"
                     onClick={() => removeFinding(index)}
@@ -144,7 +144,7 @@ export const CreateAuditModal: React.FC<CreateAuditModalProps> = ({
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">Tipo de hallazgo</label>
+                <label className="block text-sm font-medium text-slate-700">Tipo de hallazgo</label>
                 <select
                   value={newFinding.type}
                   onChange={(e) => setNewFinding({ ...newFinding, type: e.target.value as Finding['type'] })}
@@ -157,7 +157,7 @@ export const CreateAuditModal: React.FC<CreateAuditModalProps> = ({
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">Fecha limite</label>
+                <label className="block text-sm font-medium text-slate-700">Fecha limite</label>
                 <input
                   type="date"
                   value={newFinding.dueDate}
@@ -167,7 +167,7 @@ export const CreateAuditModal: React.FC<CreateAuditModalProps> = ({
               </div>
 
               <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-700">Descripcion</label>
+                <label className="block text-sm font-medium text-slate-700">Descripcion</label>
                 <input
                   type="text"
                   value={newFinding.description}
@@ -178,7 +178,7 @@ export const CreateAuditModal: React.FC<CreateAuditModalProps> = ({
               </div>
 
               <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-700">Responsable</label>
+                <label className="block text-sm font-medium text-slate-700">Responsable</label>
                 <input
                   type="text"
                   value={newFinding.assignedTo}
@@ -192,7 +192,7 @@ export const CreateAuditModal: React.FC<CreateAuditModalProps> = ({
                 <button
                   type="button"
                   onClick={addFinding}
-                  className="flex items-center space-x-2 rounded-lg bg-slate-100 px-4 py-2.5 font-bold text-slate-600 transition-colors hover:bg-slate-200"
+                  className="flex items-center space-x-2 rounded-lg bg-app-surface-alt px-4 py-2.5 font-bold text-slate-600 transition-colors hover:bg-slate-200"
                 >
                   <Plus className="w-4 h-4" />
                   <span>Agregar hallazgo</span>
@@ -203,7 +203,7 @@ export const CreateAuditModal: React.FC<CreateAuditModalProps> = ({
 
           <button
             type="submit"
-            className="w-full rounded-lg bg-[#727cf5] px-4 py-2.5 font-bold text-white transition hover:bg-[#636df0]"
+            className="app-button-primary w-full"
           >
             Programar auditoria
           </button>

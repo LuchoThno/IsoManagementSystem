@@ -1,6 +1,14 @@
 import { Injectable, NotFoundException, OnModuleInit } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
+import type {
+  CreateContractDto,
+  CreateCorrectiveActionDto,
+  CreateEvidenceDto,
+  PaginationParams,
+  StandardClausePayload,
+  StandardPayload,
+} from './dto/grc.dto';
 import { Audit } from './schemas/audit.schema';
 import { AuditChecklistEntity } from './schemas/audit-checklist.schema';
 import { AuditChecklistItemEntity } from './schemas/audit-checklist-item.schema';
@@ -14,54 +22,6 @@ import { StandardClauseEntity } from './schemas/standard-clause.schema';
 import { StandardRequirementEntity } from './schemas/standard-requirement.schema';
 import { StandardSectionEntity } from './schemas/standard-section.schema';
 import { StandardEntity } from './schemas/standard.schema';
-
-type StandardRequirementPayload = {
-  code: string;
-  title: string;
-  description?: string;
-  intent?: string;
-  criticality?: 'low' | 'medium' | 'high';
-  status?: 'draft' | 'active' | 'obsolete';
-};
-
-type StandardClausePayload = {
-  code: string;
-  title: string;
-  description?: string;
-  children?: StandardClausePayload[];
-  requirements?: StandardRequirementPayload[];
-};
-
-type StandardPayload = {
-  code: string;
-  title: string;
-  description?: string;
-  category?: 'standard' | 'framework' | 'regulation' | 'contractual';
-  status?: 'draft' | 'active' | 'archived';
-  version?: string;
-  enabled?: boolean;
-  owner?: string;
-  publishedAt?: string | null;
-  sections?: Array<{
-    code: string;
-    title: string;
-    description?: string;
-    clauses?: StandardClausePayload[];
-  }>;
-  appendices?: Array<{
-    code: string;
-    title: string;
-    type?: 'annex' | 'appendix' | 'guide';
-    description?: string;
-    content?: string;
-  }>;
-};
-
-type PaginationParams = {
-  page?: number;
-  pageSize?: number;
-  search?: string;
-};
 
 @Injectable()
 export class GrcService implements OnModuleInit {
@@ -295,22 +255,7 @@ export class GrcService implements OnModuleInit {
     return evidences.map((evidence) => this.serializeEvidence(evidence));
   }
 
-  async createEvidence(payload: {
-    title: string;
-    description?: string;
-    standardId?: string | null;
-    requirementId: string;
-    clauseId?: string | null;
-    status?: 'missing' | 'pending' | 'approved' | 'expired';
-    objectiveType?: 'document' | 'record' | 'interview' | 'observation' | 'contract';
-    owner?: string;
-    sourceDocumentId?: string | null;
-    documentIds?: string[];
-    linkedAuditIds?: string[];
-    dueDate?: string | null;
-    collectedAt?: string | null;
-    notes?: string;
-  }) {
+  async createEvidence(payload: CreateEvidenceDto) {
     const evidence = await this.evidenceModel.create({
       title: payload.title,
       description: payload.description ?? '',
@@ -439,36 +384,7 @@ export class GrcService implements OnModuleInit {
     };
   }
 
-  async createContract(payload: {
-    title: string;
-    counterparty: string;
-    identifier: string;
-    status?: 'draft' | 'active' | 'expired' | 'closed';
-    startDate?: string | null;
-    endDate?: string | null;
-    standardIds?: string[];
-    owner?: string;
-    summary?: string;
-    obligations?: Array<{
-      standardId?: string | null;
-      title: string;
-      description?: string;
-      sourceClause?: string;
-      dueDate?: string | null;
-      status?: 'open' | 'in-progress' | 'fulfilled' | 'overdue';
-      priority?: 'low' | 'medium' | 'high';
-      owner?: string;
-      evidenceIds?: string[];
-    }>;
-    documents?: Array<{
-      title: string;
-      kind?: 'contract' | 'annex' | 'policy' | 'evidence';
-      fileName: string;
-      mimeType: string;
-      url: string;
-      uploadedAt?: string;
-    }>;
-  }) {
+  async createContract(payload: CreateContractDto) {
     const contract = await this.contractModel.create({
       title: payload.title,
       counterparty: payload.counterparty,
@@ -595,20 +511,7 @@ export class GrcService implements OnModuleInit {
     };
   }
 
-  async createCorrectiveAction(payload: {
-    title: string;
-    description?: string;
-    sourceType: 'finding' | 'audit' | 'contract' | 'requirement' | 'evidence';
-    sourceId: string;
-    standardId?: string | null;
-    auditId?: string | null;
-    assignedTo?: string;
-    dueDate?: string | null;
-    status?: 'open' | 'in-progress' | 'verified' | 'closed';
-    priority?: 'low' | 'medium' | 'high';
-    evidenceIds?: string[];
-    verificationNotes?: string;
-  }) {
+  async createCorrectiveAction(payload: CreateCorrectiveActionDto) {
     const action = await this.correctiveActionModel.create({
       title: payload.title,
       description: payload.description ?? '',

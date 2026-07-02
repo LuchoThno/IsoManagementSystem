@@ -129,16 +129,16 @@ export const Audits: React.FC = () => {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h2 className="text-2xl font-extrabold text-slate-700">Auditorias</h2>
-          <p className="mt-1 text-sm text-slate-400">
+          <h2 className="text-2xl font-extrabold text-app-text">Auditorias</h2>
+          <p className="mt-1 text-sm text-app-muted">
             Programa revisiones internas y externas con hallazgos y responsables.
           </p>
         </div>
         <button
           onClick={() => setIsCreateModalOpen(true)}
-          className="flex items-center space-x-2 rounded-lg bg-[#727cf5] px-4 py-2.5 text-white transition-colors hover:bg-[#636df0]"
+          className="app-button-primary inline-flex items-center gap-2 px-4 py-2.5"
         >
-          <Plus className="w-5 h-5" />
+          <Plus className="h-5 w-5" />
           <span>Programar auditoria</span>
         </button>
       </div>
@@ -154,7 +154,7 @@ export const Audits: React.FC = () => {
       </div>
 
       {loadError ? (
-        <div className="rounded-[28px] border border-dashed border-rose-200 bg-rose-50 py-14 text-center">
+        <div className="app-empty-state-danger">
           <div className="mx-auto max-w-md">
             <p className="text-lg font-extrabold text-rose-700">{loadError}</p>
             <p className="mt-2 text-sm text-rose-500">
@@ -163,10 +163,10 @@ export const Audits: React.FC = () => {
           </div>
         </div>
       ) : loading ? (
-        <div className="rounded-[28px] border border-dashed border-slate-200 bg-white py-14 text-center">
+        <div className="app-empty-state">
           <div className="mx-auto max-w-md">
-            <p className="text-lg font-extrabold text-slate-700">Cargando auditorías...</p>
-            <p className="mt-2 text-sm text-slate-400">
+            <p className="text-lg font-extrabold text-app-text">Cargando auditorías...</p>
+            <p className="mt-2 text-sm text-app-muted">
               Estamos consultando el módulo de auditorías en la API.
             </p>
           </div>
@@ -186,12 +186,12 @@ export const Audits: React.FC = () => {
               <section className="panel-card p-6">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <h3 className="text-xl font-extrabold text-slate-700">
+                    <h3 className="text-xl font-extrabold text-app-text">
                       Checklist de auditoría
                     </h3>
                     <p className="mt-1 text-sm text-slate-500">{auditChecklist.summary}</p>
                   </div>
-                  <span className="rounded-full bg-[#727cf5]/10 px-3 py-1.5 text-xs font-bold text-[#727cf5]">
+                  <span className="rounded-full bg-app-primary/10 px-3 py-1.5 text-xs font-bold text-app-primary">
                     {auditChecklist.progress}% completado
                   </span>
                 </div>
@@ -200,14 +200,14 @@ export const Audits: React.FC = () => {
                   {auditChecklist.items.map((item) => (
                     <article
                       key={item.id}
-                      className="rounded-2xl border border-slate-200 bg-slate-50 p-4"
+                      className="rounded-2xl border border-slate-200 bg-app-surface-alt p-4"
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">
                             {item.clauseCode || 'Sin cláusula'}
                           </p>
-                          <h4 className="mt-2 font-extrabold text-slate-700">{item.title}</h4>
+                          <h4 className="mt-2 font-extrabold text-app-text">{item.title}</h4>
                           <p className="mt-2 text-sm text-slate-500">{item.prompt}</p>
                         </div>
                         <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-600">
@@ -225,9 +225,9 @@ export const Audits: React.FC = () => {
 
               <section className="panel-card p-6">
                 <div>
-                  <h3 className="text-xl font-extrabold text-slate-700">
-                    Acciones correctivas relacionadas
-                  </h3>
+                    <h3 className="text-xl font-extrabold text-app-text">
+                      Acciones correctivas relacionadas
+                    </h3>
                   <p className="mt-1 text-sm text-slate-500">
                     Seguimiento de acciones derivadas de esta auditoría.
                   </p>
@@ -235,10 +235,10 @@ export const Audits: React.FC = () => {
 
                 <div className="mt-5 space-y-3">
                   {selectedAuditActions.map((action) => (
-                    <article key={action.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <article key={action.id} className="rounded-2xl border border-slate-200 bg-app-surface-alt p-4">
                       <div className="flex items-start justify-between gap-3">
                         <div>
-                          <p className="font-extrabold text-slate-700">{action.title}</p>
+                          <p className="font-extrabold text-app-text">{action.title}</p>
                           <p className="mt-2 text-sm text-slate-500">{action.description}</p>
                         </div>
                         <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-600">

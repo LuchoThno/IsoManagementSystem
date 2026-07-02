@@ -107,33 +107,33 @@ export const Standards: React.FC = () => {
           <p className="text-sm font-bold uppercase tracking-[0.24em] text-slate-400">
             Gobierno normativo
           </p>
-          <h1 className="mt-3 text-3xl font-extrabold text-slate-700">
+          <h1 className="mt-3 text-3xl font-extrabold text-app-text">
             Catálogo dinámico de normas, marcos y requisitos.
           </h1>
           <p className="mt-3 max-w-3xl text-sm text-slate-500">
             Carga cualquier estándar, construye su jerarquía y mide cumplimiento a partir de evidencia objetiva.
           </p>
           <div className="mt-6 grid gap-4 md:grid-cols-3">
-            <article className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <article className="app-subtle-card">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-bold text-slate-500">Normas activas</span>
-                <Network className="h-4 w-4 text-[#39afd1]" />
+                <Network className="h-4 w-4 text-app-info" />
               </div>
-              <p className="mt-3 text-3xl font-extrabold text-slate-700">{standards.length}</p>
+              <p className="mt-3 text-3xl font-extrabold text-app-text">{standards.length}</p>
             </article>
-            <article className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <article className="app-subtle-card">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-bold text-slate-500">Cumplimiento medio</span>
                 <ShieldCheck className="h-4 w-4 text-emerald-500" />
               </div>
-              <p className="mt-3 text-3xl font-extrabold text-slate-700">{averageCompliance}%</p>
+              <p className="mt-3 text-3xl font-extrabold text-app-text">{averageCompliance}%</p>
             </article>
-            <article className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <article className="app-subtle-card">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-bold text-slate-500">Cobertura</span>
-                <Scale className="h-4 w-4 text-[#727cf5]" />
+                <Scale className="h-4 w-4 text-app-primary" />
               </div>
-              <p className="mt-3 text-3xl font-extrabold text-slate-700">
+              <p className="mt-3 text-3xl font-extrabold text-app-text">
                 {standards.filter((standard) => standard.enabled).length}
               </p>
             </article>
@@ -142,10 +142,10 @@ export const Standards: React.FC = () => {
 
         <form onSubmit={handleSubmit} className="panel-card p-6">
           <div className="flex items-center gap-3">
-            <PlusCircle className="h-5 w-5 text-[#727cf5]" />
+            <PlusCircle className="h-5 w-5 text-app-primary" />
             <div>
-              <h2 className="text-lg font-extrabold text-slate-700">Nueva norma</h2>
-              <p className="text-sm text-slate-400">Alta rápida con primera sección, cláusula y requisito.</p>
+              <h2 className="text-lg font-extrabold text-app-text">Nueva norma</h2>
+              <p className="text-sm text-app-muted">Alta rápida con primera sección, cláusula y requisito.</p>
             </div>
           </div>
 
@@ -184,7 +184,7 @@ export const Standards: React.FC = () => {
           <button
             type="submit"
             disabled={createMutation.isPending}
-            className="mt-4 w-full rounded-xl bg-[#727cf5] px-4 py-3 font-bold text-white transition hover:bg-[#636df0] disabled:opacity-70"
+            className="app-button-primary mt-4 w-full"
           >
             {createMutation.isPending ? 'Guardando...' : 'Crear norma'}
           </button>
@@ -194,7 +194,7 @@ export const Standards: React.FC = () => {
       <section className="panel-card p-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-extrabold text-slate-700">Matriz de cumplimiento por norma</h2>
+            <h2 className="text-xl font-extrabold text-app-text">Matriz de cumplimiento por norma</h2>
             <p className="mt-1 text-sm text-slate-500">Progreso calculado sobre requisitos con evidencia vinculada.</p>
           </div>
         </div>
@@ -212,14 +212,14 @@ export const Standards: React.FC = () => {
                 <Link
                   key={standard.id}
                   to={`/standards/${standard.id}`}
-                  className="rounded-[26px] border border-slate-200 bg-white p-5 transition hover:-translate-y-0.5 hover:shadow-lg"
+                  className="rounded-[26px] border border-app-border bg-app-surface p-5 transition hover:-translate-y-0.5 hover:shadow-lg"
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div>
                       <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-400">
                         {standard.code}
                       </p>
-                      <h3 className="mt-2 text-xl font-extrabold text-slate-700">{standard.title}</h3>
+                      <h3 className="mt-2 text-xl font-extrabold text-app-text">{standard.title}</h3>
                       <p className="mt-2 text-sm text-slate-500">{standard.description}</p>
                     </div>
                     <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">
@@ -227,17 +227,17 @@ export const Standards: React.FC = () => {
                     </span>
                   </div>
                   <div className="mt-5 grid gap-3 md:grid-cols-3">
-                    <div className="rounded-2xl bg-slate-50 p-3">
+                    <div className="rounded-2xl bg-app-surface-alt p-3">
                       <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Requisitos</p>
-                      <p className="mt-2 text-2xl font-extrabold text-slate-700">{metrics.requirementsCount}</p>
+                      <p className="mt-2 text-2xl font-extrabold text-app-text">{metrics.requirementsCount}</p>
                     </div>
-                    <div className="rounded-2xl bg-slate-50 p-3">
+                    <div className="rounded-2xl bg-app-surface-alt p-3">
                       <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Con evidencia</p>
-                      <p className="mt-2 text-2xl font-extrabold text-slate-700">{metrics.evidencedCount}</p>
+                      <p className="mt-2 text-2xl font-extrabold text-app-text">{metrics.evidencedCount}</p>
                     </div>
-                    <div className="rounded-2xl bg-slate-50 p-3">
+                    <div className="rounded-2xl bg-app-surface-alt p-3">
                       <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Cumplimiento</p>
-                      <p className="mt-2 text-2xl font-extrabold text-slate-700">{metrics.complianceRate}%</p>
+                      <p className="mt-2 text-2xl font-extrabold text-app-text">{metrics.complianceRate}%</p>
                     </div>
                   </div>
                 </Link>

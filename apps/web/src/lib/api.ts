@@ -1,3 +1,4 @@
+import { canManageUsersManually, fetchAuthConfig, shouldUseClerkDirectory } from './authConfig';
 import { isClerkEnabled } from './clerk';
 import {
   listChatThreadsApi,
@@ -108,7 +109,6 @@ type ApiBootstrapShell = {
 
 let bootstrapPromise: Promise<ISOBootstrapData> | null = null;
 let bootstrapShellPromise: Promise<ISOBootstrapShellData> | null = null;
-
 const mergeDirectoryUsers = (
   localUsers: UserAccount[],
   clerkUsers: UserAccount[]
@@ -140,6 +140,21 @@ const mergeDirectoryUsers = (
   return merged.sort((left, right) => left.name.localeCompare(right.name, 'es'));
 };
 
+const filterUsersByDirectoryProvider = (
+  users: UserAccount[],
+  directoryProvider: 'clerk' | 'local' | 'none'
+) => {
+  if (directoryProvider === 'clerk') {
+    return users.filter((user) => user.id.startsWith('clerk-'));
+  }
+
+  if (directoryProvider === 'none') {
+    return [];
+  }
+
+  return users;
+};
+
 export async function fetchBootstrap(): Promise<ISOBootstrapData> {
   if (!isClerkEnabled) {
     return storage.fetchBootstrap();
@@ -150,12 +165,17 @@ export async function fetchBootstrap(): Promise<ISOBootstrapData> {
   }
 
   const request = (async () => {
-    const [bootstrap, users, chatThreads] =
+    const [bootstrap, users, chatThreads, authConfig] =
       await Promise.all([
       requestIsoApi<ApiBootstrap>('/bootstrap'),
       storage.listUsers(),
       storage.listChatThreads(),
+      fetchAuthConfig(),
     ]);
+    const scopedUsers = filterUsersByDirectoryProvider(
+      users,
+      authConfig.capabilities.directoryProvider
+    );
 
     const nextBootstrap: ISOBootstrapData = {
       dashboard: bootstrap.dashboard,
@@ -191,7 +211,7 @@ export async function fetchBootstrap(): Promise<ISOBootstrapData> {
       })),
       settings: bootstrap.settings,
       notifications: bootstrap.notifications,
-      users,
+      users: scopedUsers,
       chatThreads,
       emailTemplates: bootstrap.emailTemplates.map((template) => ({
         ...template,
@@ -207,6 +227,10 @@ export async function fetchBootstrap(): Promise<ISOBootstrapData> {
     };
 
     try {
+      if (!(await shouldUseClerkDirectory())) {
+        return nextBootstrap;
+      }
+
       const clerkUsers = await listClerkDirectoryUsers();
       return {
         ...nextBootstrap,
@@ -285,19 +309,35 @@ export async function fetchBootstrapShell(options?: { force?: boolean }): Promis
 }
 
 export async function listUsers(): Promise<UserAccount[]> {
-  const users = await storage.listUsers();
+  const [users, authConfig] = await Promise.all([storage.listUsers(), fetchAuthConfig()]);
+  const scopedUsers = filterUsersByDirectoryProvider(
+    users,
+    authConfig.capabilities.directoryProvider
+  );
 
   if (!isClerkEnabled) {
-    return users;
+    return scopedUsers;
   }
 
   try {
+    if (!(await shouldUseClerkDirectory())) {
+      return scopedUsers;
+    }
+
     const clerkUsers = await listClerkDirectoryUsers();
-    return mergeDirectoryUsers(users, clerkUsers);
+    return mergeDirectoryUsers(scopedUsers, clerkUsers);
   } catch {
-    return users;
+    return scopedUsers;
   }
 }
+
+const assertManualUserManagementAvailable = async () => {
+  if (!(await canManageUsersManually())) {
+    throw new Error(
+      'La gestión manual de usuarios está deshabilitada en el modo de autenticación activo.'
+    );
+  }
+};
 
 export const createAudit = createAuditApi;
 export const createEmailTemplate = (payload: {
@@ -311,7 +351,16 @@ export const createEmailTemplate = (payload: {
   });
 export const createDocument = createDocumentApi;
 export const createTask = createTaskApi;
-export const createUser = storage.createUser;
+export const createUser = async (payload: {
+  name: string;
+  email: string;
+  role: UserAccount['role'];
+  password: string;
+  active: boolean;
+}) => {
+  await assertManualUserManagementAvailable();
+  return storage.createUser(payload);
+};
 export const deleteAudit = deleteAuditApi;
 export const deleteEmailTemplate = (templateId: string) =>
   requestIsoApi(`/communications/templates/${templateId}/delete`, {
@@ -319,7 +368,10 @@ export const deleteEmailTemplate = (templateId: string) =>
   });
 export const deleteDocument = deleteDocumentApi;
 export const deleteTask = deleteTaskApi;
-export const deleteUser = storage.deleteUser;
+export const deleteUser = async (userId: string) => {
+  await assertManualUserManagementAvailable();
+  return storage.deleteUser(userId);
+};
 export const getCurrentUser = storage.getCurrentUser;
 export const listChatThreads = listChatThreadsApi;
 export const listEmailTemplates = async (): Promise<EmailTemplate[]> => {
@@ -387,7 +439,13 @@ export const updateSettings = (payload: {
   });
 export const updateTask = updateTaskApi;
 export const updateTaskStatus = updateTaskStatusApi;
-export const updateUser = storage.updateUser;
+export const updateUser = async (
+  userId: string,
+  updates: Partial<Pick<UserAccount, 'name' | 'email' | 'role' | 'password' | 'active'>>
+) => {
+  await assertManualUserManagementAvailable();
+  return storage.updateUser(userId, updates);
+};
 
 export const fetchGrcOverview = () =>
   requestIsoApi<GrcOverview>('/grc/summary');

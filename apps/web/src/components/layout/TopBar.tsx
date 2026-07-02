@@ -1,9 +1,9 @@
 import React from 'react';
 import { useAuth, useClerk } from '@clerk/clerk-react';
 import { useNavigate } from 'react-router-dom';
+import { useAuthConfig } from '../../hooks/useAuthConfig';
 import {
   clerkSignInPath,
-  isClerkEnabled,
 } from '../../lib/clerk';
 import {
   Bell,
@@ -42,6 +42,7 @@ export const TopBar: React.FC<TopBarProps> = ({
   const navigate = useNavigate();
   const clerk = useClerk();
   const { isSignedIn } = useAuth();
+  const { authConfig } = useAuthConfig();
   const settings = useISOStore((state) => state.settings);
   const alerts = useISOStore((state) => state.alerts);
   const documents = useISOStore((state) => state.documents);
@@ -195,7 +196,7 @@ export const TopBar: React.FC<TopBarProps> = ({
   };
 
   const handleLogout = async () => {
-    if (isClerkEnabled && clerk && isSignedIn) {
+    if (authConfig?.mode === 'clerk' && clerk && isSignedIn) {
       await logout();
       await clerk.signOut({ redirectUrl: clerkSignInPath });
       return;
@@ -206,13 +207,13 @@ export const TopBar: React.FC<TopBarProps> = ({
   };
 
   return (
-    <header className="border-b border-slate-200 bg-white">
+    <header className="app-header">
       <div className="flex flex-col gap-4 px-4 py-4 md:px-6 xl:flex-row xl:items-center xl:justify-between xl:px-7">
         <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={onToggleSidebar}
-            className="inline-flex rounded-lg border border-slate-200 bg-white p-2.5 text-slate-500 transition hover:text-slate-700 lg:hidden"
+            className="inline-flex rounded-xl border border-app-border bg-app-surface p-2.5 text-slate-500 transition hover:bg-app-surface-alt hover:text-slate-700 lg:hidden"
             aria-label="Abrir menu lateral"
           >
             <Menu className="h-5 w-5" />
@@ -220,7 +221,7 @@ export const TopBar: React.FC<TopBarProps> = ({
           <button
             type="button"
             onClick={onToggleCollapsed}
-            className="hidden rounded-lg border border-slate-200 bg-white p-2.5 text-slate-500 transition hover:text-slate-700 lg:inline-flex"
+            className="hidden rounded-xl border border-app-border bg-app-surface p-2.5 text-slate-500 transition hover:bg-app-surface-alt hover:text-slate-700 lg:inline-flex"
             aria-label={sidebarCollapsed ? 'Expandir barra lateral' : 'Contraer barra lateral'}
           >
             {sidebarCollapsed ? (
@@ -231,8 +232,8 @@ export const TopBar: React.FC<TopBarProps> = ({
           </button>
 
           <div>
-            <p className="text-sm font-semibold text-slate-400">Panel de cumplimiento</p>
-            <h2 className="text-[28px] font-extrabold text-slate-700">
+            <p className="text-sm font-semibold text-app-muted">Panel de cumplimiento</p>
+            <h2 className="text-[28px] font-extrabold text-app-text">
               {settings.companyName || 'ISO Manager'}
             </h2>
           </div>
@@ -242,13 +243,13 @@ export const TopBar: React.FC<TopBarProps> = ({
           <div className="relative" onClick={stopClick}>
             <form
               onSubmit={handleSearchSubmit}
-              className="flex min-w-[290px] items-center gap-3 rounded-full border border-slate-200 bg-slate-50 px-4 py-2.5 text-slate-400"
+              className="flex min-w-[290px] items-center gap-3 rounded-pill border border-app-border bg-app-surface-alt px-4 py-2.5 text-app-muted"
             >
               <Search className="h-4 w-4" />
               <input
                 type="text"
                 placeholder="Buscar documentos, tareas, auditorias, chat o plantillas..."
-                className="w-full border-none bg-transparent text-sm text-slate-600 outline-none placeholder:text-slate-400"
+                className="w-full border-none bg-transparent text-sm text-app-text outline-none placeholder:text-app-muted"
                 value={query}
                 onFocus={() => setSearchOpen(true)}
                 onChange={(event) => {
@@ -259,17 +260,17 @@ export const TopBar: React.FC<TopBarProps> = ({
             </form>
 
             {searchOpen && query.trim().length > 0 && (
-              <div className="absolute left-0 top-[calc(100%+10px)] z-20 w-full rounded-2xl border border-slate-200 bg-white p-2 shadow-xl">
+              <div className="app-dropdown absolute left-0 top-[calc(100%+10px)] z-20 w-full p-2">
                 {searchResults.length > 0 ? (
                   searchResults.map((result) => (
                     <button
                       key={result.id}
                       type="button"
                       onClick={() => handleSearchSelect(result.route)}
-                      className="block w-full rounded-xl px-3 py-3 text-left transition hover:bg-slate-50"
+                      className="block w-full rounded-xl px-3 py-3 text-left transition hover:bg-app-surface-alt"
                     >
-                      <p className="text-sm font-bold text-slate-700">{result.title}</p>
-                      <p className="mt-1 text-xs text-slate-400">{result.subtitle}</p>
+                      <p className="text-sm font-bold text-app-text">{result.title}</p>
+                      <p className="mt-1 text-xs text-app-muted">{result.subtitle}</p>
                     </button>
                   ))
                 ) : (
@@ -282,14 +283,14 @@ export const TopBar: React.FC<TopBarProps> = ({
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="hidden items-center gap-2 rounded-full bg-[#727cf5]/10 px-3 py-2 text-[#727cf5] md:flex">
+            <div className="hidden items-center gap-2 rounded-pill bg-app-primary/10 px-3 py-2 text-app-primary md:flex">
               <Globe2 className="h-4 w-4" />
               <span className="text-sm font-bold uppercase tracking-wide">Entorno ISO</span>
             </div>
 
             <button
               type="button"
-              className="rounded-full border border-slate-200 bg-white p-2.5 text-slate-500 transition hover:text-slate-700"
+              className="rounded-pill border border-app-border bg-app-surface p-2.5 text-slate-500 transition hover:bg-app-surface-alt hover:text-slate-700"
               title="Ayuda"
             >
               <HelpCircle className="h-5 w-5" />
@@ -299,26 +300,26 @@ export const TopBar: React.FC<TopBarProps> = ({
               <button
                 type="button"
                 onClick={() => setAlertsOpen((current) => !current)}
-                className="relative rounded-full border border-slate-200 bg-white p-2.5 text-slate-500 transition hover:text-slate-700"
+                className="relative rounded-pill border border-app-border bg-app-surface p-2.5 text-slate-500 transition hover:bg-app-surface-alt hover:text-slate-700"
                 aria-label="Ver alertas"
               >
                 <Bell className="h-5 w-5" />
                 {alerts.length > 0 && (
-                  <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-[#fa5c7c]" />
+                  <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-app-danger" />
                 )}
               </button>
 
               {alertsOpen && (
-                <div className="absolute right-0 top-[calc(100%+10px)] z-20 w-[330px] rounded-xl border border-slate-200 bg-white p-3 shadow-xl">
+                <div className="app-dropdown absolute right-0 top-[calc(100%+10px)] z-20 w-[330px] p-3">
                   <div className="mb-2 flex items-center justify-between px-2 py-1">
-                    <p className="text-sm font-extrabold text-slate-700">Alertas recientes</p>
+                    <p className="text-sm font-extrabold text-app-text">Alertas recientes</p>
                     <button
                       type="button"
                       onClick={() => {
                         navigate('/alerts');
                         setAlertsOpen(false);
                       }}
-                      className="text-xs font-bold text-[#727cf5]"
+                      className="text-xs font-bold text-app-primary"
                     >
                       Ver todas
                     </button>
@@ -333,10 +334,10 @@ export const TopBar: React.FC<TopBarProps> = ({
                           navigate('/alerts');
                           setAlertsOpen(false);
                         }}
-                        className="block w-full rounded-lg bg-slate-50 px-3 py-3 text-left transition hover:bg-slate-100"
+                        className="block w-full rounded-xl bg-app-surface-alt px-3 py-3 text-left transition hover:bg-slate-100"
                       >
-                        <p className="text-sm font-bold text-slate-700">{alert.title}</p>
-                        <p className="mt-1 text-xs text-slate-400">{alert.description}</p>
+                        <p className="text-sm font-bold text-app-text">{alert.title}</p>
+                        <p className="mt-1 text-xs text-app-muted">{alert.description}</p>
                       </button>
                     ))}
                     {alerts.length === 0 && (
@@ -353,28 +354,28 @@ export const TopBar: React.FC<TopBarProps> = ({
               <button
                 type="button"
                 onClick={() => setUserMenuOpen((current) => !current)}
-                className="flex items-center gap-3 rounded-full border border-slate-200 bg-white px-3 py-2 text-left transition hover:border-slate-300"
+                className="flex items-center gap-3 rounded-pill border border-app-border bg-app-surface px-3 py-2 text-left transition hover:border-slate-300 hover:bg-app-surface-alt"
                 aria-label="Abrir menu de usuario"
               >
-                <div className="rounded-full bg-[#727cf5]/10 p-2 text-[#727cf5]">
+                <div className="rounded-full bg-app-primary/10 p-2 text-app-primary">
                   <User className="h-4 w-4" />
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-slate-700">{user?.name ?? 'Usuario'}</p>
-                  <p className="text-xs capitalize text-slate-400">{user?.role ?? 'Sin rol'}</p>
+                  <p className="text-sm font-bold text-app-text">{user?.name ?? 'Usuario'}</p>
+                  <p className="text-xs capitalize text-app-muted">{user?.role ?? 'Sin rol'}</p>
                 </div>
-                <ChevronDown className="h-4 w-4 text-slate-400" />
+                <ChevronDown className="h-4 w-4 text-app-muted" />
               </button>
 
               {userMenuOpen && (
-                <div className="absolute right-0 top-[calc(100%+10px)] z-20 w-[230px] rounded-xl border border-slate-200 bg-white p-2 shadow-xl">
+                <div className="app-dropdown absolute right-0 top-[calc(100%+10px)] z-20 w-[230px] p-2">
                   <button
                     type="button"
                     onClick={() => {
                       navigate('/settings/general');
                       setUserMenuOpen(false);
                     }}
-                    className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
+                    className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold text-slate-600 transition hover:bg-app-surface-alt"
                   >
                     <Settings className="h-4 w-4" />
                     Ir a configuracion
@@ -385,7 +386,7 @@ export const TopBar: React.FC<TopBarProps> = ({
                       navigate('/');
                       setUserMenuOpen(false);
                     }}
-                    className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
+                    className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold text-slate-600 transition hover:bg-app-surface-alt"
                   >
                     <User className="h-4 w-4" />
                     Ver panel principal
@@ -396,7 +397,7 @@ export const TopBar: React.FC<TopBarProps> = ({
                       setUserMenuOpen(false);
                       void handleLogout();
                     }}
-                    className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-sm font-semibold text-[#fa5c7c] transition hover:bg-rose-50"
+                    className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold text-app-danger transition hover:bg-rose-50"
                   >
                     <LogOut className="h-4 w-4" />
                     Cerrar sesion

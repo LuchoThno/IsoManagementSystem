@@ -94,16 +94,16 @@ export const Tasks: React.FC = () => {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h2 className="text-2xl font-extrabold text-slate-700">Tareas</h2>
-          <p className="mt-1 text-sm text-slate-400">
+          <h2 className="text-2xl font-extrabold text-app-text">Tareas</h2>
+          <p className="mt-1 text-sm text-app-muted">
             Orquesta acciones correctivas, responsables y fechas de vencimiento.
           </p>
         </div>
         <button
           onClick={() => setIsCreateModalOpen(true)}
-          className="flex items-center space-x-2 rounded-lg bg-[#727cf5] px-4 py-2.5 text-white transition-colors hover:bg-[#636df0]"
+          className="app-button-primary inline-flex items-center gap-2 px-4 py-2.5"
         >
-          <Plus className="w-5 h-5" />
+          <Plus className="h-5 w-5" />
           <span>Crear tarea</span>
         </button>
       </div>
@@ -119,7 +119,7 @@ export const Tasks: React.FC = () => {
       </div>
 
       {loadError ? (
-        <div className="rounded-[28px] border border-dashed border-rose-200 bg-rose-50 py-14 text-center">
+        <div className="app-empty-state-danger">
           <div className="mx-auto max-w-md">
             <p className="text-lg font-extrabold text-rose-700">{loadError}</p>
             <p className="mt-2 text-sm text-rose-500">
@@ -128,10 +128,10 @@ export const Tasks: React.FC = () => {
           </div>
         </div>
       ) : loading ? (
-        <div className="rounded-[28px] border border-dashed border-slate-200 bg-white py-14 text-center">
+        <div className="app-empty-state">
           <div className="mx-auto max-w-md">
-            <p className="text-lg font-extrabold text-slate-700">Cargando tareas...</p>
-            <p className="mt-2 text-sm text-slate-400">
+            <p className="text-lg font-extrabold text-app-text">Cargando tareas...</p>
+            <p className="mt-2 text-sm text-app-muted">
               Estamos consultando el módulo de tareas en la API.
             </p>
           </div>

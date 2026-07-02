@@ -180,8 +180,8 @@ export const Documents: React.FC = () => {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h2 className="text-2xl font-extrabold text-slate-700">Gestión documental</h2>
-          <p className="mt-1 text-sm text-slate-400">
+          <h2 className="text-2xl font-extrabold text-app-text">Gestión documental</h2>
+          <p className="mt-1 text-sm text-app-muted">
             Tabla documental con versiones, formatos y trazabilidad.
           </p>
         </div>
@@ -189,61 +189,61 @@ export const Documents: React.FC = () => {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="app-stat-card">
           <div className="flex items-center gap-3">
-            <div className="rounded-2xl bg-[#727cf5]/10 p-3 text-[#727cf5]">
+            <div className="app-icon-chip">
               <Files className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-400">Activos</p>
-              <h3 className="mt-1 text-2xl font-extrabold text-slate-700">{activeDocuments}</h3>
+              <p className="text-xs font-bold uppercase tracking-[0.22em] text-app-muted">Activos</p>
+              <h3 className="mt-1 text-2xl font-extrabold text-app-text">{activeDocuments}</h3>
             </div>
           </div>
-          <p className="mt-4 text-sm text-slate-400">Documentos vigentes y listos para consulta operativa.</p>
+          <p className="mt-4 text-sm text-app-muted">Documentos vigentes y listos para consulta operativa.</p>
         </div>
 
-        <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="app-stat-card">
           <div className="flex items-center gap-3">
             <div className="rounded-2xl bg-amber-100 p-3 text-amber-700">
               <ScrollText className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-400">Borradores</p>
-              <h3 className="mt-1 text-2xl font-extrabold text-slate-700">{draftDocuments}</h3>
+              <p className="text-xs font-bold uppercase tracking-[0.22em] text-app-muted">Borradores</p>
+              <h3 className="mt-1 text-2xl font-extrabold text-app-text">{draftDocuments}</h3>
             </div>
           </div>
-          <p className="mt-4 text-sm text-slate-400">Pendientes de revisión, ajuste o liberación documental.</p>
+          <p className="mt-4 text-sm text-app-muted">Pendientes de revisión, ajuste o liberación documental.</p>
         </div>
 
-        <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="app-stat-card">
           <div className="flex items-center gap-3">
             <div className="rounded-2xl bg-slate-100 p-3 text-slate-600">
               <BadgeCheck className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-400">Archivados</p>
-              <h3 className="mt-1 text-2xl font-extrabold text-slate-700">{archivedDocuments}</h3>
+              <p className="text-xs font-bold uppercase tracking-[0.22em] text-app-muted">Archivados</p>
+              <h3 className="mt-1 text-2xl font-extrabold text-app-text">{archivedDocuments}</h3>
             </div>
           </div>
-          <p className="mt-4 text-sm text-slate-400">Histórico conservado para trazabilidad y auditoría.</p>
+          <p className="mt-4 text-sm text-app-muted">Histórico conservado para trazabilidad y auditoría.</p>
         </div>
 
-        <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="app-stat-card">
           <div className="flex items-center gap-3">
-            <div className="rounded-2xl bg-[#39afd1]/10 p-3 text-[#39afd1]">
+            <div className="rounded-2xl bg-app-info/10 p-3 text-app-info">
               <ScrollText className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-400">Cobertura</p>
-              <h3 className="mt-1 text-2xl font-extrabold text-slate-700">{controlledStandards}</h3>
+              <p className="text-xs font-bold uppercase tracking-[0.22em] text-app-muted">Cobertura</p>
+              <h3 className="mt-1 text-2xl font-extrabold text-app-text">{controlledStandards}</h3>
             </div>
           </div>
-          <p className="mt-4 text-sm text-slate-400">Normas ISO cubiertas por el repositorio documental actual.</p>
+          <p className="mt-4 text-sm text-app-muted">Normas ISO cubiertas por el repositorio documental actual.</p>
         </div>
       </div>
 
       <div className="space-y-4">
-        <div className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="app-stat-card p-4">
           <DocumentFilters
             topics={topics}
             searchValue={searchQuery}
@@ -259,10 +259,8 @@ export const Documents: React.FC = () => {
             <button
               type="button"
               onClick={() => setTopicFilter('all')}
-              className={`rounded-full px-4 py-2 text-sm font-bold transition ${
-                topicFilter === 'all'
-                  ? 'bg-[#727cf5] text-white shadow-sm'
-                  : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50'
+              className={`app-chip-filter ${
+                topicFilter === 'all' ? 'app-chip-filter-active' : 'app-chip-filter-idle'
               }`}
             >
               Todos los temas
@@ -272,10 +270,8 @@ export const Documents: React.FC = () => {
                 key={topic}
                 type="button"
                 onClick={() => setTopicFilter(topic)}
-                className={`rounded-full px-4 py-2 text-sm font-bold transition ${
-                  topicFilter === topic
-                    ? 'bg-[#727cf5] text-white shadow-sm'
-                    : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50'
+                className={`app-chip-filter ${
+                  topicFilter === topic ? 'app-chip-filter-active' : 'app-chip-filter-idle'
                 }`}
               >
                 {topic}
@@ -285,7 +281,7 @@ export const Documents: React.FC = () => {
         )}
 
         {loadError ? (
-          <div className="overflow-hidden rounded-[28px] border border-dashed border-rose-200 bg-rose-50 py-14 text-center">
+          <div className="app-empty-state-danger">
             <div className="mx-auto max-w-md">
               <p className="text-lg font-extrabold text-rose-700">{loadError}</p>
               <p className="mt-2 text-sm text-rose-500">
@@ -294,10 +290,10 @@ export const Documents: React.FC = () => {
             </div>
           </div>
         ) : loading ? (
-          <div className="overflow-hidden rounded-[28px] border border-dashed border-slate-200 bg-white py-14 text-center">
+          <div className="app-empty-state">
             <div className="mx-auto max-w-md">
-              <p className="text-lg font-extrabold text-slate-700">Cargando documentos...</p>
-              <p className="mt-2 text-sm text-slate-400">
+              <p className="text-lg font-extrabold text-app-text">Cargando documentos...</p>
+              <p className="mt-2 text-sm text-app-muted">
                 Estamos consultando el repositorio documental en la API.
               </p>
             </div>
@@ -313,15 +309,15 @@ export const Documents: React.FC = () => {
             onShowAudit={setSelectedAuditDocument}
           />
         ) : (
-          <div className="overflow-hidden rounded-[28px] border border-dashed border-slate-200 bg-white py-14 text-center">
+          <div className="app-empty-state">
             <div className="mx-auto max-w-md">
               <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 text-slate-400">
                 <ScanSearch className="h-6 w-6" />
               </div>
-              <p className="mt-4 text-lg font-extrabold text-slate-700">
+              <p className="mt-4 text-lg font-extrabold text-app-text">
                 No encontramos documentos con esos filtros
               </p>
-              <p className="mt-2 text-sm text-slate-400">
+              <p className="mt-2 text-sm text-app-muted">
                 Ajusta la búsqueda o cambia el tema, la norma o el tipo documental.
               </p>
             </div>
@@ -338,7 +334,7 @@ export const Documents: React.FC = () => {
                 {versionDocument ? versionDocument.title : 'Selecciona una versión desde la tabla'}
               </p>
             </div>
-            <Files className="h-5 w-5 text-[#727cf5]" />
+            <Files className="h-5 w-5 text-app-primary" />
           </div>
 
           <div className="mt-5 space-y-3">
@@ -347,7 +343,7 @@ export const Documents: React.FC = () => {
                 .slice()
                 .reverse()
                 .map((entry) => (
-                  <div key={entry.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <div key={entry.id} className="rounded-2xl border border-slate-200 bg-app-surface-alt p-4">
                     <div className="flex items-center justify-between gap-3">
                       <p className="font-bold text-slate-700">v{entry.version}</p>
                       <span className="text-xs font-medium text-slate-400">
@@ -376,7 +372,7 @@ export const Documents: React.FC = () => {
                 {auditDocument ? auditDocument.title : 'Selecciona una auditoría desde la tabla'}
               </p>
             </div>
-            <ScrollText className="h-5 w-5 text-[#39afd1]" />
+            <ScrollText className="h-5 w-5 text-app-info" />
           </div>
 
           <div className="mt-5 space-y-3">
@@ -385,9 +381,9 @@ export const Documents: React.FC = () => {
                 .slice()
                 .reverse()
                 .map((entry) => (
-                  <div key={entry.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <div key={entry.id} className="rounded-2xl border border-slate-200 bg-app-surface-alt p-4">
                     <div className="flex items-center justify-between gap-3">
-                      <span className="rounded-full bg-white px-3 py-1 text-xs font-bold uppercase text-slate-600">
+                      <span className="rounded-full bg-app-surface px-3 py-1 text-xs font-bold uppercase text-slate-600">
                         {entry.action === 'created'
                           ? 'Creación'
                           : entry.action === 'updated'

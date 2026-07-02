@@ -23,19 +23,19 @@ export const DocumentFilters: React.FC<DocumentFiltersProps> = ({
   const standardOptions = useStandardOptions();
   return (
     <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
-      <div className="flex min-w-0 flex-1 items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-        <Search className="h-4 w-4 text-slate-400" />
+      <div className="flex min-w-0 flex-1 items-center gap-3 rounded-xl border border-app-border bg-app-surface-alt px-4 py-3">
+        <Search className="h-4 w-4 text-app-muted" />
         <input
           type="text"
           placeholder="Buscar documento o tema..."
-          className="w-full border-none bg-transparent text-sm text-slate-600 outline-none placeholder:text-slate-400"
+          className="w-full border-none bg-transparent text-sm text-app-text outline-none placeholder:text-app-muted"
           value={searchValue}
           onChange={(e) => onSearch(e.target.value)}
         />
       </div>
 
       <div className="flex flex-col gap-3 md:flex-row md:items-center">
-        <div className="flex items-center gap-2 text-slate-400">
+        <div className="flex items-center gap-2 text-app-muted">
           <Filter className="h-4 w-4" />
           <select
             className="admin-select"

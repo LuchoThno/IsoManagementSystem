@@ -37,17 +37,17 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4">
-      <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-2xl">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-extrabold text-slate-700">Crear tarea</h3>
-          <button onClick={onClose}>
+      <div className="w-full max-w-md rounded-xl bg-app-surface p-6 shadow-floating">
+        <div className="mb-4 flex items-center justify-between">
+          <h3 className="text-lg font-extrabold text-app-text">Crear tarea</h3>
+          <button onClick={onClose} className="rounded-lg p-1 text-slate-500 transition hover:bg-app-surface-alt hover:text-slate-700">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700">Titulo</label>
+            <label className="block text-sm font-medium text-slate-700">Titulo</label>
               <input
                 type="text"
                 value={formData.title}
@@ -58,7 +58,7 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">Descripcion</label>
+            <label className="block text-sm font-medium text-slate-700">Descripcion</label>
               <textarea
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
@@ -69,7 +69,7 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">Responsable</label>
+            <label className="block text-sm font-medium text-slate-700">Responsable</label>
               <input
                 type="text"
                 value={formData.assignedTo}
@@ -80,7 +80,7 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">Fecha limite</label>
+            <label className="block text-sm font-medium text-slate-700">Fecha limite</label>
               <input
                 type="date"
                 value={formData.dueDate}
@@ -91,7 +91,7 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">Prioridad</label>
+            <label className="block text-sm font-medium text-slate-700">Prioridad</label>
               <select
                 value={formData.priority}
                 onChange={(e) => setFormData({ ...formData, priority: e.target.value as Task['priority'] })}
@@ -104,7 +104,7 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">Norma</label>
+            <label className="block text-sm font-medium text-slate-700">Norma</label>
               <select
                 value={formData.standard}
                 onChange={(e) => setFormData({ ...formData, standard: e.target.value as ISOStandard })}
@@ -118,7 +118,7 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
 
           <button
             type="submit"
-            className="w-full rounded-lg bg-[#727cf5] px-4 py-2.5 font-bold text-white transition hover:bg-[#636df0]"
+            className="app-button-primary w-full"
           >
             Crear tarea
           </button>

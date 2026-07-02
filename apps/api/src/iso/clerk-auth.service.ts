@@ -1,5 +1,6 @@
 import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { createClerkClient, verifyToken } from '@clerk/backend';
+import { AuthModeService } from './auth-mode.service';
 import type { ClerkSessionIdentity } from './clerk.types';
 
 type RequestLike = {
@@ -26,23 +27,21 @@ export class ClerkAuthService {
       })
     : null;
 
+  constructor(private readonly authModeService: AuthModeService) {}
+
   isEnabled() {
-    return this.secretKey.length > 0;
+    return this.authModeService.isClerkMode() && this.secretKey.length > 0;
   }
 
   async authenticateRequest(request: RequestLike): Promise<ClerkSessionIdentity> {
-    if (!this.isEnabled()) {
-      throw new UnauthorizedException('Clerk no está configurado en el backend.');
-    }
+    this.authModeService.assertClerkReady();
 
     const token = this.getBearerToken(request);
     return this.authenticateToken(token);
   }
 
   async authenticateToken(token: string | null | undefined): Promise<ClerkSessionIdentity> {
-    if (!this.isEnabled()) {
-      throw new UnauthorizedException('Clerk no está configurado en el backend.');
-    }
+    this.authModeService.assertClerkReady();
 
     if (!token) {
       throw new UnauthorizedException('Falta el token de sesión de Clerk.');
@@ -80,19 +79,15 @@ export class ClerkAuthService {
   }
 
   async getClerkUser(userId: string) {
-    if (!this.clerkClient) {
-      throw new UnauthorizedException('Clerk no está configurado en el backend.');
-    }
+    this.authModeService.assertClerkReady();
 
-    return this.clerkClient.users.getUser(userId);
+    return this.clerkClient!.users.getUser(userId);
   }
 
   async getClerkUsers(limit = 100) {
-    if (!this.clerkClient) {
-      throw new UnauthorizedException('Clerk no está configurado en el backend.');
-    }
+    this.authModeService.assertClerkReady();
 
-    return this.clerkClient.users.getUserList({ limit });
+    return this.clerkClient!.users.getUserList({ limit });
   }
 
   private getBearerToken(request: RequestLike) {

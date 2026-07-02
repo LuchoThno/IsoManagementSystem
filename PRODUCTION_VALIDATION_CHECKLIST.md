@@ -157,6 +157,47 @@ Resultado esperado:
 - `/api/iso/bootstrap-shell` sin token -> `401`
 - `socket.io` polling -> `200` con `sid`
 
+Smoke check automatizable:
+
+```bash
+SMOKE_BASE_URL=https://api-iso.servasmar.cl \
+SMOKE_AUTH_MODE=clerk \
+pnpm smoke:api
+```
+
+Smoke de rutas protegidas por modo:
+
+```bash
+SMOKE_BASE_URL=https://api-iso.servasmar.cl \
+SMOKE_AUTH_MODE=clerk \
+pnpm smoke:api:routes
+```
+
+Si quieres validar rutas autenticadas reales:
+
+```bash
+SMOKE_BASE_URL=https://api-iso.servasmar.cl \
+SMOKE_AUTH_MODE=clerk \
+SMOKE_BEARER_TOKEN=eyJ... \
+pnpm smoke:api:routes
+```
+
+Smoke de realtime / Socket.IO:
+
+```bash
+SMOKE_SOCKET_URL="https://iso.servasmar.cl/socket.io/?EIO=4&transport=polling" \
+pnpm smoke:socket
+```
+
+Batería backend mínima:
+
+```bash
+SMOKE_BASE_URL=https://api-iso.servasmar.cl \
+SMOKE_AUTH_MODE=clerk \
+SMOKE_SOCKET_URL="https://iso.servasmar.cl/socket.io/?EIO=4&transport=polling" \
+pnpm smoke:backend
+```
+
 ## 10. Criterio de salida
 
 Se puede considerar el paso 1 cerrado cuando:

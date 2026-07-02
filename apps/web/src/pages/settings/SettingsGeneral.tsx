@@ -78,18 +78,18 @@ export const SettingsGeneral: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="flex items-start gap-3">
-        <div className="rounded-2xl bg-[#727cf5]/10 p-3 text-[#727cf5]">
+        <div className="app-icon-chip">
           <Building2 className="h-5 w-5" />
         </div>
         <div>
-          <h2 className="text-2xl font-extrabold text-slate-700">General</h2>
-          <p className="mt-1 text-sm text-slate-400">
+          <h2 className="text-2xl font-extrabold text-app-text">General</h2>
+          <p className="mt-1 text-sm text-app-muted">
             Parámetros base del sistema y normas activas.
           </p>
         </div>
       </div>
 
-      <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="rounded-[28px] border border-app-border bg-app-surface p-6 shadow-panel">
         <div className="grid gap-5 lg:grid-cols-2">
           <div className="lg:col-span-2">
             <label className="block text-sm font-bold text-slate-600">Nombre de la empresa</label>
@@ -136,9 +136,9 @@ export const SettingsGeneral: React.FC = () => {
             {standardsCatalog.map(({ key, label }) => (
               <label
                 key={key}
-                className="flex items-center justify-between rounded-2xl border border-slate-200 px-4 py-4"
+                className="flex items-center justify-between rounded-2xl border border-app-border px-4 py-4"
               >
-                <span className="font-bold text-slate-700">{label}</span>
+                <span className="font-bold text-app-text">{label}</span>
                 <input
                   type="checkbox"
                   checked={formState.standards[key] ?? false}
@@ -162,7 +162,7 @@ export const SettingsGeneral: React.FC = () => {
           <button
             type="button"
             onClick={() => void handleSave()}
-            className="inline-flex items-center gap-2 rounded-xl bg-[#727cf5] px-5 py-3 font-bold text-white transition hover:bg-[#636df0]"
+            className="app-button-primary inline-flex items-center gap-2 px-5 py-3"
           >
             <Save className="h-4 w-4" />
             Guardar cambios
@@ -170,7 +170,7 @@ export const SettingsGeneral: React.FC = () => {
           <button
             type="button"
             onClick={() => void handleReset()}
-            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-3 font-bold text-slate-600 transition hover:bg-slate-50"
+            className="app-button-secondary inline-flex items-center gap-2 px-5 py-3"
           >
             <RefreshCcw className="h-4 w-4" />
             Restablecer datos locales

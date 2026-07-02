@@ -1,9 +1,11 @@
+import type { AppUserRole } from './roles.decorator';
+
 export type DirectoryUser = {
   id: string;
   externalId: string;
   name: string;
   email: string;
-  role: 'admin' | 'manager' | 'auditor' | 'viewer';
+  role: AppUserRole;
   active: boolean;
   createdAt: string;
 };

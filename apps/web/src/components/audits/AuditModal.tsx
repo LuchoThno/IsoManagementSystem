@@ -109,7 +109,7 @@ export const AuditModal: React.FC<AuditModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-950/55 p-4">
-      <div className="my-8 w-full max-w-4xl overflow-hidden rounded-[30px] bg-white shadow-2xl">
+      <div className="my-8 w-full max-w-4xl overflow-hidden rounded-[30px] bg-app-surface shadow-floating">
         <div className="bg-[linear-gradient(135deg,#313a46_0%,#3f4d5f_100%)] px-6 py-5 text-white">
           <div className="flex items-start justify-between gap-4">
             <div>
@@ -193,14 +193,14 @@ export const AuditModal: React.FC<AuditModalProps> = ({
             </label>
           </div>
 
-          <div className="rounded-[26px] border border-slate-200 bg-slate-50/70 p-5">
+          <div className="rounded-[26px] border border-app-border bg-app-surface-alt/70 p-5">
             <div className="flex items-center gap-3">
-              <div className="rounded-2xl bg-[#727cf5]/10 p-3 text-[#727cf5]">
+              <div className="app-icon-chip">
                 <ShieldCheck className="h-5 w-5" />
               </div>
               <div>
-                <h4 className="text-base font-extrabold text-slate-700">Hallazgos</h4>
-                <p className="mt-1 text-sm text-slate-400">
+                <h4 className="text-base font-extrabold text-app-text">Hallazgos</h4>
+                <p className="mt-1 text-sm text-app-muted">
                   Registra no conformidades, observaciones y oportunidades.
                 </p>
               </div>
@@ -208,26 +208,26 @@ export const AuditModal: React.FC<AuditModalProps> = ({
 
             <div className="mt-5 space-y-3">
               {formData.findings.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-5 text-sm text-slate-400">
+                <div className="rounded-2xl border border-dashed border-app-border bg-app-surface px-4 py-5 text-sm text-app-muted">
                   Esta auditoría todavía no tiene hallazgos cargados.
                 </div>
               ) : (
                 formData.findings.map((finding, index) => (
                   <div
                     key={`${finding.description}-${index}`}
-                    className="rounded-2xl border border-slate-200 bg-white px-4 py-4"
+                    className="rounded-2xl border border-app-border bg-app-surface px-4 py-4"
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div>
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className="rounded-full bg-[#727cf5]/10 px-3 py-1 text-xs font-bold uppercase text-[#727cf5]">
+                          <span className="rounded-full bg-app-primary/10 px-3 py-1 text-xs font-bold uppercase text-app-primary">
                             {finding.type}
                           </span>
                           <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">
                             {finding.status}
                           </span>
                         </div>
-                        <p className="mt-3 text-sm font-semibold text-slate-700">
+                        <p className="mt-3 text-sm font-semibold text-app-text">
                           {finding.description}
                         </p>
                         <p className="mt-2 text-xs text-slate-400">
@@ -319,7 +319,7 @@ export const AuditModal: React.FC<AuditModalProps> = ({
             <button
               type="button"
               onClick={addFinding}
-              className="mt-4 inline-flex items-center gap-2 rounded-xl bg-[#727cf5] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#636df0]"
+              className="app-button-primary mt-4 inline-flex items-center gap-2 px-4 py-3 text-sm"
             >
               <Plus className="h-4 w-4" />
               Agregar hallazgo
@@ -330,14 +330,14 @@ export const AuditModal: React.FC<AuditModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 font-bold text-slate-600 transition hover:bg-slate-50"
+              className="app-button-secondary w-full"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="w-full rounded-xl bg-[#727cf5] px-4 py-3 font-bold text-white transition hover:bg-[#636df0] disabled:cursor-not-allowed disabled:opacity-70"
+              className="app-button-primary w-full disabled:cursor-not-allowed disabled:opacity-70"
             >
               <span className="inline-flex items-center gap-2">
                 <ClipboardCheck className="h-4 w-4" />

@@ -12,7 +12,7 @@ export const AlertFilters: React.FC<AlertFiltersProps> = ({ onFilterType, onFilt
   return (
     <div className="flex flex-col gap-3 md:flex-row md:items-center">
       <div className="flex items-center gap-2">
-        <Filter className="h-4 w-4 text-slate-400" />
+        <Filter className="h-4 w-4 text-app-muted" />
         <select
           onChange={(e) => onFilterType(e.target.value as Alert['type'] | 'all')}
           className="admin-select"

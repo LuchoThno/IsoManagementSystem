@@ -1,3 +1,4 @@
+import { shouldUseClerkDirectory } from './authConfig';
 import type { UserAccount } from '../types/iso';
 import { requestIsoApi } from './isoApiClient';
 
@@ -11,6 +12,10 @@ export type DirectoryUser = UserAccount & {
 };
 
 export async function listClerkDirectoryUsers(): Promise<DirectoryUser[]> {
+  if (!(await shouldUseClerkDirectory())) {
+    return [];
+  }
+
   const users = await requestIsoApi<ApiDirectoryUser[]>('/users/clerk');
 
   return users.map((user) => ({
@@ -21,6 +26,10 @@ export async function listClerkDirectoryUsers(): Promise<DirectoryUser[]> {
 }
 
 export async function fetchCurrentClerkUser(): Promise<DirectoryUser | null> {
+  if (!(await shouldUseClerkDirectory())) {
+    return null;
+  }
+
   const user = await requestIsoApi<ApiDirectoryUser | null>('/auth/clerk/me');
 
   if (!user) {

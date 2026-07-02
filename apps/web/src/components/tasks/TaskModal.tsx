@@ -84,7 +84,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4">
-      <div className="w-full max-w-2xl overflow-hidden rounded-[30px] bg-white shadow-2xl">
+      <div className="w-full max-w-2xl overflow-hidden rounded-[30px] bg-app-surface shadow-floating">
         <div className="bg-[linear-gradient(135deg,#313a46_0%,#3f4d5f_100%)] px-6 py-5 text-white">
           <div className="flex items-start justify-between gap-4">
             <div>
@@ -218,7 +218,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
             </label>
           </div>
 
-          <div className="rounded-[24px] border border-slate-200 bg-slate-50/80 p-5">
+          <div className="rounded-[24px] border border-app-border bg-app-surface-alt/80 p-5">
             <div className="flex items-center justify-between gap-4">
               <div>
                 <h4 className="text-sm font-extrabold uppercase tracking-[0.18em] text-slate-500">
@@ -228,7 +228,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                   Vincula esta tarea con los documentos que la originan o que sirven como evidencia.
                 </p>
               </div>
-              <span className="rounded-full bg-[#727cf5]/10 px-3 py-1.5 text-xs font-bold text-[#727cf5]">
+              <span className="rounded-full bg-app-primary/10 px-3 py-1.5 text-xs font-bold text-app-primary">
                 {formData.relatedDocuments.length} relacionado(s)
               </span>
             </div>
@@ -238,7 +238,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                 documents.map((document) => (
                   <label
                     key={document.id}
-                    className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-4"
+                    className="flex items-start gap-3 rounded-2xl border border-app-border bg-app-surface px-4 py-4"
                   >
                     <input
                       type="checkbox"
@@ -247,7 +247,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                       className="mt-1 h-4 w-4 rounded border-slate-300 text-blue-600"
                     />
                     <div>
-                      <p className="font-bold text-slate-700">{document.title}</p>
+                      <p className="font-bold text-app-text">{document.title}</p>
                       <p className="mt-1 text-xs text-slate-400">
                         {document.standard} · {document.type} · v{document.version}
                       </p>
@@ -255,7 +255,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                   </label>
                 ))
               ) : (
-                <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-5 text-sm text-slate-400 md:col-span-2">
+                <div className="rounded-2xl border border-dashed border-app-border bg-app-surface px-4 py-5 text-sm text-app-muted md:col-span-2">
                   No hay documentos disponibles para relacionar todavía.
                 </div>
               )}
@@ -266,14 +266,14 @@ export const TaskModal: React.FC<TaskModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 font-bold text-slate-600 transition hover:bg-slate-50"
+              className="app-button-secondary w-full"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="w-full rounded-xl bg-[#727cf5] px-4 py-3 font-bold text-white transition hover:bg-[#636df0] disabled:cursor-not-allowed disabled:opacity-70"
+              className="app-button-primary w-full disabled:cursor-not-allowed disabled:opacity-70"
             >
               {submitting
                 ? 'Guardando...'

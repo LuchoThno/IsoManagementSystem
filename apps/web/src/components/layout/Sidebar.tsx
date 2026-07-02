@@ -105,12 +105,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
       onTouchStart={() => preloadRoute(to)}
       title={collapsed ? label : undefined}
       className={({ isActive }) =>
-        `mb-1.5 flex items-center rounded-xl px-3 py-2.5 transition-all ${
-          collapsed ? 'justify-center' : 'justify-between'
-        } ${
-          isActive
-            ? 'bg-[#3f4d5f] text-white shadow-sm'
-            : 'text-white/65 hover:bg-white/5 hover:text-white'
+        `app-sidebar-link ${collapsed ? 'justify-center' : 'justify-between'} ${
+          isActive ? 'app-sidebar-link-active' : 'app-sidebar-link-idle'
         }`
       }
     >
@@ -132,7 +128,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       )}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-40 flex w-[260px] flex-col bg-[#313a46] text-slate-100 transition-all duration-200 lg:static lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-40 flex w-[260px] flex-col bg-app-sidebar text-slate-100 transition-all duration-200 lg:static lg:translate-x-0 ${
           collapsed ? 'lg:w-[92px]' : 'lg:w-[260px]'
         } ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}`}
       >

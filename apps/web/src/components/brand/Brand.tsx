@@ -29,7 +29,7 @@ export const BrandLockup: React.FC<BrandLockupProps> = ({
     <div className={`flex items-center gap-3 ${compact ? '' : 'min-w-0'}`}>
       <div
         className={`flex items-center justify-center overflow-hidden rounded-[18px] ${
-          inverse ? 'bg-white/10 p-1.5' : 'bg-white p-1.5 shadow-sm ring-1 ring-slate-200'
+          inverse ? 'bg-white/10 p-1.5' : 'bg-app-surface p-1.5 shadow-panel ring-1 ring-app-border'
         }`}
       >
         <BrandMark className={compact ? 'h-10 w-10' : 'h-12 w-12'} />

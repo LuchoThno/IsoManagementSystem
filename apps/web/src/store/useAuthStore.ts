@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { UserAccount } from '../types/iso';
+import { fetchAuthConfig, usesClerkAuthentication } from '../lib/authConfig';
 import { getCurrentUser, login as loginRequest, logout as logoutRequest } from '../lib/api';
 import { isClerkEnabled } from '../lib/clerk';
 
@@ -20,7 +21,9 @@ export const useAuthStore = create<AuthStore>((set) => ({
   error: null,
 
   initialize: async () => {
-    if (isClerkEnabled) {
+    const shouldUseClerkAuth = isClerkEnabled && (await usesClerkAuthentication());
+
+    if (shouldUseClerkAuth) {
       set({
         initialized: false,
         error: null,
@@ -37,7 +40,9 @@ export const useAuthStore = create<AuthStore>((set) => ({
   },
 
   login: async (email, password) => {
-    if (isClerkEnabled) {
+    const shouldUseClerkAuth = isClerkEnabled && (await usesClerkAuthentication());
+
+    if (shouldUseClerkAuth) {
       set({
         error: 'El inicio de sesion se gestiona con Clerk.',
       });
@@ -61,7 +66,11 @@ export const useAuthStore = create<AuthStore>((set) => ({
   },
 
   logout: async () => {
-    if (!isClerkEnabled) {
+    const authConfig = await fetchAuthConfig().catch(() => null);
+    const shouldUseClerkAuth =
+      isClerkEnabled && (authConfig ? authConfig.mode === 'clerk' : true);
+
+    if (!shouldUseClerkAuth) {
       await logoutRequest();
     }
     set({

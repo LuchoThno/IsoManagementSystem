@@ -71,19 +71,19 @@ export const Contracts: React.FC = () => {
         <section className="panel-card p-6">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-extrabold text-slate-700">Control contractual</h1>
+              <h1 className="text-3xl font-extrabold text-app-text">Control contractual</h1>
               <p className="mt-2 text-sm text-slate-500">
                 Administra contratos, obligaciones, anexos y vencimientos con trazabilidad GRC.
               </p>
             </div>
-            <div className="rounded-2xl bg-[#39afd1]/10 p-4 text-[#39afd1]">
+            <div className="rounded-2xl bg-app-info/10 p-4 text-app-info">
               <FileSignature className="h-8 w-8" />
             </div>
           </div>
           <div className="mt-6 grid gap-4 md:grid-cols-3">
-            <article className="rounded-2xl bg-slate-50 p-4"><p className="text-xs font-bold uppercase text-slate-400">Contratos</p><p className="mt-2 text-2xl font-extrabold text-slate-700">{total}</p></article>
-            <article className="rounded-2xl bg-slate-50 p-4"><p className="text-xs font-bold uppercase text-slate-400">Obligaciones visibles</p><p className="mt-2 text-2xl font-extrabold text-slate-700">{contracts.reduce((total, contract) => total + (contract.obligations?.length ?? 0), 0)}</p></article>
-            <article className="rounded-2xl bg-slate-50 p-4"><p className="text-xs font-bold uppercase text-slate-400">Vencimientos visibles</p><p className="mt-2 text-2xl font-extrabold text-slate-700">{contracts.reduce((total, contract) => total + (contract.obligations?.filter((obligation) => obligation.status !== 'fulfilled').length ?? 0), 0)}</p></article>
+            <article className="app-subtle-card"><p className="text-xs font-bold uppercase text-slate-400">Contratos</p><p className="mt-2 text-2xl font-extrabold text-app-text">{total}</p></article>
+            <article className="app-subtle-card"><p className="text-xs font-bold uppercase text-slate-400">Obligaciones visibles</p><p className="mt-2 text-2xl font-extrabold text-app-text">{contracts.reduce((total, contract) => total + (contract.obligations?.length ?? 0), 0)}</p></article>
+            <article className="app-subtle-card"><p className="text-xs font-bold uppercase text-slate-400">Vencimientos visibles</p><p className="mt-2 text-2xl font-extrabold text-app-text">{contracts.reduce((total, contract) => total + (contract.obligations?.filter((obligation) => obligation.status !== 'fulfilled').length ?? 0), 0)}</p></article>
           </div>
           <div className="mt-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <input
@@ -122,10 +122,10 @@ export const Contracts: React.FC = () => {
           className="panel-card p-6"
         >
           <div className="flex items-center gap-3">
-            <PlusCircle className="h-5 w-5 text-[#727cf5]" />
+            <PlusCircle className="h-5 w-5 text-app-primary" />
             <div>
-              <h2 className="text-lg font-extrabold text-slate-700">Nuevo contrato</h2>
-              <p className="text-sm text-slate-400">Alta rápida con obligación inicial y vencimiento.</p>
+              <h2 className="text-lg font-extrabold text-app-text">Nuevo contrato</h2>
+              <p className="text-sm text-app-muted">Alta rápida con obligación inicial y vencimiento.</p>
             </div>
           </div>
           <div className="mt-5 grid gap-3 md:grid-cols-2">
@@ -143,7 +143,7 @@ export const Contracts: React.FC = () => {
               ))}
             </select>
           </div>
-          <button type="submit" disabled={createMutation.isPending} className="mt-4 w-full rounded-xl bg-[#727cf5] px-4 py-3 font-bold text-white transition hover:bg-[#636df0] disabled:opacity-70">
+          <button type="submit" disabled={createMutation.isPending} className="app-button-primary mt-4 w-full">
             {createMutation.isPending ? 'Guardando...' : 'Crear contrato'}
           </button>
         </form>
@@ -151,9 +151,9 @@ export const Contracts: React.FC = () => {
 
       <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
         <section className="panel-card p-6">
-          <h2 className="text-xl font-extrabold text-slate-700">Contratos activos</h2>
+          <h2 className="text-xl font-extrabold text-app-text">Contratos activos</h2>
           {isLoading ? (
-            <div className="mt-5 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-12 text-center text-slate-500">Cargando contratos...</div>
+            <div className="mt-5 rounded-2xl border border-dashed border-slate-200 bg-app-surface-alt px-4 py-12 text-center text-slate-500">Cargando contratos...</div>
           ) : (
             <div className="mt-5 space-y-3">
               {contracts.map((contract) => (
@@ -162,13 +162,13 @@ export const Contracts: React.FC = () => {
                   type="button"
                   onClick={() => setSelectedContractId(contract.id)}
                   className={`w-full rounded-[24px] border p-4 text-left transition ${
-                    selectedContract?.id === contract.id ? 'border-[#727cf5] bg-[#727cf5]/5' : 'border-slate-200 bg-slate-50 hover:bg-slate-100'
+                    selectedContract?.id === contract.id ? 'border-app-primary bg-app-primary/5' : 'border-slate-200 bg-app-surface-alt hover:bg-slate-100'
                   }`}
                 >
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">{contract.identifier}</p>
-                      <h3 className="mt-2 text-lg font-extrabold text-slate-700">{contract.title}</h3>
+                      <h3 className="mt-2 text-lg font-extrabold text-app-text">{contract.title}</h3>
                       <p className="mt-1 text-sm text-slate-500">{contract.counterparty}</p>
                     </div>
                     <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-600">{contract.status}</span>
@@ -210,7 +210,7 @@ export const Contracts: React.FC = () => {
         <section className="panel-card p-6">
           {selectedContract ? (
             <>
-              <h2 className="text-2xl font-extrabold text-slate-700">{selectedContract.title}</h2>
+              <h2 className="text-2xl font-extrabold text-app-text">{selectedContract.title}</h2>
               <p className="mt-2 text-sm text-slate-500">{selectedContract.summary}</p>
               <div className="mt-5 flex flex-wrap gap-3 text-sm text-slate-500">
                 <span className="inline-flex items-center gap-2 rounded-full bg-slate-50 px-3 py-1.5"><FileSignature className="h-4 w-4" />{selectedContract.counterparty}</span>
@@ -218,10 +218,10 @@ export const Contracts: React.FC = () => {
               </div>
               <div className="mt-6 space-y-3">
                 {(selectedContract.obligations ?? []).map((obligation) => (
-                  <article key={obligation.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <article key={obligation.id} className="rounded-2xl border border-slate-200 bg-app-surface-alt p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <p className="font-bold text-slate-700">{obligation.title}</p>
+                        <p className="font-bold text-app-text">{obligation.title}</p>
                         <p className="mt-1 text-sm text-slate-500">{obligation.description || obligation.sourceClause}</p>
                       </div>
                       <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-600">{obligation.status}</span>

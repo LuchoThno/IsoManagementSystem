@@ -2,12 +2,14 @@ import React from 'react';
 import { BrowserRouter, Navigate, Routes, Route } from 'react-router-dom';
 import { useAuth, useUser } from '@clerk/clerk-react';
 import { DashboardLayout } from './components/layout/DashboardLayout';
+import { usesClerkAuthentication } from './lib/authConfig';
 import {
   clerkJwtTemplate,
   clerkSignInPath,
   isClerkEnabled,
   resolveClerkRole,
 } from './lib/clerk';
+import { useAuthConfig } from './hooks/useAuthConfig';
 import { syncExternalUserSession } from './lib/api';
 import { fetchCurrentClerkUser } from './lib/clerkDirectoryApi';
 import { registerClerkTokenProvider } from './lib/clerkSession';
@@ -70,16 +72,25 @@ const Login = React.lazy(() =>
 );
 
 const RouteFallback: React.FC<{ label: string }> = ({ label }) => (
-  <div className="rounded-[28px] border border-dashed border-slate-200 bg-white py-14 text-center shadow-sm">
+  <div className="rounded-[28px] border border-dashed border-app-border bg-app-surface py-14 text-center shadow-panel">
     <div className="mx-auto max-w-md">
-      <p className="text-lg font-extrabold text-slate-700">Cargando {label}...</p>
-      <p className="mt-2 text-sm text-slate-400">Estamos preparando el módulo para continuar.</p>
+      <p className="text-lg font-extrabold text-app-text">Cargando {label}...</p>
+      <p className="mt-2 text-sm text-app-muted">Estamos preparando el módulo para continuar.</p>
     </div>
   </div>
 );
 
 const withSuspense = (node: React.ReactNode, label: string) => (
   <React.Suspense fallback={<RouteFallback label={label} />}>{node}</React.Suspense>
+);
+
+const AuthModeFallback: React.FC<{ message: string }> = ({ message }) => (
+  <div className="flex min-h-screen items-center justify-center bg-app-bg px-4">
+    <div className="w-full max-w-xl rounded-3xl border border-app-border bg-app-surface p-8 text-center shadow-floating">
+      <h2 className="text-2xl font-extrabold text-app-text">Estado de autenticación</h2>
+      <p className="mt-3 text-sm text-app-muted">{message}</p>
+    </div>
+  </div>
 );
 
 const LocalProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -95,7 +106,7 @@ const LocalProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children
 
   if (!initialized) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#eef2f7] text-slate-500">
+      <div className="flex min-h-screen items-center justify-center bg-app-bg text-slate-500">
         Cargando sesion...
       </div>
     );
@@ -137,6 +148,12 @@ const ClerkSessionSync: React.FC = () => {
 
     const sync = async () => {
       if (!isLoaded) {
+        return;
+      }
+
+      const shouldUseClerkAuth = isClerkEnabled && (await usesClerkAuthentication());
+      if (!shouldUseClerkAuth) {
+        syncSession(null, null);
         return;
       }
 
@@ -199,7 +216,7 @@ const ClerkProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children
 
   if (!initialized) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#eef2f7] text-slate-500">
+      <div className="flex min-h-screen items-center justify-center bg-app-bg text-slate-500">
         Cargando sesion...
       </div>
     );
@@ -207,8 +224,8 @@ const ClerkProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children
 
   if (error) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#eef2f7] px-4">
-        <div className="w-full max-w-lg rounded-3xl border border-rose-200 bg-white p-8 text-center shadow-xl">
+      <div className="flex min-h-screen items-center justify-center bg-app-bg px-4">
+        <div className="w-full max-w-lg rounded-3xl border border-rose-200 bg-app-surface p-8 text-center shadow-floating">
           <h2 className="text-2xl font-extrabold text-slate-700">No fue posible iniciar la sesión</h2>
           <p className="mt-3 text-sm text-rose-700">{error}</p>
         </div>
@@ -273,7 +290,33 @@ const AppRoutes: React.FC<{ protectedRoute: React.FC<{ children: React.ReactNode
 );
 
 function App() {
-  if (isClerkEnabled) {
+  const { authConfig, loading, error } = useAuthConfig();
+
+  if (loading) {
+    return <AuthModeFallback message="Estamos validando el modo de autenticación del entorno." />;
+  }
+
+  if (error) {
+    return <AuthModeFallback message={error} />;
+  }
+
+  if (!authConfig) {
+    return <AuthModeFallback message="No fue posible resolver la autenticación del entorno." />;
+  }
+
+  if (authConfig.mode === 'disabled') {
+    return (
+      <AuthModeFallback message="La autenticación de la aplicación está deshabilitada por configuración en este entorno." />
+    );
+  }
+
+  if (authConfig.mode === 'clerk') {
+    if (!isClerkEnabled) {
+      return (
+        <AuthModeFallback message="El backend requiere Clerk, pero el frontend no tiene configurada la integración pública necesaria para iniciar sesión." />
+      );
+    }
+
     return (
       <>
         <ClerkSessionSync />
@@ -282,9 +325,7 @@ function App() {
     );
   }
 
-  return (
-    <AppRoutes protectedRoute={LocalProtectedRoute} />
-  );
+  return <AppRoutes protectedRoute={LocalProtectedRoute} />;
 }
 
 export default App;

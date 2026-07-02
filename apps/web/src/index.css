@@ -9,17 +9,24 @@
     color-scheme: light;
     --bg: #eef2f7;
     --surface: #ffffff;
+    --surface-alt: #f8fafc;
     --surface-strong: #313a46;
     --sidebar: #313a46;
     --sidebar-soft: #3f4d5f;
     --primary: #727cf5;
+    --primary-strong: #636df0;
     --primary-soft: #e9eaff;
     --success: #0acf97;
     --warning: #ffbc00;
     --danger: #fa5c7c;
+    --info: #39afd1;
     --text: #313a46;
     --muted: #98a6ad;
     --border: #eef2f7;
+    --radius-panel: 1rem;
+    --radius-card: 0.75rem;
+    --shadow-panel: 0 14px 35px rgba(15, 23, 42, 0.05);
+    --shadow-floating: 0 22px 48px rgba(15, 23, 42, 0.12);
   }
 
   * {
@@ -31,7 +38,9 @@
     min-width: 320px;
     min-height: 100vh;
     font-family: 'Nunito', sans-serif;
-    background: #eef2f7;
+    background:
+      radial-gradient(circle at top, rgba(114, 124, 245, 0.08), transparent 28%),
+      linear-gradient(180deg, #f4f7fb 0%, var(--bg) 18%, var(--bg) 100%);
     color: var(--text);
   }
 
@@ -42,18 +51,95 @@
 
 @layer components {
   .panel-card {
-    @apply rounded-xl border border-slate-100 bg-white shadow-sm;
+    @apply rounded-panel border border-app-border bg-app-surface shadow-panel;
   }
 
   .panel-title {
-    @apply text-lg font-bold text-slate-700;
+    @apply text-lg font-bold text-app-text;
   }
 
   .admin-input {
-    @apply w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-indigo-300 focus:ring-4 focus:ring-indigo-100;
+    @apply w-full rounded-xl border border-app-border bg-app-surface px-3 py-2.5 text-sm text-app-text outline-none transition placeholder:text-app-muted;
   }
 
   .admin-select {
-    @apply rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-indigo-300 focus:ring-4 focus:ring-indigo-100;
+    @apply rounded-xl border border-app-border bg-app-surface px-3 py-2.5 text-sm text-app-text outline-none transition;
+  }
+
+  .admin-input:focus,
+  .admin-select:focus {
+    border-color: rgba(114, 124, 245, 0.35);
+    box-shadow: 0 0 0 4px rgba(114, 124, 245, 0.1);
+  }
+
+  .app-shell {
+    @apply min-h-screen bg-app-bg;
+  }
+
+  .app-header {
+    @apply border-b border-app-border backdrop-blur;
+    background-color: rgba(255, 255, 255, 0.95);
+  }
+
+  .app-icon-chip {
+    @apply rounded-2xl p-3 text-app-primary;
+    background-color: rgba(114, 124, 245, 0.1);
+  }
+
+  .app-badge {
+    @apply inline-flex items-center gap-2 rounded-pill px-3 py-1.5 text-xs font-bold text-app-primary;
+    background-color: rgba(114, 124, 245, 0.1);
+  }
+
+  .app-button-primary {
+    @apply rounded-xl bg-app-primary px-4 py-3 font-bold text-white transition hover:bg-app-primary-strong disabled:cursor-not-allowed disabled:opacity-70;
+  }
+
+  .app-button-secondary {
+    @apply rounded-xl border border-app-border bg-app-surface px-4 py-3 font-bold text-app-text transition hover:border-slate-300 hover:bg-app-surface-alt;
+  }
+
+  .app-sidebar-link {
+    @apply mb-1.5 flex items-center rounded-xl px-3 py-2.5 transition-all;
+  }
+
+  .app-sidebar-link-active {
+    @apply bg-app-sidebar-soft text-white shadow-sm;
+  }
+
+  .app-sidebar-link-idle {
+    @apply text-white/65 hover:bg-white/5 hover:text-white;
+  }
+
+  .app-dropdown {
+    @apply rounded-2xl border border-app-border bg-app-surface shadow-floating;
+  }
+
+  .app-stat-card {
+    @apply rounded-[28px] border border-app-border bg-app-surface p-5 shadow-panel;
+  }
+
+  .app-subtle-card {
+    @apply rounded-2xl border border-slate-100 bg-app-surface-alt p-4;
+  }
+
+  .app-empty-state {
+    @apply overflow-hidden rounded-[28px] border border-dashed border-app-border bg-app-surface py-14 text-center;
+  }
+
+  .app-empty-state-danger {
+    @apply overflow-hidden rounded-[28px] border border-dashed border-rose-200 bg-rose-50 py-14 text-center;
+  }
+
+  .app-chip-filter {
+    @apply rounded-pill px-4 py-2 text-sm font-bold transition;
+  }
+
+  .app-chip-filter-active {
+    @apply bg-app-primary text-white shadow-sm;
+  }
+
+  .app-chip-filter-idle {
+    @apply bg-app-surface text-slate-600 ring-1 ring-slate-200 hover:bg-app-surface-alt;
   }
 }

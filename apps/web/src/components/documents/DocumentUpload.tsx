@@ -85,7 +85,7 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({ onUpload }) => {
     <>
       <button
         onClick={() => setIsOpen(true)}
-        className="inline-flex items-center gap-2 rounded-xl bg-[#727cf5] px-5 py-3 text-sm font-bold text-white transition-colors hover:bg-[#636df0]"
+        className="app-button-primary inline-flex items-center gap-2 px-5 py-3 text-sm"
       >
         <Upload className="w-5 h-5" />
         <span>Subir documento</span>
@@ -93,7 +93,7 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({ onUpload }) => {
 
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4">
-          <div className="w-full max-w-xl overflow-hidden rounded-[28px] bg-white shadow-2xl">
+          <div className="w-full max-w-xl overflow-hidden rounded-[28px] bg-app-surface shadow-floating">
             <div className="bg-[linear-gradient(135deg,#313a46_0%,#3f4d5f_100%)] px-6 py-5 text-white">
               <div className="mb-4 flex items-center justify-between">
                 <div>
@@ -102,12 +102,12 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({ onUpload }) => {
                   </p>
                   <h3 className="mt-2 text-xl font-extrabold">Subir nuevo documento</h3>
                 </div>
-                <button onClick={() => setIsOpen(false)} className="rounded-xl bg-white/10 p-2">
+                <button onClick={() => setIsOpen(false)} className="rounded-xl bg-white/10 p-2 transition hover:bg-white/15">
                   <X className="w-5 h-5" />
                 </button>
               </div>
               <div className="flex items-center gap-2 rounded-2xl bg-white/5 px-4 py-3 text-sm text-white/80">
-                <Sparkles className="h-4 w-4 text-[#ffbc00]" />
+                <Sparkles className="h-4 w-4 text-app-warning" />
                 Carga controlada para manuales, procedimientos y registros.
               </div>
             </div>
@@ -196,10 +196,10 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({ onUpload }) => {
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4">
+                <div className="rounded-2xl border border-dashed border-slate-200 bg-app-surface-alt p-4">
                   <label className="block text-sm font-bold text-slate-600">Archivo</label>
-                  <div className="mt-3 flex items-center gap-3 rounded-2xl bg-white px-4 py-4">
-                    <div className="rounded-2xl bg-[#727cf5]/10 p-3 text-[#727cf5]">
+                  <div className="mt-3 flex items-center gap-3 rounded-2xl bg-app-surface px-4 py-4">
+                    <div className="app-icon-chip">
                       <FileUp className="h-5 w-5" />
                     </div>
                     <div className="flex-1">
@@ -231,13 +231,13 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({ onUpload }) => {
                   <button
                     type="button"
                     onClick={() => setIsOpen(false)}
-                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 font-bold text-slate-600 transition hover:bg-slate-50"
+                    className="app-button-secondary w-full"
                   >
                     Cancelar
                   </button>
                   <button
                     type="submit"
-                    className="w-full rounded-xl bg-[#727cf5] px-4 py-3 font-bold text-white transition hover:bg-[#636df0]"
+                    className="app-button-primary w-full"
                   >
                     Subir documento
                   </button>

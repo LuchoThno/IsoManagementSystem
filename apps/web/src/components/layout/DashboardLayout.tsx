@@ -42,7 +42,7 @@ export const DashboardLayout: React.FC = () => {
   }, [bootstrapped, hydrateShell, setError, setLoading]);
 
   return (
-    <div className="min-h-screen bg-[#eef2f7] lg:flex">
+    <div className="app-shell lg:flex">
       <Sidebar
         collapsed={sidebarCollapsed}
         mobileOpen={mobileSidebarOpen}

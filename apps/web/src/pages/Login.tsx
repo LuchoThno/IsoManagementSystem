@@ -3,6 +3,7 @@ import { SignIn, useUser } from '@clerk/clerk-react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { ShieldCheck } from 'lucide-react';
 import { BrandLockup } from '../components/brand/Brand';
+import { useAuthConfig } from '../hooks/useAuthConfig';
 import { clerkAfterSignInUrl, clerkSignInPath, clerkSignUpPath, isClerkEnabled } from '../lib/clerk';
 import { useAuthStore } from '../store/useAuthStore';
 
@@ -12,6 +13,7 @@ export const Login: React.FC = () => {
   const error = useAuthStore((state) => state.error);
   const login = useAuthStore((state) => state.login);
   const initialize = useAuthStore((state) => state.initialize);
+  const { authConfig, loading: authConfigLoading, error: authConfigError } = useAuthConfig();
   const location = useLocation();
 
   const [email, setEmail] = React.useState('');
@@ -25,22 +27,44 @@ export const Login: React.FC = () => {
     backgroundSize: 'cover',
     backgroundPosition: 'center',
   } satisfies React.CSSProperties;
+  const authMode = authConfig?.mode ?? (isClerkEnabled ? 'clerk' : 'demo');
+  const usesClerkAuth = authMode === 'clerk';
+  const authDisabled = authMode === 'disabled';
 
   React.useEffect(() => {
-    if (!initialized && !isClerkEnabled) {
+    if (!initialized && authMode === 'demo') {
       void initialize();
     }
-  }, [initialize, initialized]);
+  }, [authMode, initialize, initialized]);
 
-  if (isClerkEnabled && isSignedIn) {
+  if (authConfigLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-app-bg text-slate-500">
+        Validando autenticacion...
+      </div>
+    );
+  }
+
+  if (authConfigError) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-app-bg px-4">
+        <div className="w-full max-w-lg rounded-3xl border border-rose-200 bg-app-surface p-8 text-center shadow-floating">
+          <h2 className="text-2xl font-extrabold text-slate-700">No fue posible cargar el acceso</h2>
+          <p className="mt-3 text-sm text-rose-700">{authConfigError}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (usesClerkAuth && isSignedIn) {
     return <Navigate to={clerkAfterSignInUrl} replace />;
   }
 
-  if (isClerkEnabled && location.pathname !== clerkSignInPath) {
+  if (usesClerkAuth && location.pathname !== clerkSignInPath) {
     return <Navigate to={clerkSignInPath} replace />;
   }
 
-  if (!isClerkEnabled && initialized && user) {
+  if (authMode === 'demo' && initialized && user) {
     return <Navigate to="/" replace />;
   }
 
@@ -51,7 +75,27 @@ export const Login: React.FC = () => {
     setLoading(false);
   };
 
-  if (isClerkEnabled) {
+  if (authDisabled) {
+    return (
+      <div
+        className="flex min-h-screen items-center justify-center px-4 py-8"
+        style={loginBackdropStyle}
+      >
+        <div className="w-full max-w-2xl rounded-[36px] border border-white/15 bg-white/92 p-10 text-center shadow-2xl backdrop-blur">
+          <BrandLockup />
+          <h1 className="mt-6 text-3xl font-extrabold text-slate-700">
+            Autenticación deshabilitada
+          </h1>
+          <p className="mt-4 text-sm leading-6 text-slate-500">
+            Este entorno tiene la autenticación deshabilitada por configuración. No es posible
+            iniciar sesión hasta que el backend habilite un modo operativo.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (usesClerkAuth) {
     return (
       <div
         className="flex min-h-screen items-center justify-center px-4 py-8"
@@ -69,7 +113,7 @@ export const Login: React.FC = () => {
             </p>
             <div className="mt-10 max-w-md rounded-[28px] border border-white/15 bg-white/10 p-5 backdrop-blur">
               <div className="flex items-center gap-3">
-                <ShieldCheck className="h-5 w-5 text-[#7dd3fc]" />
+                <ShieldCheck className="h-5 w-5 text-sky-300" />
                 <p className="font-bold">Inicio de sesión centralizado</p>
               </div>
               <p className="mt-3 text-sm leading-6 text-white/80">
@@ -84,12 +128,19 @@ export const Login: React.FC = () => {
               <div className="mb-6 lg:hidden">
                 <BrandLockup />
               </div>
-              <SignIn
-                path={clerkSignInPath}
-                routing="path"
-                signUpUrl={clerkSignUpPath}
-                fallbackRedirectUrl={clerkAfterSignInUrl}
-              />
+              {isClerkEnabled ? (
+                <SignIn
+                  path={clerkSignInPath}
+                  routing="path"
+                  signUpUrl={clerkSignUpPath}
+                  fallbackRedirectUrl={clerkAfterSignInUrl}
+                />
+              ) : (
+                <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
+                  El backend requiere Clerk, pero el frontend no tiene configurada la integración
+                  pública necesaria para iniciar sesión.
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -114,7 +165,7 @@ export const Login: React.FC = () => {
           </p>
           <div className="mt-10 max-w-md rounded-[28px] border border-white/15 bg-white/10 p-5 backdrop-blur">
             <div className="flex items-center gap-3">
-              <ShieldCheck className="h-5 w-5 text-[#7dd3fc]" />
+              <ShieldCheck className="h-5 w-5 text-sky-300" />
               <p className="font-bold">Acceso local</p>
             </div>
             <p className="mt-3 text-sm leading-6 text-white/80">
@@ -168,7 +219,7 @@ export const Login: React.FC = () => {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full rounded-lg bg-[#727cf5] px-4 py-3 font-bold text-white transition hover:bg-[#636df0] disabled:cursor-not-allowed disabled:opacity-60"
+                className="app-button-primary w-full disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {loading ? 'Ingresando...' : 'Entrar al sistema'}
               </button>
