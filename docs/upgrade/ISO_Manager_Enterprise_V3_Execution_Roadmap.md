@@ -244,13 +244,31 @@ Pendientes para cierre fuerte de la fase:
 - delegar MFA de produccion de forma explicita en Clerk y documentar el runbook
 - formalizar politica de contrasenas segun modo de autenticacion
 - definir estrategia de backups automaticos y verificacion de restauracion
-- ampliar cobertura de pruebas de autorizacion por rol
+- ampliar cobertura de pruebas de autorizacion por rol y rutas autenticadas de solo lectura
+
+Decisión operativa:
+
+- Fase 4 se considera lista para transicion a la siguiente fase a nivel operativo
+  porque los controles base, contratos de autenticacion, auditoria y smokes ya
+  están funcionando sobre el monorepo actual.
+- El cierre fuerte de Fase 4 queda abierto en paralelo para endurecimientos
+  complementarios que no bloquean el inicio del refactor modular.
 
 Avance documental reciente:
 
 - runbook base de backup y restore MongoDB agregado para despliegues actuales
 - smoke operativo de RBAC agregado para validar rutas por rol en modo Clerk
+- smoke RBAC ampliado para cubrir accesos anonimos bloqueados y mas rutas GET protegidas
+- smoke RBAC ampliado tambien para rutas con mutacion segura usando payloads invalidos
 - smoke de API endurecido para validar el contrato de capacidades de `auth/config`
+- smoke de API ampliado para validar tambien el contrato de `auth/access-context`
+- verificacion automatizada de restore Mongo agregada para comprobar colecciones minimas en base temporal
+- poda controlada de backups locales agregada para sostener una retencion operativa reproducible
+- ciclo orquestado de backup Mongo agregado para cron operativo con backup, retencion y restore-check
+- frontend alineado con `auth/access-context` para ocultar acceso no autorizado al panel de usuarios
+- frontend alineado tambien en documentos, tareas y auditorias para ocultar acciones de mutacion sin permiso
+- smoke stack de `api + mongo` agregado para validacion operativa por Docker con modo y puerto alineados
+- smoke RBAC endurecido para verificar rol y permisos efectivos de `auth/access-context` por token
 
 ## Fase 5 - Refactor
 
@@ -274,6 +292,29 @@ Justificacion:
 - `auth/users/tenants` son la base para seguridad y multiempresa.
 - `documents` y `audits` concentran trazabilidad y cumplimiento.
 - `grc` depende de estructura normativa ya existente y debe migrarse con cuidado.
+
+Estado inicial al 2026-07-02:
+
+- inicio de refactor en `auth` ya ejecutado separando la construccion de
+  `auth/access-context` fuera del controlador hacia una pieza reutilizable de
+  politica/permisos
+- refactor inicial en `users` ya ejecutado moviendo la operacion de directorio
+  y consulta de auditoria de plataforma a un servicio dedicado
+- refactor inicial en `documents` ya ejecutado moviendo validacion, auditoria y
+  operacion CRUD del controlador a un servicio dedicado
+- refactor inicial en `audits` ya ejecutado moviendo validacion, checklist y
+  operacion CRUD del controlador a un servicio dedicado
+- refactor inicial en `grc` ya ejecutado moviendo validacion, auditoria y
+  orquestacion de standards, evidences, contracts y corrective actions a un
+  servicio dedicado
+- refactor inicial en `settings` ya ejecutado moviendo postura de seguridad,
+  validacion y actualizacion de configuracion a un servicio dedicado
+- refactor inicial en `communications` ya ejecutado moviendo compatibilidad,
+  settings, plantillas y campañas a un servicio dedicado
+- refactor inicial en `calendar/collaboration` ya ejecutado moviendo sync,
+  resolucion de identidad y operacion HTTP de threads a un servicio dedicado
+- esta linea prepara la migracion gradual desde controladores con logica
+  embebida hacia capas mas claras de `controller` + `policy/permission`
 
 ## Fase 6 - Gestion Documental
 

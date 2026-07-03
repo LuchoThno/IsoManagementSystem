@@ -141,7 +141,7 @@ Implementar:
 
 ## Paso 8
 
-Crear ISO Copilot.
+Crear ISO geminis google o llmnotebook.
 
 Debe:
 

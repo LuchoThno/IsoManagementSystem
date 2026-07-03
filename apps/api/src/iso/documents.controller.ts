@@ -1,16 +1,8 @@
 import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
-import { DOCUMENT_FORMAT_VALUES, DOCUMENT_STATUS_VALUES, DOCUMENT_TYPE_VALUES } from './domain.constants';
 import { ClerkAuth } from './clerk-auth.decorator';
 import { ClerkAuthGuard } from './clerk-auth.guard';
-import { IsoService } from './iso.service';
-import { PlatformAuditService } from './platform-audit.service';
+import { DocumentsOperationsService } from './documents-operations.service';
 import type { CreateDocumentDto, UpdateDocumentDto } from './dto/documents.dto';
-import {
-  ensureEnumValue,
-  ensureNonEmptyString,
-  ensureOptionalEnumValue,
-  ensureOptionalString,
-} from './request-validation';
 import { Roles } from './roles.decorator';
 import { RolesGuard } from './roles.guard';
 import type { ClerkSessionIdentity } from './clerk.types';
@@ -18,19 +10,16 @@ import type { ClerkSessionIdentity } from './clerk.types';
 @Controller('iso')
 @UseGuards(ClerkAuthGuard, RolesGuard)
 export class DocumentsController {
-  constructor(
-    private readonly isoService: IsoService,
-    private readonly platformAuditService: PlatformAuditService
-  ) {}
+  constructor(private readonly documentsOperationsService: DocumentsOperationsService) {}
 
   @Get('documents')
   getDocuments() {
-    return this.isoService.getDocuments();
+    return this.documentsOperationsService.listDocuments();
   }
 
   @Get('documents/:id/content')
   getDocumentContent(@Param('id') id: string) {
-    return this.isoService.getDocumentContent(id);
+    return this.documentsOperationsService.getDocumentContent(id);
   }
 
   @Post('documents')
@@ -40,29 +29,7 @@ export class DocumentsController {
     @Body()
     body: CreateDocumentDto
   ) {
-    ensureNonEmptyString(body.title, 'title');
-    ensureNonEmptyString(body.topic, 'topic');
-    ensureEnumValue(body.type, 'type', DOCUMENT_TYPE_VALUES);
-    ensureEnumValue(body.format, 'format', DOCUMENT_FORMAT_VALUES);
-    ensureNonEmptyString(body.standard, 'standard');
-    ensureNonEmptyString(body.version, 'version');
-    ensureNonEmptyString(body.fileName, 'fileName');
-    ensureNonEmptyString(body.mimeType, 'mimeType');
-    ensureNonEmptyString(body.fileContentUrl, 'fileContentUrl');
-
-    const document = await this.isoService.createDocument(body);
-    await this.platformAuditService.captureFromSession(clerkAuth, {
-      action: 'documents.create',
-      resourceType: 'document',
-      resourceId: document?.id ?? null,
-      status: 'success',
-      metadata: {
-        title: body.title,
-        standard: body.standard,
-        version: body.version,
-      },
-    });
-    return document;
+    return this.documentsOperationsService.createDocument(clerkAuth, body);
   }
 
   @Patch('documents/:id')
@@ -73,25 +40,7 @@ export class DocumentsController {
     @Body()
     body: UpdateDocumentDto
   ) {
-    ensureOptionalString(body.title, 'title');
-    ensureOptionalString(body.topic, 'topic');
-    ensureOptionalEnumValue(body.format, 'format', DOCUMENT_FORMAT_VALUES);
-    ensureOptionalString(body.version, 'version');
-    ensureOptionalEnumValue(body.status, 'status', DOCUMENT_STATUS_VALUES);
-
-    const document = await this.isoService.updateDocument(id, body);
-    await this.platformAuditService.captureFromSession(clerkAuth, {
-      action: 'documents.update',
-      resourceType: 'document',
-      resourceId: id,
-      status: 'success',
-      metadata: {
-        title: body.title ?? null,
-        version: body.version ?? null,
-        statusValue: body.status ?? null,
-      },
-    });
-    return document;
+    return this.documentsOperationsService.updateDocument(id, clerkAuth, body);
   }
 
   @Post('documents/:id/view')
@@ -99,14 +48,7 @@ export class DocumentsController {
     @Param('id') id: string,
     @ClerkAuth() clerkAuth: ClerkSessionIdentity | null
   ) {
-    const document = await this.isoService.registerDocumentView(id);
-    await this.platformAuditService.captureFromSession(clerkAuth, {
-      action: 'documents.view',
-      resourceType: 'document',
-      resourceId: id,
-      status: 'success',
-    });
-    return document;
+    return this.documentsOperationsService.registerDocumentView(id, clerkAuth);
   }
 
   @Patch('documents/:id/delete')
@@ -115,13 +57,6 @@ export class DocumentsController {
     @Param('id') id: string,
     @ClerkAuth() clerkAuth: ClerkSessionIdentity | null
   ) {
-    const result = await this.isoService.deleteDocument(id);
-    await this.platformAuditService.captureFromSession(clerkAuth, {
-      action: 'documents.delete',
-      resourceType: 'document',
-      resourceId: id,
-      status: 'success',
-    });
-    return result;
+    return this.documentsOperationsService.deleteDocument(id, clerkAuth);
   }
 }

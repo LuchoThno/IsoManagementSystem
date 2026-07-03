@@ -16,6 +16,7 @@ import type { Document } from '../../types/iso';
 
 interface DocumentTableProps {
   documents: Document[];
+  canManage?: boolean;
   onView: (doc: Document) => void;
   onDownload: (doc: Document) => void;
   onEdit: (doc: Document) => void;
@@ -82,6 +83,7 @@ const actionButtonClassName =
 
 export const DocumentTable: React.FC<DocumentTableProps> = ({
   documents,
+  canManage = true,
   onView,
   onDownload,
   onEdit,
@@ -219,26 +221,30 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                         <ShieldCheck className="h-3.5 w-3.5" />
                         <span className="sr-only">Ver auditoría documental</span>
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => onEdit(document)}
-                        className={actionButtonClassName}
-                        title="Editar documento"
-                        aria-label="Editar documento"
-                      >
-                        <PencilLine className="h-3.5 w-3.5" />
-                        <span className="sr-only">Editar documento</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => onDelete(document)}
-                        className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-rose-200 bg-rose-50 text-rose-600 transition hover:bg-rose-100"
-                        title="Eliminar documento"
-                        aria-label="Eliminar documento"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                        <span className="sr-only">Eliminar documento</span>
-                      </button>
+                      {canManage ? (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => onEdit(document)}
+                            className={actionButtonClassName}
+                            title="Editar documento"
+                            aria-label="Editar documento"
+                          >
+                            <PencilLine className="h-3.5 w-3.5" />
+                            <span className="sr-only">Editar documento</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => onDelete(document)}
+                            className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-rose-200 bg-rose-50 text-rose-600 transition hover:bg-rose-100"
+                            title="Eliminar documento"
+                            aria-label="Eliminar documento"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            <span className="sr-only">Eliminar documento</span>
+                          </button>
+                        </>
+                      ) : null}
                     </div>
                   </div>
                 </td>

@@ -1,6 +1,7 @@
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { BrandLockup, BrandMark } from '../brand/Brand';
+import { useUIPermissions } from '../../hooks/useUIPermissions';
 import { preloadRoute } from '../../lib/routePreload';
 import {
   AlertCircle,
@@ -72,24 +73,35 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onToggleCollapsed,
 }) => {
   const location = useLocation();
+  const { canAccessUsersPanel } = useUIPermissions();
   const [openGroups, setOpenGroups] = React.useState<Record<string, boolean>>({
     dependencies: true,
     collaboration: true,
     settings: true,
   });
+  const visibleGroups = React.useMemo(
+    () =>
+      groups
+        .map((group) => ({
+          ...group,
+          items: group.items.filter((item) => item.to !== '/settings/users' || canAccessUsersPanel),
+        }))
+        .filter((group) => group.items.length > 0),
+    [canAccessUsersPanel]
+  );
 
   React.useEffect(() => {
     if (collapsed) return;
     setOpenGroups((current) => {
       const next = { ...current };
-      groups.forEach((group) => {
+      visibleGroups.forEach((group) => {
         if (group.items.some((item) => location.pathname.startsWith(item.to))) {
           next[group.id] = true;
         }
       });
       return next;
     });
-  }, [collapsed, location.pathname]);
+  }, [collapsed, location.pathname, visibleGroups]);
 
   const renderLink = (
     to: string,
@@ -169,7 +181,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <nav className={`${collapsed ? 'mt-1' : 'mt-4'}`}>
             {singleItems.map(({ to, icon: Icon, label }) => renderLink(to, Icon, label))}
 
-            {groups.map((group) => {
+            {visibleGroups.map((group) => {
               const isGroupActive = group.items.some((item) => location.pathname.startsWith(item.to));
 
               if (collapsed) {

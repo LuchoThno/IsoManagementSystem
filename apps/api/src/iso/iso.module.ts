@@ -1,10 +1,15 @@
 import { AuditsController } from './audits.controller';
+import { AuditsOperationsService } from './audits-operations.service';
 import { AuthController } from './auth.controller';
 import { BootstrapController } from './bootstrap.controller';
+import { CollaborationOperationsService } from './collaboration-operations.service';
 import { CollaborationController } from './collaboration.controller';
+import { CommunicationsOperationsService } from './communications-operations.service';
 import { CommunicationsController } from './communications.controller';
 import { DocumentsController } from './documents.controller';
+import { DocumentsOperationsService } from './documents-operations.service';
 import { GrcController } from './grc.controller';
+import { GrcOperationsService } from './grc-operations.service';
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { AuthModeService } from './auth-mode.service';
@@ -50,8 +55,10 @@ import {
 import { StandardSectionEntity, StandardSectionSchema } from './schemas/standard-section.schema';
 import { StandardEntity, StandardSchema } from './schemas/standard.schema';
 import { SettingsController } from './settings.controller';
+import { SettingsOperationsService } from './settings-operations.service';
 import { TaskEntity, TaskSchema } from './schemas/task.schema';
 import { UsersController } from './users.controller';
+import { UsersOperationsService } from './users-operations.service';
 import { TasksController } from './tasks.controller';
 
 @Module({
@@ -94,14 +101,21 @@ import { TasksController } from './tasks.controller';
   providers: [
     IsoService,
     GrcService,
+    GrcOperationsService,
+    AuditsOperationsService,
+    CollaborationOperationsService,
     ChatGateway,
     GoogleCalendarService,
     EmailDeliveryService,
     AuthModeService,
     PlatformAuditService,
+    DocumentsOperationsService,
+    CommunicationsOperationsService,
     ClerkAuthService,
     ClerkAuthGuard,
     ClerkDirectoryService,
+    UsersOperationsService,
+    SettingsOperationsService,
     RolesGuard,
   ],
 })

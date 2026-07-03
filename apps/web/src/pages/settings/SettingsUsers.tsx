@@ -1,7 +1,7 @@
 import React from 'react';
 import { Plus, Shield, Trash2, UserCog } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
-import { useAuthConfig } from '../../hooks/useAuthConfig';
+import { useUIPermissions } from '../../hooks/useUIPermissions';
 import {
   createUser,
   deleteUser,
@@ -19,7 +19,12 @@ export const SettingsUsers: React.FC = () => {
   const users = useISOStore((state) => state.users);
   const replaceUsers = useISOStore((state) => state.replaceUsers);
   const setAuthUser = useAuthStore((state) => state.setUser);
-  const { authConfig } = useAuthConfig();
+  const {
+    authConfig,
+    loading,
+    canAccessUsersPanel,
+    canManageUsers,
+  } = useUIPermissions();
   const [message, setMessage] = React.useState('');
   const [authMode, setAuthMode] = React.useState<'clerk' | 'demo' | 'disabled'>(
     isClerkEnabled ? 'clerk' : 'demo'
@@ -35,6 +40,8 @@ export const SettingsUsers: React.FC = () => {
     active: true,
   });
   const isManagedDirectory = !manualUserManagement;
+  const isAccessContextResolved = !loading;
+  const canViewUsers = canAccessUsersPanel;
 
   React.useEffect(() => {
     setUserQuery(searchParams.get('q') ?? '');
@@ -181,6 +188,12 @@ export const SettingsUsers: React.FC = () => {
         </div>
       </div>
 
+      {isAccessContextResolved && !canViewUsers && authConfig?.mode !== 'disabled' && (
+        <div className="rounded-[24px] border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-900">
+          Tu sesión actual no tiene permisos para consultar el directorio de usuarios en este entorno.
+        </div>
+      )}
+
       {isManagedDirectory && (
         <div className="rounded-[24px] border border-sky-200 bg-sky-50 px-5 py-4 text-sm text-sky-900">
           {authMode === 'disabled'
@@ -189,18 +202,29 @@ export const SettingsUsers: React.FC = () => {
         </div>
       )}
 
-      <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
+      {isAccessContextResolved && !canViewUsers ? (
+        <section className="rounded-[28px] border border-app-border bg-app-surface p-6 shadow-panel">
+          <h3 className="panel-title">Acceso restringido</h3>
+          <p className="mt-3 text-sm text-app-muted">
+            El backend resolvió esta sesión sin permisos para visualizar o administrar usuarios.
+            Si necesitas operar este módulo, solicita un rol con acceso al directorio o usa el
+            proveedor de identidad correspondiente.
+          </p>
+        </section>
+      ) : (
+        <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
         <section className="rounded-[28px] border border-app-border bg-app-surface p-6 shadow-panel">
           <h3 className="panel-title">
             {isManagedDirectory ? 'Directorio administrado' : 'Gestor de usuarios'}
           </h3>
-          {isManagedDirectory ? (
+          {isManagedDirectory || !canManageUsers ? (
             <div className="mt-6 space-y-4 rounded-[24px] border border-dashed border-app-border bg-app-muted/30 p-5">
               <div>
                 <p className="text-sm font-bold text-app-text">Alcance en este entorno</p>
                 <p className="mt-2 text-sm text-app-muted">
-                  Esta vista es de solo lectura para mantener consistencia entre el directorio
-                  externo y los roles usados por el backend.
+                  {canManageUsers
+                    ? 'Esta vista es de solo lectura para mantener consistencia entre el directorio externo y los roles usados por el backend.'
+                    : 'Tu sesión puede consultar usuarios, pero no administrarlos desde este panel.'}
                 </p>
               </div>
               <div>
@@ -208,7 +232,9 @@ export const SettingsUsers: React.FC = () => {
                 <p className="mt-2 text-sm text-app-muted">
                   {authMode === 'disabled'
                     ? 'Rehabilita primero el modo de autenticación del backend antes de intentar operar usuarios desde este entorno.'
-                    : 'Crea usuarios, asigna roles y controla el acceso directamente en Clerk. Este panel seguirá mostrando el directorio resuelto para operación diaria.'}
+                    : canManageUsers
+                    ? 'Crea usuarios, asigna roles y controla el acceso directamente en Clerk. Este panel seguirá mostrando el directorio resuelto para operación diaria.'
+                    : 'Solicita un rol con permisos de administración si necesitas crear, editar o desactivar usuarios desde este entorno.'}
                 </p>
               </div>
             </div>
@@ -345,7 +371,7 @@ export const SettingsUsers: React.FC = () => {
                       {user.role}
                     </div>
                   </div>
-                  {!isManagedDirectory && (
+                  {canManageUsers && !isManagedDirectory && (
                     <div className="flex flex-wrap gap-2">
                       <button
                         type="button"
@@ -377,6 +403,7 @@ export const SettingsUsers: React.FC = () => {
           </div>
         </section>
       </div>
+      )}
 
       {message && (
         <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">

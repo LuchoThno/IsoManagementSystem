@@ -15,6 +15,7 @@ Environment variables:
 Behavior:
   - Validates public routes
   - Validates protected route behavior by auth mode
+  - Includes access-context, user-directory, and platform-audit route checks
   - If SMOKE_BEARER_TOKEN is provided, validates selected authenticated routes return 200
 `);
   process.exit(0);
@@ -38,11 +39,14 @@ const publicRoutes = [
 
 const protectedRoutes = [
   '/api/iso/bootstrap-shell',
+  '/api/iso/auth/access-context',
   '/api/iso/auth/session',
   '/api/iso/documents',
   '/api/iso/tasks',
   '/api/iso/audits',
   '/api/iso/security/posture',
+  '/api/iso/users/clerk',
+  '/api/iso/platform/audit-logs?limit=5',
   '/api/iso/standards',
   '/api/iso/communications/compatibility',
   '/api/iso/calendar/status',
@@ -50,6 +54,7 @@ const protectedRoutes = [
 
 const authenticatedRoutes = [
   '/api/iso/bootstrap-shell',
+  '/api/iso/auth/access-context',
   '/api/iso/auth/session',
   '/api/iso/documents',
   '/api/iso/tasks',

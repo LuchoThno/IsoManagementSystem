@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { BadgeCheck, Files, ScanSearch, ScrollText } from 'lucide-react';
+import { useUIPermissions } from '../hooks/useUIPermissions';
 import { DocumentFilters } from '../components/documents/DocumentFilters';
 import { EditDocumentModal } from '../components/documents/EditDocumentModal';
 import { DocumentTable } from '../components/documents/DocumentTable';
@@ -38,6 +39,7 @@ const downloadDocumentAsset = (url: string, fileName: string) => {
 };
 
 export const Documents: React.FC = () => {
+  const { canManageDocuments } = useUIPermissions();
   const documents = useISOStore((state) => state.documents);
   const bootstrapped = useISOStore((state) => state.bootstrapped);
   const hydrateShell = useISOStore((state) => state.hydrateShell);
@@ -52,6 +54,7 @@ export const Documents: React.FC = () => {
   const [selectedVersionDocument, setSelectedVersionDocument] = useState<Document | null>(null);
   const [selectedAuditDocument, setSelectedAuditDocument] = useState<Document | null>(null);
   const [editingDocument, setEditingDocument] = useState<Document | null>(null);
+  const canManage = canManageDocuments;
 
   const refreshDocuments = useCallback(async () => {
     replaceDocuments(await listDocuments());
@@ -114,6 +117,10 @@ export const Documents: React.FC = () => {
     version: string;
     file: File;
   }) => {
+    if (!canManage) {
+      return;
+    }
+
     const fileContentUrl = await readFileAsDataUrl(data.file);
     await createDocumentApi({
       title: data.title,
@@ -148,10 +155,18 @@ export const Documents: React.FC = () => {
   };
 
   const handleEditDocument = async (doc: Document) => {
+    if (!canManage) {
+      return;
+    }
+
     setEditingDocument(doc);
   };
 
   const handleDeleteDocument = async (doc: Document) => {
+    if (!canManage) {
+      return;
+    }
+
     if (!window.confirm(`Eliminar "${doc.title}"?`)) {
       return;
     }
@@ -185,8 +200,15 @@ export const Documents: React.FC = () => {
             Tabla documental con versiones, formatos y trazabilidad.
           </p>
         </div>
-        <DocumentUpload onUpload={handleUpload} />
+        <DocumentUpload onUpload={handleUpload} disabled={!canManage} />
       </div>
+
+      {!canManage && (
+        <div className="rounded-[24px] border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-900">
+          Tu sesión puede consultar documentos, versiones y auditoría documental, pero no crear,
+          editar ni eliminar registros en este entorno.
+        </div>
+      )}
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <div className="app-stat-card">
@@ -301,6 +323,7 @@ export const Documents: React.FC = () => {
         ) : filteredDocuments.length > 0 ? (
           <DocumentTable
             documents={filteredDocuments}
+            canManage={canManage}
             onView={handleViewDocument}
             onDownload={handleDownloadDocument}
             onEdit={handleEditDocument}

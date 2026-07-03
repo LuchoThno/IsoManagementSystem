@@ -166,7 +166,23 @@ Comandos operativos versionados:
 
 - `pnpm backup:mongo -- --env prod`
 - `pnpm restore:mongo -- --archive backups/<archivo>.archive.gz --temp-suffix restore_check`
+- `pnpm smoke:stack:api -- --auth-mode demo --down` para levantar `api + mongo`, forzar `APP_AUTH_MODE`, alinear `API_PORT` con `SMOKE_BASE_URL` y ejecutar smokes HTTP/socket
 - `pnpm smoke:rbac` con `SMOKE_ADMIN_TOKEN`, `SMOKE_MANAGER_TOKEN`, `SMOKE_AUDITOR_TOKEN` y/o `SMOKE_VIEWER_TOKEN`
+
+Secuencias recomendadas:
+
+- Validacion local en modo demo:
+  `pnpm smoke:stack:api -- --auth-mode demo --down`
+- Validacion de rutas protegidas contra un backend ya levantado:
+  `SMOKE_BASE_URL=http://127.0.0.1:3001 pnpm smoke:api`
+- Validacion RBAC en modo Clerk por rol:
+  `SMOKE_BASE_URL=http://127.0.0.1:3001 SMOKE_ADMIN_TOKEN=... SMOKE_MANAGER_TOKEN=... SMOKE_AUDITOR_TOKEN=... SMOKE_VIEWER_TOKEN=... pnpm smoke:rbac`
+
+Notas sobre los smokes:
+
+- `smoke:api` valida `auth/config`, `auth/access-context` y la coherencia general del modo de autenticacion.
+- `smoke:api:routes` cubre rutas publicas, protegidas y el acceso a directorio de usuarios y auditoria de plataforma.
+- `smoke:rbac` valida no solo codigos HTTP, sino tambien el rol y los permisos que el backend resuelve en `auth/access-context` para cada token.
 
 ## GitHub Actions
 

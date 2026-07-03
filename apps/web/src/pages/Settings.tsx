@@ -1,6 +1,7 @@
 import React from 'react';
 import { BellRing, Building2, ChevronRight, ShieldCheck, Users2 } from 'lucide-react';
 import { NavLink, Outlet } from 'react-router-dom';
+import { useUIPermissions } from '../hooks/useUIPermissions';
 
 const sections = [
   {
@@ -24,6 +25,12 @@ const sections = [
 ];
 
 export const Settings: React.FC = () => {
+  const { canAccessUsersPanel } = useUIPermissions();
+  const visibleSections = React.useMemo(
+    () => sections.filter((section) => section.to !== '/settings/users' || canAccessUsersPanel),
+    [canAccessUsersPanel]
+  );
+
   return (
     <div className="grid gap-6 xl:grid-cols-[290px_1fr]">
       <aside className="rounded-[28px] border border-app-border bg-app-surface p-5 shadow-panel">
@@ -43,7 +50,7 @@ export const Settings: React.FC = () => {
         </div>
 
         <nav className="mt-6 space-y-2">
-          {sections.map(({ to, icon: Icon, title, description }) => (
+          {visibleSections.map(({ to, icon: Icon, title, description }) => (
             <NavLink
               key={to}
               to={to}

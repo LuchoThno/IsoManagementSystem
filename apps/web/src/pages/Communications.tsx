@@ -21,6 +21,7 @@ import {
   updateCommunicationSettings,
   updateEmailTemplate,
 } from '../lib/api';
+import { useUIPermissions } from '../hooks/useUIPermissions';
 import { useISOStore } from '../store/useISOStore';
 import type {
   CommunicationCompatibility,
@@ -105,6 +106,14 @@ const renderTemplate = (
 };
 
 export const Communications: React.FC = () => {
+  const {
+    authConfig,
+    loading,
+    canManageCommunicationSettings,
+    canManageCommunicationTemplates,
+    canSendCommunicationCampaigns,
+    canViewCommunicationContent,
+  } = useUIPermissions();
   const users = useISOStore((state) => state.users);
   const tasks = useISOStore((state) => state.tasks);
   const templates = useISOStore((state) => state.emailTemplates);
@@ -134,6 +143,11 @@ export const Communications: React.FC = () => {
     daysAhead: 7,
     recipientIds: activeUsers.map((user) => user.id),
   });
+  const isAccessResolved = !loading;
+  const canViewCommunications = canViewCommunicationContent;
+  const canManageSettings = canManageCommunicationSettings;
+  const canManageTemplates = canManageCommunicationTemplates;
+  const canSendCampaigns = canSendCommunicationCampaigns;
 
   React.useEffect(() => {
     setSettingsForm(communicationSettings);
@@ -266,12 +280,22 @@ export const Communications: React.FC = () => {
     compatibility?.providers.find((provider) => provider.selected) ?? null;
 
   const handleSaveIntegration = async () => {
+    if (!canManageSettings) {
+      showMessage('Tu sesión no tiene permisos para modificar la integración de comunicados.');
+      return;
+    }
+
     await updateCommunicationSettings(settingsForm);
     await Promise.all([refreshData('Integracion de comunicados actualizada.'), refreshCompatibility()]);
   };
 
   const handleTemplateSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
+
+    if (!canManageTemplates) {
+      showMessage('Tu sesión no tiene permisos para gestionar plantillas.');
+      return;
+    }
 
     if (editingTemplateId) {
       await updateEmailTemplate(editingTemplateId, templateForm);
@@ -286,6 +310,11 @@ export const Communications: React.FC = () => {
   };
 
   const handleEditTemplate = (template: EmailTemplate) => {
+    if (!canManageTemplates) {
+      showMessage('Tu sesión puede revisar el módulo, pero no editar plantillas.');
+      return;
+    }
+
     setEditingTemplateId(template.id);
     setTemplateForm({
       name: template.name,
@@ -295,6 +324,11 @@ export const Communications: React.FC = () => {
   };
 
   const handleDeleteTemplate = async (template: EmailTemplate) => {
+    if (!canManageTemplates) {
+      showMessage('Tu sesión no tiene permisos para eliminar plantillas.');
+      return;
+    }
+
     if (!window.confirm(`Eliminar la plantilla "${template.name}"?`)) {
       return;
     }
@@ -307,6 +341,11 @@ export const Communications: React.FC = () => {
   };
 
   const handleUploadTemplate = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!canManageTemplates) {
+      showMessage('Tu sesión no tiene permisos para cargar plantillas.');
+      return;
+    }
+
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -320,6 +359,12 @@ export const Communications: React.FC = () => {
 
   const handleSendCampaign = async (event: React.FormEvent) => {
     event.preventDefault();
+
+    if (!canSendCampaigns) {
+      showMessage('Tu sesión no tiene permisos para enviar campañas.');
+      return;
+    }
+
     const result = await sendBulkTaskReminderCampaign({
       ...campaignForm,
       recipientNames: resolvedRecipients.map((user) => user.name),
@@ -336,6 +381,25 @@ export const Communications: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {isAccessResolved && !canViewCommunications && (
+        <section className="rounded-[28px] border border-app-border bg-app-surface p-6 shadow-panel">
+          <h3 className="panel-title">Acceso restringido</h3>
+          <p className="mt-3 text-sm text-app-muted">
+            Este entorno no resolvió permisos suficientes para consultar el módulo de comunicados.
+          </p>
+        </section>
+      )}
+
+      {isAccessResolved && canViewCommunications && (!canManageSettings || !canManageTemplates || !canSendCampaigns) && (
+        <div className="rounded-[24px] border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-900">
+          {canManageSettings || canManageTemplates || canSendCampaigns
+            ? 'Tu sesión tiene acceso parcial a Comunicados. Algunas acciones operativas quedarán en solo lectura según tu rol.'
+            : 'Tu sesión sólo puede revisar el estado del módulo. La edición de integraciones, plantillas y campañas está bloqueada.'}
+        </div>
+      )}
+
+      {(!isAccessResolved || canViewCommunications) && (
+      <>
       <div className="overflow-hidden rounded-[36px] border border-app-border bg-[linear-gradient(135deg,#fff8ef_0%,#fffef9_30%,#eef6ff_68%,#f7fbff_100%)] shadow-panel">
         <div className="grid gap-6 px-6 py-7 xl:grid-cols-[1.3fr_0.8fr] xl:px-8 xl:py-8">
           <div className="relative">
@@ -433,6 +497,7 @@ export const Communications: React.FC = () => {
                 <input
                   type="checkbox"
                   checked={settingsForm.enabled}
+                  disabled={!canManageSettings}
                   onChange={(event) =>
                     setSettingsForm({ ...settingsForm, enabled: event.target.checked })
                   }
@@ -464,6 +529,7 @@ export const Communications: React.FC = () => {
                   <button
                     key={option.value}
                     type="button"
+                    disabled={!canSendCampaigns}
                     onClick={() => setDeliveryMode(option.value as DeliveryMode)}
                     className={`flex items-center justify-between rounded-2xl px-4 py-4 text-left transition ${
                       deliveryMode === option.value
@@ -489,6 +555,7 @@ export const Communications: React.FC = () => {
                   <label className="block text-sm font-bold text-slate-600">Destinatario</label>
                   <select
                     value={selectedRecipientId}
+                    disabled={!canSendCampaigns}
                     onChange={(event) => setSelectedRecipientId(event.target.value)}
                     className="admin-select mt-2 w-full"
                   >
@@ -506,6 +573,7 @@ export const Communications: React.FC = () => {
                   <label className="block text-sm font-bold text-slate-600">Grupo / rol</label>
                   <select
                     value={selectedRole}
+                    disabled={!canSendCampaigns}
                     onChange={(event) =>
                       setSelectedRole(event.target.value as UserRole | 'all')
                     }
@@ -547,6 +615,7 @@ export const Communications: React.FC = () => {
               <button
                 type="button"
                 onClick={() => void handleSaveIntegration()}
+                disabled={!canManageSettings}
                 className="app-button-primary px-5 py-3"
               >
                 Guardar integracion
@@ -562,6 +631,7 @@ export const Communications: React.FC = () => {
                   <button
                     key={provider.type}
                     type="button"
+                    disabled={!canManageSettings}
                     onClick={() =>
                       setSettingsForm((current) => ({
                         ...current,
@@ -634,6 +704,7 @@ export const Communications: React.FC = () => {
                 <label className="block text-sm font-bold text-slate-600">Nombre visible del proveedor</label>
                 <input
                   value={settingsForm.providerName}
+                  disabled={!canManageSettings}
                   onChange={(event) =>
                     setSettingsForm({ ...settingsForm, providerName: event.target.value })
                   }
@@ -645,6 +716,7 @@ export const Communications: React.FC = () => {
                 <label className="block text-sm font-bold text-slate-600">API base / webhook</label>
                 <input
                   value={settingsForm.apiBaseUrl}
+                  disabled={!canManageSettings}
                   onChange={(event) =>
                     setSettingsForm({ ...settingsForm, apiBaseUrl: event.target.value })
                   }
@@ -656,6 +728,7 @@ export const Communications: React.FC = () => {
                 <label className="block text-sm font-bold text-slate-600">Remitente</label>
                 <input
                   value={settingsForm.senderName}
+                  disabled={!canManageSettings}
                   onChange={(event) =>
                     setSettingsForm({ ...settingsForm, senderName: event.target.value })
                   }
@@ -666,6 +739,7 @@ export const Communications: React.FC = () => {
                 <label className="block text-sm font-bold text-slate-600">Correo remitente</label>
                 <input
                   value={settingsForm.senderEmail}
+                  disabled={!canManageSettings}
                   onChange={(event) =>
                     setSettingsForm({ ...settingsForm, senderEmail: event.target.value })
                   }
@@ -676,6 +750,7 @@ export const Communications: React.FC = () => {
                 <label className="block text-sm font-bold text-slate-600">Reply-To</label>
                 <input
                   value={settingsForm.replyTo}
+                  disabled={!canManageSettings}
                   onChange={(event) =>
                     setSettingsForm({ ...settingsForm, replyTo: event.target.value })
                   }
@@ -686,6 +761,7 @@ export const Communications: React.FC = () => {
                 <label className="block text-sm font-bold text-slate-600">Referencia de credencial</label>
                 <input
                   value={settingsForm.apiKeyHint}
+                  disabled={!canManageSettings}
                   onChange={(event) =>
                     setSettingsForm({ ...settingsForm, apiKeyHint: event.target.value })
                   }
@@ -760,6 +836,7 @@ export const Communications: React.FC = () => {
                 <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
+                    disabled={!canManageTemplates}
                     onClick={() => setTemplateForm(baseEmailModel)}
                     className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
                   >
@@ -772,6 +849,7 @@ export const Communications: React.FC = () => {
                       type="file"
                       accept=".html,.txt"
                       className="hidden"
+                      disabled={!canManageTemplates}
                       onChange={handleUploadTemplate}
                     />
                   </label>
@@ -792,6 +870,7 @@ export const Communications: React.FC = () => {
                   <label className="block text-sm font-bold text-slate-600">Nombre</label>
                   <input
                     value={templateForm.name}
+                    disabled={!canManageTemplates}
                     onChange={(event) => setTemplateForm({ ...templateForm, name: event.target.value })}
                     className="admin-input mt-2"
                     required
@@ -801,6 +880,7 @@ export const Communications: React.FC = () => {
                   <label className="block text-sm font-bold text-slate-600">Asunto</label>
                   <input
                     value={templateForm.subject}
+                    disabled={!canManageTemplates}
                     onChange={(event) =>
                       setTemplateForm({ ...templateForm, subject: event.target.value })
                     }
@@ -812,6 +892,7 @@ export const Communications: React.FC = () => {
                   <label className="block text-sm font-bold text-slate-600">Contenido HTML</label>
                   <textarea
                     value={templateForm.content}
+                    disabled={!canManageTemplates}
                     onChange={(event) =>
                       setTemplateForm({ ...templateForm, content: event.target.value })
                     }
@@ -823,6 +904,7 @@ export const Communications: React.FC = () => {
                 <div className="flex flex-wrap gap-3">
                   <button
                     type="submit"
+                    disabled={!canManageTemplates}
                     className="rounded-xl bg-[#39afd1] px-5 py-3 font-bold text-white transition hover:bg-[#2f9cbc]"
                   >
                     {editingTemplateId ? 'Actualizar plantilla' : 'Crear plantilla'}
@@ -873,6 +955,7 @@ export const Communications: React.FC = () => {
                         <div className="flex items-center gap-2">
                           <button
                             type="button"
+                            disabled={!canManageTemplates}
                             onClick={() => handleEditTemplate(template)}
                             className="rounded-lg border border-slate-200 bg-white p-2 text-slate-600 transition hover:bg-slate-50"
                           >
@@ -880,6 +963,7 @@ export const Communications: React.FC = () => {
                           </button>
                           <button
                             type="button"
+                            disabled={!canManageTemplates}
                             onClick={() => void handleDeleteTemplate(template)}
                             className="rounded-lg border border-rose-200 bg-rose-50 p-2 text-rose-600 transition hover:bg-rose-100"
                           >
@@ -911,6 +995,7 @@ export const Communications: React.FC = () => {
                   <label className="block text-sm font-bold text-slate-600">Nombre del envio</label>
                   <input
                     value={campaignForm.name}
+                    disabled={!canSendCampaigns}
                     onChange={(event) => setCampaignForm({ ...campaignForm, name: event.target.value })}
                     className="admin-input mt-2"
                     required
@@ -922,6 +1007,7 @@ export const Communications: React.FC = () => {
                     <label className="block text-sm font-bold text-slate-600">Plantilla</label>
                     <select
                       value={campaignForm.templateId}
+                      disabled={!canSendCampaigns}
                       onChange={(event) =>
                         setCampaignForm({ ...campaignForm, templateId: event.target.value })
                       }
@@ -941,6 +1027,7 @@ export const Communications: React.FC = () => {
                       min={1}
                       max={30}
                       value={campaignForm.daysAhead}
+                      disabled={!canSendCampaigns}
                       onChange={(event) =>
                         setCampaignForm({
                           ...campaignForm,
@@ -976,7 +1063,7 @@ export const Communications: React.FC = () => {
 
                 <button
                   type="submit"
-                  disabled={!campaignForm.templateId || resolvedRecipients.length === 0}
+                  disabled={!canSendCampaigns || !campaignForm.templateId || resolvedRecipients.length === 0}
                   className="rounded-xl bg-[#0acf97] px-5 py-3 font-bold text-white transition hover:bg-[#09b685] disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   Enviar campaña desde {providerLabels[settingsForm.providerType]}
@@ -1061,6 +1148,8 @@ export const Communications: React.FC = () => {
         <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
           {message}
         </div>
+      )}
+      </>
       )}
     </div>
   );

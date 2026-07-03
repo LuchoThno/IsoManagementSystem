@@ -1,4 +1,5 @@
 import { Controller, Get, UseGuards } from '@nestjs/common';
+import { buildAccessContext, resolveAuthProvider } from './auth-access-context';
 import { AuthModeService } from './auth-mode.service';
 import { ClerkAuth } from './clerk-auth.decorator';
 import { ClerkAuthGuard } from './clerk-auth.guard';
@@ -7,7 +8,6 @@ import type { AccessContextDto } from './dto/auth.dto';
 import { PlatformAuditService } from './platform-audit.service';
 import { Public } from './public.decorator';
 import { RolesGuard } from './roles.guard';
-import type { AppUserRole } from './roles.decorator';
 import type { ClerkSessionIdentity } from './clerk.types';
 
 @Controller('iso/auth')
@@ -39,7 +39,7 @@ export class AuthController {
     const response = {
       mode: this.authModeService.getMode(),
       authenticated: !this.authModeService.isDisabledMode(),
-      provider: this.authModeService.isClerkMode() ? 'clerk' : 'demo',
+      provider: resolveAuthProvider(this.authModeService.getMode()),
       session: clerkAuth
         ? {
             userId: clerkAuth.userId,
@@ -69,38 +69,17 @@ export class AuthController {
     @ClerkAuth() clerkAuth: ClerkSessionIdentity | null
   ): Promise<AccessContextDto> {
     const mode = this.authModeService.getMode();
-    const provider = this.authModeService.isClerkMode()
-      ? 'clerk'
-      : this.authModeService.isDemoMode()
-        ? 'demo'
-        : 'disabled';
     const capabilities = this.authModeService.getPublicConfig().capabilities;
     const currentUser =
       clerkAuth?.userId && this.authModeService.isClerkMode()
         ? await this.clerkDirectoryService.getCurrentUser(clerkAuth.userId)
         : null;
-    const role = currentUser?.role ?? null;
-
-    const response: AccessContextDto = {
+    const response = buildAccessContext({
       mode,
-      provider,
-      authenticated: !this.authModeService.isDisabledMode(),
       capabilities,
-      session: clerkAuth
-        ? {
-            userId: clerkAuth.userId,
-            appUserId: clerkAuth.appUserId,
-            sessionId: clerkAuth.sessionId,
-          }
-        : null,
+      session: clerkAuth,
       user: currentUser,
-      permissions: {
-        canViewUserDirectory: this.hasAnyRole(role, ['admin', 'manager']),
-        canManageUsers: capabilities.manualUserManagement || this.hasAnyRole(role, ['admin']),
-        canViewPlatformAudit: this.hasAnyRole(role, ['admin']),
-        canViewSecurityPosture: this.hasAnyRole(role, ['admin']),
-      },
-    };
+    });
 
     await this.platformAuditService.captureFromSession(clerkAuth, {
       action: 'authentication.access-context.read',
@@ -110,22 +89,11 @@ export class AuthController {
       metadata: {
         mode: response.mode,
         provider: response.provider,
-        role,
+        role: currentUser?.role ?? null,
         permissions: response.permissions,
       },
     });
 
     return response;
-  }
-
-  private hasAnyRole(
-    role: AppUserRole | null,
-    expectedRoles: AppUserRole[]
-  ) {
-    if (!role) {
-      return false;
-    }
-
-    return expectedRoles.includes(role);
   }
 }

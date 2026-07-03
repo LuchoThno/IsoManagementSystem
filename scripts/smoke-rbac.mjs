@@ -17,8 +17,13 @@ Environment variables:
 Behavior:
   - Reads /api/iso/auth/config
   - Runs RBAC route checks only when auth mode is clerk
+  - Verifies selected protected routes reject missing bearer tokens in clerk mode
   - Skips roles whose token is not provided
-  - Verifies admin-only, admin-or-manager, and authenticated-access routes
+  - Verifies admin-only, admin-or-manager, admin-or-manager-or-auditor,
+    and authenticated-access routes across key domains
+  - Verifies auth/access-context resolves the expected role and permission flags
+  - Includes mutation-route authorization checks using intentionally invalid payloads
+    so authorized roles return 400 without mutating real data
 `);
   process.exit(0);
 }
@@ -33,9 +38,84 @@ const roleTokens = {
   viewer: (process.env.SMOKE_VIEWER_TOKEN || '').trim(),
 };
 
-const rbacMatrix = [
+const expectedAccessContextByRole = {
+  admin: {
+    role: 'admin',
+    permissions: {
+      canViewUserDirectory: true,
+      canManageUsers: true,
+      canViewPlatformAudit: true,
+      canViewSecurityPosture: true,
+    },
+  },
+  manager: {
+    role: 'manager',
+    permissions: {
+      canViewUserDirectory: true,
+      canManageUsers: false,
+      canViewPlatformAudit: false,
+      canViewSecurityPosture: false,
+    },
+  },
+  auditor: {
+    role: 'auditor',
+    permissions: {
+      canViewUserDirectory: false,
+      canManageUsers: false,
+      canViewPlatformAudit: false,
+      canViewSecurityPosture: false,
+    },
+  },
+  viewer: {
+    role: 'viewer',
+    permissions: {
+      canViewUserDirectory: false,
+      canManageUsers: false,
+      canViewPlatformAudit: false,
+      canViewSecurityPosture: false,
+    },
+  },
+};
+
+const readRouteMatrix = [
   {
     path: '/api/iso/auth/session',
+    expectedByRole: {
+      admin: 200,
+      manager: 200,
+      auditor: 200,
+      viewer: 200,
+    },
+  },
+  {
+    path: '/api/iso/auth/access-context',
+    expectedByRole: {
+      admin: 200,
+      manager: 200,
+      auditor: 200,
+      viewer: 200,
+    },
+  },
+  {
+    path: '/api/iso/auth/clerk/me',
+    expectedByRole: {
+      admin: 200,
+      manager: 200,
+      auditor: 200,
+      viewer: 200,
+    },
+  },
+  {
+    path: '/api/iso/bootstrap',
+    expectedByRole: {
+      admin: 200,
+      manager: 200,
+      auditor: 200,
+      viewer: 200,
+    },
+  },
+  {
+    path: '/api/iso/bootstrap-shell',
     expectedByRole: {
       admin: 200,
       manager: 200,
@@ -48,6 +128,15 @@ const rbacMatrix = [
     expectedByRole: {
       admin: 200,
       manager: 200,
+      auditor: 403,
+      viewer: 403,
+    },
+  },
+  {
+    path: '/api/iso/platform/audit-logs?limit=5',
+    expectedByRole: {
+      admin: 200,
+      manager: 403,
       auditor: 403,
       viewer: 403,
     },
@@ -79,19 +168,223 @@ const rbacMatrix = [
       viewer: 200,
     },
   },
+  {
+    path: '/api/iso/tasks',
+    expectedByRole: {
+      admin: 200,
+      manager: 200,
+      auditor: 200,
+      viewer: 200,
+    },
+  },
+  {
+    path: '/api/iso/audits',
+    expectedByRole: {
+      admin: 200,
+      manager: 200,
+      auditor: 200,
+      viewer: 200,
+    },
+  },
+  {
+    path: '/api/iso/standards',
+    expectedByRole: {
+      admin: 200,
+      manager: 200,
+      auditor: 200,
+      viewer: 200,
+    },
+  },
+  {
+    path: '/api/iso/evidences',
+    expectedByRole: {
+      admin: 200,
+      manager: 200,
+      auditor: 200,
+      viewer: 200,
+    },
+  },
+  {
+    path: '/api/iso/contracts',
+    expectedByRole: {
+      admin: 200,
+      manager: 200,
+      auditor: 200,
+      viewer: 200,
+    },
+  },
+  {
+    path: '/api/iso/corrective-actions',
+    expectedByRole: {
+      admin: 200,
+      manager: 200,
+      auditor: 200,
+      viewer: 200,
+    },
+  },
+  {
+    path: '/api/iso/grc/summary',
+    expectedByRole: {
+      admin: 200,
+      manager: 200,
+      auditor: 200,
+      viewer: 200,
+    },
+  },
+  {
+    path: '/api/iso/calendar/status',
+    expectedByRole: {
+      admin: 200,
+      manager: 200,
+      auditor: 200,
+      viewer: 200,
+    },
+  },
+  {
+    path: '/api/iso/communications/compatibility',
+    expectedByRole: {
+      admin: 200,
+      manager: 200,
+      auditor: 200,
+      viewer: 200,
+    },
+  },
 ];
 
-const request = async (path, token = '') => {
+const mutationRouteMatrix = [
+  {
+    method: 'POST',
+    path: '/api/iso/documents',
+    body: {},
+    expectedByRole: {
+      admin: 400,
+      manager: 400,
+      auditor: 403,
+      viewer: 403,
+    },
+  },
+  {
+    method: 'POST',
+    path: '/api/iso/tasks',
+    body: {},
+    expectedByRole: {
+      admin: 400,
+      manager: 400,
+      auditor: 403,
+      viewer: 403,
+    },
+  },
+  {
+    method: 'POST',
+    path: '/api/iso/audits',
+    body: {},
+    expectedByRole: {
+      admin: 400,
+      manager: 400,
+      auditor: 400,
+      viewer: 403,
+    },
+  },
+  {
+    method: 'POST',
+    path: '/api/iso/standards',
+    body: {},
+    expectedByRole: {
+      admin: 400,
+      manager: 400,
+      auditor: 403,
+      viewer: 403,
+    },
+  },
+  {
+    method: 'POST',
+    path: '/api/iso/evidences',
+    body: {},
+    expectedByRole: {
+      admin: 400,
+      manager: 400,
+      auditor: 400,
+      viewer: 403,
+    },
+  },
+  {
+    method: 'POST',
+    path: '/api/iso/contracts',
+    body: {},
+    expectedByRole: {
+      admin: 400,
+      manager: 400,
+      auditor: 403,
+      viewer: 403,
+    },
+  },
+  {
+    method: 'POST',
+    path: '/api/iso/corrective-actions',
+    body: {},
+    expectedByRole: {
+      admin: 400,
+      manager: 400,
+      auditor: 400,
+      viewer: 403,
+    },
+  },
+  {
+    method: 'PUT',
+    path: '/api/iso/communications/settings',
+    body: {},
+    expectedByRole: {
+      admin: 400,
+      manager: 403,
+      auditor: 403,
+      viewer: 403,
+    },
+  },
+  {
+    method: 'POST',
+    path: '/api/iso/communications/templates',
+    body: {},
+    expectedByRole: {
+      admin: 400,
+      manager: 400,
+      auditor: 403,
+      viewer: 403,
+    },
+  },
+  {
+    method: 'POST',
+    path: '/api/iso/communications/campaigns/send',
+    body: {},
+    expectedByRole: {
+      admin: 400,
+      manager: 400,
+      auditor: 403,
+      viewer: 403,
+    },
+  },
+];
+
+const rbacMatrix = [
+  ...readRouteMatrix.map((route) => ({
+    method: 'GET',
+    ...route,
+  })),
+  ...mutationRouteMatrix,
+];
+
+const request = async (route, token = '') => {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    const response = await fetch(`${baseUrl}${path}`, {
-      method: 'GET',
+    const response = await fetch(`${baseUrl}${route.path}`, {
+      method: route.method,
       headers: {
         accept: 'application/json',
+        ...(route.body !== undefined ? { 'content-type': 'application/json' } : {}),
         ...(token ? { authorization: `Bearer ${token}` } : {}),
       },
+      ...(route.body !== undefined ? { body: JSON.stringify(route.body) } : {}),
       signal: controller.signal,
     });
 
@@ -121,8 +414,45 @@ const assertStatus = (actual, expected, label) => {
   }
 };
 
+const assert = (condition, message) => {
+  if (!condition) {
+    throw new Error(message);
+  }
+};
+
+const assertAccessContext = (role, response) => {
+  const expected = expectedAccessContextByRole[role];
+  assert(response.json && typeof response.json === 'object', `${role} access-context must be JSON`);
+  assert(response.json.mode === 'clerk', `${role} access-context mode: expected clerk, got ${String(response.json?.mode)}`);
+  assert(
+    response.json.provider === 'clerk',
+    `${role} access-context provider: expected clerk, got ${String(response.json?.provider)}`
+  );
+  assert(response.json.authenticated === true, `${role} access-context authenticated: expected true`);
+  assert(
+    response.json.capabilities?.directoryProvider === 'clerk',
+    `${role} access-context directoryProvider: expected clerk, got ${String(response.json.capabilities?.directoryProvider)}`
+  );
+  assert(
+    response.json.capabilities?.manualUserManagement === false,
+    `${role} access-context manualUserManagement: expected false, got ${String(response.json.capabilities?.manualUserManagement)}`
+  );
+  assert(
+    response.json.capabilities?.authenticatedRoutesAvailable === true,
+    `${role} access-context authenticatedRoutesAvailable: expected true, got ${String(response.json.capabilities?.authenticatedRoutesAvailable)}`
+  );
+  assert(response.json.user?.role === expected.role, `${role} access-context user.role: expected ${expected.role}, got ${String(response.json.user?.role)}`);
+
+  for (const [permission, expectedValue] of Object.entries(expected.permissions)) {
+    assert(
+      response.json.permissions?.[permission] === expectedValue,
+      `${role} access-context permission ${permission}: expected ${String(expectedValue)}, got ${String(response.json.permissions?.[permission])}`
+    );
+  }
+};
+
 const run = async () => {
-  const authConfig = await request('/api/iso/auth/config');
+  const authConfig = await request({ method: 'GET', path: '/api/iso/auth/config' });
   assertStatus(authConfig.status, 200, 'Auth config endpoint');
 
   const authMode = authConfig.json?.mode;
@@ -138,6 +468,14 @@ const run = async () => {
     return;
   }
 
+  let anonymousChecks = 0;
+
+  for (const route of rbacMatrix) {
+    const response = await request(route);
+    assertStatus(response.status, 401, `anonymous ${route.method} ${route.path}`);
+    anonymousChecks += 1;
+  }
+
   const configuredRoles = Object.entries(roleTokens).filter(([, token]) => Boolean(token));
   if (configuredRoles.length === 0) {
     process.stdout.write(
@@ -145,6 +483,7 @@ const run = async () => {
         'RBAC smoke skipped.',
         `baseUrl=${baseUrl}`,
         `authMode=${authMode}`,
+        `anonymousChecks=${anonymousChecks}`,
         'reason=no role tokens provided',
       ].join('\n') + '\n'
     );
@@ -156,8 +495,11 @@ const run = async () => {
   for (const [role, token] of configuredRoles) {
     for (const route of rbacMatrix) {
       const expectedStatus = route.expectedByRole[role];
-      const response = await request(route.path, token);
-      assertStatus(response.status, expectedStatus, `${role} ${route.path}`);
+      const response = await request(route, token);
+      assertStatus(response.status, expectedStatus, `${role} ${route.method} ${route.path}`);
+      if (route.method === 'GET' && route.path === '/api/iso/auth/access-context') {
+        assertAccessContext(role, response);
+      }
       checks += 1;
     }
   }
@@ -167,6 +509,7 @@ const run = async () => {
       'RBAC smoke checks passed.',
       `baseUrl=${baseUrl}`,
       `authMode=${authMode}`,
+      `anonymousChecks=${anonymousChecks}`,
       `rolesChecked=${configuredRoles.map(([role]) => role).join(',')}`,
       `checks=${checks}`,
     ].join('\n') + '\n'

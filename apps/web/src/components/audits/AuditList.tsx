@@ -12,6 +12,7 @@ import type { Audit } from '../../types/iso';
 
 interface AuditListProps {
   audits: Audit[];
+  canManage?: boolean;
   onEdit: (audit: Audit) => void;
   onDelete: (audit: Audit) => void;
   onSelect?: (audit: Audit) => void;
@@ -20,6 +21,7 @@ interface AuditListProps {
 
 export const AuditList: React.FC<AuditListProps> = ({
   audits,
+  canManage = true,
   onEdit,
   onDelete,
   onSelect,
@@ -157,32 +159,36 @@ export const AuditList: React.FC<AuditListProps> = ({
           </div>
           <div className="flex items-start justify-end">
             <div className="flex flex-wrap justify-end gap-2">
-              <button
-                type="button"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onEdit(audit);
-                }}
-                className={actionButtonClassName}
-                title="Editar auditoría"
-                aria-label="Editar auditoría"
-              >
-                <PencilLine className="h-4 w-4" />
-                <span className="sr-only">Editar auditoría</span>
-              </button>
-              <button
-                type="button"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onDelete(audit);
-                }}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-rose-200 bg-rose-50 text-rose-600 transition hover:bg-rose-100"
-                title="Eliminar auditoría"
-                aria-label="Eliminar auditoría"
-              >
-                <Trash2 className="h-4 w-4" />
-                <span className="sr-only">Eliminar auditoría</span>
-              </button>
+              {canManage ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onEdit(audit);
+                    }}
+                    className={actionButtonClassName}
+                    title="Editar auditoría"
+                    aria-label="Editar auditoría"
+                  >
+                    <PencilLine className="h-4 w-4" />
+                    <span className="sr-only">Editar auditoría</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onDelete(audit);
+                    }}
+                    className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-rose-200 bg-rose-50 text-rose-600 transition hover:bg-rose-100"
+                    title="Eliminar auditoría"
+                    aria-label="Eliminar auditoría"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    <span className="sr-only">Eliminar auditoría</span>
+                  </button>
+                </>
+              ) : null}
             </div>
           </div>
         </div>

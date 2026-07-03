@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Plus } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { fetchBootstrapShell } from '../lib/api';
+import { useUIPermissions } from '../hooks/useUIPermissions';
 import { fetchAuditChecklist } from '../lib/auditChecklistApi';
 import { listCorrectiveActions } from '../lib/correctiveActionsApi';
 import { AuditList } from '../components/audits/AuditList';
@@ -18,6 +19,7 @@ import {
 import { useISOStore } from '../store/useISOStore';
 
 export const Audits: React.FC = () => {
+  const { canManageAudits } = useUIPermissions();
   const audits = useISOStore((state) => state.audits);
   const bootstrapped = useISOStore((state) => state.bootstrapped);
   const hydrateShell = useISOStore((state) => state.hydrateShell);
@@ -32,6 +34,7 @@ export const Audits: React.FC = () => {
   const [typeFilter, setTypeFilter] = useState<Audit['type'] | 'all'>('all');
   const [standardFilter, setStandardFilter] = useState<ISOStandard | 'all'>('all');
   const [selectedAuditId, setSelectedAuditId] = useState<string | null>(null);
+  const canManage = canManageAudits;
 
   const refreshAudits = useCallback(async () => {
     replaceAudits(await listAudits());
@@ -106,16 +109,28 @@ export const Audits: React.FC = () => {
   );
 
   const handleCreateAudit = async (auditData: Omit<Audit, 'id'>) => {
+    if (!canManage) {
+      return;
+    }
+
     await createAuditApi(auditData);
     await refreshAudits();
     refreshShell();
   };
 
   const handleEditAudit = async (audit: Audit) => {
+    if (!canManage) {
+      return;
+    }
+
     setEditingAudit(audit);
   };
 
   const handleDeleteAudit = async (audit: Audit) => {
+    if (!canManage) {
+      return;
+    }
+
     if (!window.confirm(`Eliminar la auditoria ${audit.standard}?`)) {
       return;
     }
@@ -135,6 +150,8 @@ export const Audits: React.FC = () => {
           </p>
         </div>
         <button
+          type="button"
+          disabled={!canManage}
           onClick={() => setIsCreateModalOpen(true)}
           className="app-button-primary inline-flex items-center gap-2 px-4 py-2.5"
         >
@@ -142,6 +159,13 @@ export const Audits: React.FC = () => {
           <span>Programar auditoria</span>
         </button>
       </div>
+
+      {!canManage && (
+        <div className="rounded-[24px] border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-900">
+          Tu sesión puede revisar auditorías, checklist y acciones relacionadas, pero no programar,
+          editar ni eliminar auditorías en este entorno.
+        </div>
+      )}
 
       <div className="panel-card p-4">
         <AuditFilters
@@ -175,6 +199,7 @@ export const Audits: React.FC = () => {
         <div className="space-y-6">
           <AuditList
             audits={filteredAudits}
+            canManage={canManage}
             onEdit={handleEditAudit}
             onDelete={handleDeleteAudit}
             onSelect={(audit) => setSelectedAuditId(audit.id)}

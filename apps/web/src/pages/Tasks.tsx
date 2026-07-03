@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Plus } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { fetchBootstrapShell } from '../lib/api';
+import { useUIPermissions } from '../hooks/useUIPermissions';
 import { TaskList } from '../components/tasks/TaskList';
 import { TaskFilters } from '../components/tasks/TaskFilters';
 import { TaskModal } from '../components/tasks/TaskModal';
@@ -15,6 +16,7 @@ import {
 import { useISOStore } from '../store/useISOStore';
 
 export const Tasks: React.FC = () => {
+  const { canManageTasks } = useUIPermissions();
   const tasks = useISOStore((state) => state.tasks);
   const bootstrapped = useISOStore((state) => state.bootstrapped);
   const hydrateShell = useISOStore((state) => state.hydrateShell);
@@ -28,6 +30,7 @@ export const Tasks: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<Task['status'] | 'all'>('all');
   const [priorityFilter, setPriorityFilter] = useState<Task['priority'] | 'all'>('all');
   const [standardFilter, setStandardFilter] = useState<ISOStandard | 'all'>('all');
+  const canManage = canManageTasks;
 
   const refreshTasks = useCallback(async () => {
     replaceTasks(await listTasks());
@@ -71,16 +74,28 @@ export const Tasks: React.FC = () => {
   });
 
   const handleCreateTask = async (taskData: Omit<Task, 'id'>) => {
+    if (!canManage) {
+      return;
+    }
+
     await createTaskApi(taskData);
     await refreshTasks();
     refreshShell();
   };
 
   const handleEditTask = async (task: Task) => {
+    if (!canManage) {
+      return;
+    }
+
     setEditingTask(task);
   };
 
   const handleDeleteTask = async (task: Task) => {
+    if (!canManage) {
+      return;
+    }
+
     if (!window.confirm(`Eliminar la tarea "${task.title}"?`)) {
       return;
     }
@@ -100,6 +115,8 @@ export const Tasks: React.FC = () => {
           </p>
         </div>
         <button
+          type="button"
+          disabled={!canManage}
           onClick={() => setIsCreateModalOpen(true)}
           className="app-button-primary inline-flex items-center gap-2 px-4 py-2.5"
         >
@@ -107,6 +124,13 @@ export const Tasks: React.FC = () => {
           <span>Crear tarea</span>
         </button>
       </div>
+
+      {!canManage && (
+        <div className="rounded-[24px] border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-900">
+          Tu sesión puede revisar el backlog y el estado de las tareas, pero no crear, editar ni
+          eliminar tareas en este entorno.
+        </div>
+      )}
 
       <div className="panel-card p-4">
         <TaskFilters
@@ -139,6 +163,7 @@ export const Tasks: React.FC = () => {
       ) : (
         <TaskList
           tasks={filteredTasks}
+          canManage={canManage}
           onEdit={handleEditTask}
           onDelete={handleDeleteTask}
         />

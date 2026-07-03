@@ -15,6 +15,8 @@ Behavior:
   - GET /api/health must return 200
   - GET /api/iso/auth/config must return 200 and a valid auth config
   - Auth config must expose provider and capability flags coherently
+  - GET /api/iso/auth/access-context must match the expected auth behavior
+    and expose coherent permissions when available
   - GET /api/iso/bootstrap-shell must match the expected auth behavior:
       clerk    -> 401
       demo     -> 200
@@ -28,6 +30,12 @@ const expectedAuthMode = (process.env.SMOKE_AUTH_MODE || '').trim();
 const timeoutMs = Number(process.env.SMOKE_TIMEOUT_MS || '10000');
 
 const expectedBootstrapStatusByMode = {
+  clerk: 401,
+  demo: 200,
+  disabled: 503,
+};
+
+const expectedAccessContextStatusByMode = {
   clerk: 401,
   demo: 200,
   disabled: 503,
@@ -54,6 +62,15 @@ const expectedCapabilitiesByMode = {
     directoryProvider: 'none',
     manualUserManagement: false,
     authenticatedRoutesAvailable: false,
+  },
+};
+
+const expectedPermissionsByMode = {
+  demo: {
+    canViewUserDirectory: false,
+    canManageUsers: true,
+    canViewPlatformAudit: false,
+    canViewSecurityPosture: false,
   },
 };
 
@@ -153,11 +170,55 @@ const run = async () => {
     'Bootstrap shell auth behavior'
   );
 
+  const accessContext = await request('/api/iso/auth/access-context');
+  assertStatus(
+    accessContext.status,
+    expectedAccessContextStatusByMode[modeToCheck],
+    'Access context auth behavior'
+  );
+
+  if (accessContext.status === 200) {
+    assert(accessContext.json && typeof accessContext.json === 'object', 'Access context must be JSON');
+    assert(
+      accessContext.json.mode === modeToCheck,
+      `Unexpected access-context mode for ${modeToCheck}: ${String(accessContext.json?.mode)}`
+    );
+    assert(
+      accessContext.json.provider === expectedProviderByMode[modeToCheck],
+      `Unexpected access-context provider for ${modeToCheck}: ${String(accessContext.json?.provider)}`
+    );
+    assert(
+      accessContext.json.capabilities?.directoryProvider ===
+        expectedCapabilitiesByMode[modeToCheck].directoryProvider,
+      `Unexpected access-context directoryProvider for ${modeToCheck}: ${String(accessContext.json.capabilities?.directoryProvider)}`
+    );
+    assert(
+      accessContext.json.capabilities?.manualUserManagement ===
+        expectedCapabilitiesByMode[modeToCheck].manualUserManagement,
+      `Unexpected access-context manualUserManagement for ${modeToCheck}: ${String(accessContext.json.capabilities?.manualUserManagement)}`
+    );
+    assert(
+      accessContext.json.capabilities?.authenticatedRoutesAvailable ===
+        expectedCapabilitiesByMode[modeToCheck].authenticatedRoutesAvailable,
+      `Unexpected access-context authenticatedRoutesAvailable for ${modeToCheck}: ${String(accessContext.json.capabilities?.authenticatedRoutesAvailable)}`
+    );
+
+    if (expectedPermissionsByMode[modeToCheck]) {
+      for (const [permission, expectedValue] of Object.entries(expectedPermissionsByMode[modeToCheck])) {
+        assert(
+          accessContext.json.permissions?.[permission] === expectedValue,
+          `Unexpected access-context permission ${permission} for ${modeToCheck}: ${String(accessContext.json.permissions?.[permission])}`
+        );
+      }
+    }
+  }
+
   process.stdout.write(
     [
       'Smoke API checks passed.',
       `baseUrl=${baseUrl}`,
       `authMode=${resolvedMode}`,
+      `accessContextStatus=${accessContext.status}`,
       `bootstrapShellStatus=${bootstrapShell.status}`,
     ].join('\n') + '\n'
   );

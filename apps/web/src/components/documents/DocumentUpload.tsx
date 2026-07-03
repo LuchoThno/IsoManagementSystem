@@ -4,6 +4,7 @@ import { useStandardOptions } from '../../hooks/useStandardOptions';
 import type { DocumentFormat, ISOStandard } from '../../types/iso';
 
 interface DocumentUploadProps {
+  disabled?: boolean;
   onUpload: (data: {
     title: string;
     topic: string;
@@ -43,7 +44,7 @@ const detectFormat = (fileName: string): DocumentFormat => {
   }
 };
 
-export const DocumentUpload: React.FC<DocumentUploadProps> = ({ onUpload }) => {
+export const DocumentUpload: React.FC<DocumentUploadProps> = ({ onUpload, disabled = false }) => {
   const standardOptions = useStandardOptions();
   const [isOpen, setIsOpen] = useState(false);
   const [formData, setFormData] = useState({
@@ -84,6 +85,8 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({ onUpload }) => {
   return (
     <>
       <button
+        type="button"
+        disabled={disabled}
         onClick={() => setIsOpen(true)}
         className="app-button-primary inline-flex items-center gap-2 px-5 py-3 text-sm"
       >

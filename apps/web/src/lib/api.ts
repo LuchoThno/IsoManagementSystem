@@ -1,3 +1,9 @@
+import {
+  canAccessUsersPanel,
+  canManageCommunicationTemplates,
+  canSendCommunicationCampaigns,
+  fetchAccessContext,
+} from './accessContext';
 import { canManageUsersManually, fetchAuthConfig, shouldUseClerkDirectory } from './authConfig';
 import { isClerkEnabled } from './clerk';
 import {
@@ -155,6 +161,27 @@ const filterUsersByDirectoryProvider = (
   return users;
 };
 
+const filterUsersByAccess = (users: UserAccount[], canAccessPanel: boolean) => {
+  if (!canAccessPanel) {
+    return [];
+  }
+
+  return users;
+};
+
+const filterCommunicationDataByAccess = <T>(
+  items: T[],
+  canAccessTemplates: boolean,
+  canAccessCampaigns: boolean,
+  type: 'templates' | 'campaigns'
+) => {
+  if (type === 'templates') {
+    return canAccessTemplates ? items : [];
+  }
+
+  return canAccessCampaigns ? items : [];
+};
+
 export async function fetchBootstrap(): Promise<ISOBootstrapData> {
   if (!isClerkEnabled) {
     return storage.fetchBootstrap();
@@ -165,17 +192,20 @@ export async function fetchBootstrap(): Promise<ISOBootstrapData> {
   }
 
   const request = (async () => {
-    const [bootstrap, users, chatThreads, authConfig] =
+    const [bootstrap, users, chatThreads, authConfig, accessContext] =
       await Promise.all([
       requestIsoApi<ApiBootstrap>('/bootstrap'),
       storage.listUsers(),
       storage.listChatThreads(),
       fetchAuthConfig(),
+      fetchAccessContext(),
     ]);
-    const scopedUsers = filterUsersByDirectoryProvider(
-      users,
-      authConfig.capabilities.directoryProvider
+    const scopedUsers = filterUsersByAccess(
+      filterUsersByDirectoryProvider(users, authConfig.capabilities.directoryProvider),
+      canAccessUsersPanel(accessContext)
     );
+    const canAccessTemplates = canManageCommunicationTemplates(accessContext, authConfig);
+    const canAccessCampaigns = canSendCommunicationCampaigns(accessContext, authConfig);
 
     const nextBootstrap: ISOBootstrapData = {
       dashboard: bootstrap.dashboard,
@@ -213,16 +243,26 @@ export async function fetchBootstrap(): Promise<ISOBootstrapData> {
       notifications: bootstrap.notifications,
       users: scopedUsers,
       chatThreads,
-      emailTemplates: bootstrap.emailTemplates.map((template) => ({
-        ...template,
-        createdAt: new Date(template.createdAt),
-        updatedAt: new Date(template.updatedAt),
-      })),
-      emailCampaigns: bootstrap.emailCampaigns.map((campaign) => ({
-        ...campaign,
-        createdAt: new Date(campaign.createdAt),
-        sentAt: campaign.sentAt ? new Date(campaign.sentAt) : null,
-      })),
+      emailTemplates: filterCommunicationDataByAccess(
+        bootstrap.emailTemplates.map((template) => ({
+          ...template,
+          createdAt: new Date(template.createdAt),
+          updatedAt: new Date(template.updatedAt),
+        })),
+        canAccessTemplates,
+        canAccessCampaigns,
+        'templates'
+      ),
+      emailCampaigns: filterCommunicationDataByAccess(
+        bootstrap.emailCampaigns.map((campaign) => ({
+          ...campaign,
+          createdAt: new Date(campaign.createdAt),
+          sentAt: campaign.sentAt ? new Date(campaign.sentAt) : null,
+        })),
+        canAccessTemplates,
+        canAccessCampaigns,
+        'campaigns'
+      ),
       communicationSettings: bootstrap.communicationSettings,
     };
 
@@ -272,7 +312,13 @@ export async function fetchBootstrapShell(options?: { force?: boolean }): Promis
   }
 
   const request = (async () => {
-    const shell = await requestIsoApi<ApiBootstrapShell>('/bootstrap-shell');
+    const [shell, authConfig, accessContext] = await Promise.all([
+      requestIsoApi<ApiBootstrapShell>('/bootstrap-shell'),
+      fetchAuthConfig(),
+      fetchAccessContext(),
+    ]);
+    const canAccessTemplates = canManageCommunicationTemplates(accessContext, authConfig);
+    const canAccessCampaigns = canSendCommunicationCampaigns(accessContext, authConfig);
 
     return {
       dashboard: shell.dashboard,
@@ -283,16 +329,26 @@ export async function fetchBootstrapShell(options?: { force?: boolean }): Promis
       })),
       settings: shell.settings,
       notifications: shell.notifications,
-      emailTemplates: shell.emailTemplates.map((template) => ({
-        ...template,
-        createdAt: new Date(template.createdAt),
-        updatedAt: new Date(template.updatedAt),
-      })),
-      emailCampaigns: shell.emailCampaigns.map((campaign) => ({
-        ...campaign,
-        createdAt: new Date(campaign.createdAt),
-        sentAt: campaign.sentAt ? new Date(campaign.sentAt) : null,
-      })),
+      emailTemplates: filterCommunicationDataByAccess(
+        shell.emailTemplates.map((template) => ({
+          ...template,
+          createdAt: new Date(template.createdAt),
+          updatedAt: new Date(template.updatedAt),
+        })),
+        canAccessTemplates,
+        canAccessCampaigns,
+        'templates'
+      ),
+      emailCampaigns: filterCommunicationDataByAccess(
+        shell.emailCampaigns.map((campaign) => ({
+          ...campaign,
+          createdAt: new Date(campaign.createdAt),
+          sentAt: campaign.sentAt ? new Date(campaign.sentAt) : null,
+        })),
+        canAccessTemplates,
+        canAccessCampaigns,
+        'campaigns'
+      ),
       communicationSettings: shell.communicationSettings,
     };
   })();
@@ -309,10 +365,14 @@ export async function fetchBootstrapShell(options?: { force?: boolean }): Promis
 }
 
 export async function listUsers(): Promise<UserAccount[]> {
-  const [users, authConfig] = await Promise.all([storage.listUsers(), fetchAuthConfig()]);
-  const scopedUsers = filterUsersByDirectoryProvider(
-    users,
-    authConfig.capabilities.directoryProvider
+  const [users, authConfig, accessContext] = await Promise.all([
+    storage.listUsers(),
+    fetchAuthConfig(),
+    fetchAccessContext(),
+  ]);
+  const scopedUsers = filterUsersByAccess(
+    filterUsersByDirectoryProvider(users, authConfig.capabilities.directoryProvider),
+    canAccessUsersPanel(accessContext)
   );
 
   if (!isClerkEnabled) {

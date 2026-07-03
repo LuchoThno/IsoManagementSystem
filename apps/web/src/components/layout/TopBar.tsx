@@ -1,7 +1,7 @@
 import React from 'react';
 import { useAuth, useClerk } from '@clerk/clerk-react';
 import { useNavigate } from 'react-router-dom';
-import { useAuthConfig } from '../../hooks/useAuthConfig';
+import { useUIPermissions } from '../../hooks/useUIPermissions';
 import {
   clerkSignInPath,
 } from '../../lib/clerk';
@@ -42,7 +42,8 @@ export const TopBar: React.FC<TopBarProps> = ({
   const navigate = useNavigate();
   const clerk = useClerk();
   const { isSignedIn } = useAuth();
-  const { authConfig } = useAuthConfig();
+  const { authConfig, canAccessUsersPanel, canManageCommunicationTemplates, canSendCommunicationCampaigns } =
+    useUIPermissions();
   const settings = useISOStore((state) => state.settings);
   const alerts = useISOStore((state) => state.alerts);
   const documents = useISOStore((state) => state.documents);
@@ -58,6 +59,9 @@ export const TopBar: React.FC<TopBarProps> = ({
   const [userMenuOpen, setUserMenuOpen] = React.useState(false);
   const [query, setQuery] = React.useState('');
   const [searchOpen, setSearchOpen] = React.useState(false);
+  const canSearchUsers = canAccessUsersPanel;
+  const canSearchTemplates = canManageCommunicationTemplates;
+  const canSearchCampaigns = canSendCommunicationCampaigns;
 
   React.useEffect(() => {
     const handleWindowClick = () => {
@@ -129,7 +133,8 @@ export const TopBar: React.FC<TopBarProps> = ({
           subtitle: 'Alerta del sistema',
           route: '/alerts',
         })),
-      ...users
+      ...(canSearchUsers
+        ? users
         .filter(
           (item) =>
             item.name.toLowerCase().includes(normalized) ||
@@ -140,7 +145,8 @@ export const TopBar: React.FC<TopBarProps> = ({
           title: item.name,
           subtitle: `Usuario · ${item.email}`,
           route: `/settings/users?q=${encodeURIComponent(item.name)}`,
-        })),
+        }))
+        : []),
       ...chatThreads
         .filter((thread) =>
           thread.messages.some((message) => message.content.toLowerCase().includes(normalized))
@@ -151,7 +157,8 @@ export const TopBar: React.FC<TopBarProps> = ({
           subtitle: `${thread.messages[thread.messages.length - 1]?.content ?? 'Sin mensajes'}`,
           route: '/chat',
         })),
-      ...emailTemplates
+      ...(canSearchTemplates
+        ? emailTemplates
         .filter(
           (template) =>
             template.name.toLowerCase().includes(normalized) ||
@@ -162,19 +169,35 @@ export const TopBar: React.FC<TopBarProps> = ({
           title: template.name,
           subtitle: 'Plantilla de comunicado',
           route: '/communications',
-        })),
-      ...emailCampaigns
+        }))
+        : []),
+      ...(canSearchCampaigns
+        ? emailCampaigns
         .filter((campaign) => campaign.name.toLowerCase().includes(normalized))
         .map((campaign) => ({
           id: `campaign-${campaign.id}`,
           title: campaign.name,
           subtitle: 'Envio masivo ejecutado',
           route: '/communications',
-        })),
+        }))
+        : []),
     ];
 
     return results.slice(0, 8);
-  }, [alerts, audits, chatThreads, documents, emailCampaigns, emailTemplates, query, tasks, users]);
+  }, [
+    alerts,
+    audits,
+    canSearchCampaigns,
+    canSearchTemplates,
+    canSearchUsers,
+    chatThreads,
+    documents,
+    emailCampaigns,
+    emailTemplates,
+    query,
+    tasks,
+    users,
+  ]);
 
   const handleSearchSelect = (route: string) => {
     navigate(route);

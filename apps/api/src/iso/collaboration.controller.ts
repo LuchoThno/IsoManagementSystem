@@ -1,17 +1,12 @@
 import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
-import { AuthModeService } from './auth-mode.service';
 import { ClerkAuth } from './clerk-auth.decorator';
 import { ClerkAuthGuard } from './clerk-auth.guard';
-import { ChatGateway } from './chat.gateway';
-import { GoogleCalendarService } from './google-calendar.service';
-import { IsoService } from './iso.service';
-import { PlatformAuditService } from './platform-audit.service';
+import { CollaborationOperationsService } from './collaboration-operations.service';
 import type {
   MarkThreadAsReadDto,
   OpenDirectThreadDto,
   SendChatMessageDto,
 } from './dto/collaboration.dto';
-import { ensureNonEmptyString, ensureStringArray } from './request-validation';
 import { Roles } from './roles.decorator';
 import { RolesGuard } from './roles.guard';
 import type { ClerkSessionIdentity } from './clerk.types';
@@ -20,29 +15,18 @@ import type { ClerkSessionIdentity } from './clerk.types';
 @UseGuards(ClerkAuthGuard, RolesGuard)
 export class CollaborationController {
   constructor(
-    private readonly isoService: IsoService,
-    private readonly chatGateway: ChatGateway,
-    private readonly googleCalendarService: GoogleCalendarService,
-    private readonly authModeService: AuthModeService,
-    private readonly platformAuditService: PlatformAuditService
+    private readonly collaborationOperationsService: CollaborationOperationsService
   ) {}
 
   @Get('calendar/status')
   getCalendarStatus() {
-    return this.googleCalendarService.getStatus();
+    return this.collaborationOperationsService.getCalendarStatus();
   }
 
   @Post('calendar/sync')
   @Roles('admin', 'manager')
   async syncCalendar(@ClerkAuth() clerkAuth: ClerkSessionIdentity | null) {
-    const result = await this.googleCalendarService.syncEvents();
-    await this.platformAuditService.captureFromSession(clerkAuth, {
-      action: 'calendar.sync',
-      resourceType: 'calendar-sync',
-      status: 'success',
-      metadata: result,
-    });
-    return result;
+    return this.collaborationOperationsService.syncCalendar(clerkAuth);
   }
 
   @Get('chat/threads/:userId')
@@ -50,10 +34,7 @@ export class CollaborationController {
     @Param('userId') userId: string,
     @ClerkAuth() clerkAuth: ClerkSessionIdentity | null
   ) {
-    ensureNonEmptyString(userId, 'userId');
-    return this.isoService.getChatThreads(
-      this.authModeService.isClerkMode() ? (clerkAuth?.appUserId ?? userId) : userId
-    );
+    return this.collaborationOperationsService.getChatThreads(userId, clerkAuth);
   }
 
   @Post('chat/threads/direct')
@@ -62,21 +43,7 @@ export class CollaborationController {
     @Body()
     body: OpenDirectThreadDto
   ) {
-    ensureStringArray(body.participantIds, 'participantIds');
-
-    const participantIds = this.authModeService.isClerkMode() && clerkAuth
-      ? [
-          clerkAuth.appUserId,
-          ...body.participantIds.filter(
-            (participantId) =>
-              participantId !== clerkAuth.appUserId && participantId.startsWith('clerk-')
-          ),
-        ]
-      : body.participantIds;
-
-    const thread = await this.isoService.openDirectThread(participantIds);
-    this.chatGateway.emitThreadUpsert(thread);
-    return thread;
+    return this.collaborationOperationsService.openDirectThread(clerkAuth, body);
   }
 
   @Post('chat/threads/:id/messages')
@@ -86,17 +53,7 @@ export class CollaborationController {
     @Body()
     body: SendChatMessageDto
   ) {
-    ensureNonEmptyString(id, 'id');
-    ensureNonEmptyString(body.authorId, 'authorId');
-    ensureNonEmptyString(body.content, 'content');
-
-    const thread = await this.isoService.sendChatMessage(
-      id,
-      this.authModeService.isClerkMode() ? (clerkAuth?.appUserId ?? body.authorId) : body.authorId,
-      body.content
-    );
-    this.chatGateway.emitThreadUpsert(thread);
-    return thread;
+    return this.collaborationOperationsService.sendChatMessage(id, clerkAuth, body);
   }
 
   @Post('chat/threads/:id/read')
@@ -106,14 +63,6 @@ export class CollaborationController {
     @Body()
     body: MarkThreadAsReadDto
   ) {
-    ensureNonEmptyString(id, 'id');
-    ensureNonEmptyString(body.userId, 'userId');
-
-    const thread = await this.isoService.markThreadAsRead(
-      id,
-      this.authModeService.isClerkMode() ? (clerkAuth?.appUserId ?? body.userId) : body.userId
-    );
-    this.chatGateway.emitThreadUpsert(thread);
-    return thread;
+    return this.collaborationOperationsService.markThreadAsRead(id, clerkAuth, body);
   }
 }

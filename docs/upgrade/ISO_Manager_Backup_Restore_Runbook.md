@@ -84,6 +84,27 @@ Notas:
 - valida primero que `MONGODB_URI` apunte al cluster correcto
 - usa un usuario con permisos de lectura para respaldo cuando sea posible
 
+## Retencion y limpieza local
+
+Para revisar que respaldos locales se conservarian segun una politica minima:
+
+```bash
+pnpm prune:backups:mongo -- --env prod --keep 7 --max-age-days 30
+```
+
+Aplicar realmente la limpieza:
+
+```bash
+pnpm prune:backups:mongo -- --env prod --keep 7 --max-age-days 30 --apply
+```
+
+Notas:
+
+- el comando trabaja en `dry-run` por defecto
+- filtra solo archivos `*.archive.gz`
+- si se indica `--env prod`, solo actua sobre archivos `iso-manager_prod_...`
+- conviene ejecutar primero sin `--apply` y revisar la salida
+
 ## Restore de validacion
 
 Antes de restaurar en un entorno sensible:
@@ -103,6 +124,19 @@ Alternativa versionada desde este repo:
 ```bash
 pnpm restore:mongo -- --archive backups/iso-manager_prod_20260701-231500.archive.gz --temp-suffix restore_check
 ```
+
+Verificacion automatizada del restore temporal:
+
+```bash
+pnpm verify:restore:mongo -- --archive backups/iso-manager_prod_20260701-231500.archive.gz
+```
+
+Que hace este comando:
+
+- restaura el archivo en una base temporal `iso_manager_restore_check`
+- valida la presencia de colecciones minimas esperadas
+- imprime conteos por coleccion para inspeccion rapida
+- elimina la base temporal al terminar, salvo que se use `--keep-restored-db`
 
 Restore completo sobre la base objetivo:
 
@@ -133,6 +167,34 @@ Advertencia:
 
 - validar restore al menos una vez por release relevante
 - registrar fecha, responsable, archivo usado y resultado de la verificacion
+
+## Automatizacion operativa recomendada
+
+Comando orquestado recomendado para cron:
+
+```bash
+pnpm backup:cycle:mongo -- --env prod --keep 7 --max-age-days 30 --apply-prune
+```
+
+Que hace este flujo:
+
+- genera un backup nuevo
+- aplica la politica de retencion local
+- verifica un restore temporal del backup mas reciente
+
+Ejemplo minimo en cron del servidor:
+
+```bash
+0 3 * * * cd /ruta/IsoManagementSystem && pnpm backup:cycle:mongo -- --env prod --keep 7 --max-age-days 30 --apply-prune
+```
+
+Recomendaciones:
+
+- mover cada backup a almacenamiento externo cifrado despues de generarlo
+- registrar el resultado del restore de verificacion en un log operativo
+- alertar cuando falle el backup o cuando falten colecciones criticas en la verificacion
+- si el restore de verificacion diario es demasiado costoso, usar `--skip-verify`
+  y calendarizar una corrida completa al menos semanalmente
 
 ## Riesgos conocidos
 
