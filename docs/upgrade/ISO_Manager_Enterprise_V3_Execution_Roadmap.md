@@ -313,6 +313,8 @@ Estado inicial al 2026-07-02:
   settings, plantillas y campañas a un servicio dedicado
 - refactor inicial en `calendar/collaboration` ya ejecutado moviendo sync,
   resolucion de identidad y operacion HTTP de threads a un servicio dedicado
+- refactor inicial en `tasks` ya ejecutado moviendo validacion, auditoria y
+  operacion CRUD del controlador a un servicio dedicado
 - esta linea prepara la migracion gradual desde controladores con logica
   embebida hacia capas mas claras de `controller` + `policy/permission`
 

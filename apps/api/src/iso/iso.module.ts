@@ -59,6 +59,7 @@ import { SettingsOperationsService } from './settings-operations.service';
 import { TaskEntity, TaskSchema } from './schemas/task.schema';
 import { UsersController } from './users.controller';
 import { UsersOperationsService } from './users-operations.service';
+import { TasksOperationsService } from './tasks-operations.service';
 import { TasksController } from './tasks.controller';
 
 @Module({
@@ -116,6 +117,7 @@ import { TasksController } from './tasks.controller';
     ClerkDirectoryService,
     UsersOperationsService,
     SettingsOperationsService,
+    TasksOperationsService,
     RolesGuard,
   ],
 })
