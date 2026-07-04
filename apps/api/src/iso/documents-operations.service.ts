@@ -4,7 +4,6 @@ import {
   DOCUMENT_STATUS_VALUES,
   DOCUMENT_TYPE_VALUES,
 } from './domain.constants';
-import { IsoService } from './iso.service';
 import { PlatformAuditService } from './platform-audit.service';
 import type { CreateDocumentDto, UpdateDocumentDto } from './dto/documents.dto';
 import {
@@ -14,20 +13,21 @@ import {
   ensureOptionalString,
 } from './request-validation';
 import type { ClerkSessionIdentity } from './clerk.types';
+import { DocumentsDomainService } from './documents-domain.service';
 
 @Injectable()
 export class DocumentsOperationsService {
   constructor(
-    private readonly isoService: IsoService,
+    private readonly documentsDomainService: DocumentsDomainService,
     private readonly platformAuditService: PlatformAuditService
   ) {}
 
   listDocuments() {
-    return this.isoService.getDocuments();
+    return this.documentsDomainService.listDocumentSummaries();
   }
 
   getDocumentContent(id: string) {
-    return this.isoService.getDocumentContent(id);
+    return this.documentsDomainService.getDocumentContent(id);
   }
 
   async createDocument(clerkAuth: ClerkSessionIdentity | null, body: CreateDocumentDto) {
@@ -41,7 +41,7 @@ export class DocumentsOperationsService {
     ensureNonEmptyString(body.mimeType, 'mimeType');
     ensureNonEmptyString(body.fileContentUrl, 'fileContentUrl');
 
-    const document = await this.isoService.createDocument(body);
+    const document = await this.documentsDomainService.createDocument(body);
     await this.platformAuditService.captureFromSession(clerkAuth, {
       action: 'documents.create',
       resourceType: 'document',
@@ -67,7 +67,7 @@ export class DocumentsOperationsService {
     ensureOptionalString(body.version, 'version');
     ensureOptionalEnumValue(body.status, 'status', DOCUMENT_STATUS_VALUES);
 
-    const document = await this.isoService.updateDocument(id, body);
+    const document = await this.documentsDomainService.updateDocument(id, body);
     await this.platformAuditService.captureFromSession(clerkAuth, {
       action: 'documents.update',
       resourceType: 'document',
@@ -83,7 +83,7 @@ export class DocumentsOperationsService {
   }
 
   async registerDocumentView(id: string, clerkAuth: ClerkSessionIdentity | null) {
-    const document = await this.isoService.registerDocumentView(id);
+    const document = await this.documentsDomainService.registerDocumentView(id);
     await this.platformAuditService.captureFromSession(clerkAuth, {
       action: 'documents.view',
       resourceType: 'document',
@@ -94,7 +94,7 @@ export class DocumentsOperationsService {
   }
 
   async deleteDocument(id: string, clerkAuth: ClerkSessionIdentity | null) {
-    const result = await this.isoService.deleteDocument(id);
+    const result = await this.documentsDomainService.deleteDocument(id);
     await this.platformAuditService.captureFromSession(clerkAuth, {
       action: 'documents.delete',
       resourceType: 'document',

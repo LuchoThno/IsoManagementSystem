@@ -3,6 +3,9 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 @Schema({ timestamps: true, collection: 'standard_appendices' })
 export class StandardAppendixEntity {
   @Prop({ required: true, index: true })
+  tenantId!: string;
+
+  @Prop({ required: true, index: true })
   standardId!: string;
 
   @Prop({ required: true })
@@ -25,3 +28,4 @@ export class StandardAppendixEntity {
 }
 
 export const StandardAppendixSchema = SchemaFactory.createForClass(StandardAppendixEntity);
+StandardAppendixSchema.index({ tenantId: 1, standardId: 1, order: 1 });

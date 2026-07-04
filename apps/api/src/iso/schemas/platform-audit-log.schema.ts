@@ -8,7 +8,7 @@ export class PlatformAuditLogEntity {
   @Prop({ required: true })
   resourceType!: string;
 
-  @Prop({ default: null })
+  @Prop({ type: String, default: null })
   resourceId!: string | null;
 
   @Prop({ default: null })

@@ -16,7 +16,9 @@ Behavior:
   - GET /api/iso/auth/config must return 200 and a valid auth config
   - Auth config must expose provider and capability flags coherently
   - GET /api/iso/auth/access-context must match the expected auth behavior
-    and expose coherent permissions when available
+    and expose coherent permissions and tenant context when available
+  - GET /api/iso/tenants/current must match the expected auth behavior
+    and expose a coherent tenant summary when available
   - GET /api/iso/bootstrap-shell must match the expected auth behavior:
       clerk    -> 401
       demo     -> 200
@@ -36,6 +38,12 @@ const expectedBootstrapStatusByMode = {
 };
 
 const expectedAccessContextStatusByMode = {
+  clerk: 401,
+  demo: 200,
+  disabled: 503,
+};
+
+const expectedCurrentTenantStatusByMode = {
   clerk: 401,
   demo: 200,
   disabled: 503,
@@ -119,6 +127,23 @@ const assert = (condition, message) => {
   }
 };
 
+const assertTenantSummary = (tenant, label) => {
+  assert(tenant && typeof tenant === 'object', `${label} must be an object`);
+  assert(typeof tenant.id === 'string' && tenant.id.trim(), `${label}.id must be a non-empty string`);
+  assert(typeof tenant.name === 'string' && tenant.name.trim(), `${label}.name must be a non-empty string`);
+  assert(typeof tenant.slug === 'string' && tenant.slug.trim(), `${label}.slug must be a non-empty string`);
+  assert(
+    tenant.status === 'active' || tenant.status === 'inactive',
+    `${label}.status must be active or inactive`
+  );
+  assert(typeof tenant.timezone === 'string' && tenant.timezone.trim(), `${label}.timezone must be a non-empty string`);
+  assert(
+    typeof tenant.defaultLanguage === 'string' && tenant.defaultLanguage.trim(),
+    `${label}.defaultLanguage must be a non-empty string`
+  );
+  assert(typeof tenant.isDefault === 'boolean', `${label}.isDefault must be boolean`);
+};
+
 const run = async () => {
   const health = await request('/api/health');
   assertStatus(health.status, 200, 'Health endpoint');
@@ -177,6 +202,13 @@ const run = async () => {
     'Access context auth behavior'
   );
 
+  const currentTenant = await request('/api/iso/tenants/current');
+  assertStatus(
+    currentTenant.status,
+    expectedCurrentTenantStatusByMode[modeToCheck],
+    'Current tenant auth behavior'
+  );
+
   if (accessContext.status === 200) {
     assert(accessContext.json && typeof accessContext.json === 'object', 'Access context must be JSON');
     assert(
@@ -211,6 +243,19 @@ const run = async () => {
         );
       }
     }
+
+    assertTenantSummary(accessContext.json.tenant, 'access-context tenant');
+  }
+
+  if (currentTenant.status === 200) {
+    assertTenantSummary(currentTenant.json, 'current tenant');
+
+    if (accessContext.status === 200) {
+      assert(
+        currentTenant.json.id === accessContext.json?.tenant?.id,
+        `Current tenant id must match access-context tenant id: ${String(currentTenant.json.id)} vs ${String(accessContext.json?.tenant?.id)}`
+      );
+    }
   }
 
   process.stdout.write(
@@ -219,6 +264,7 @@ const run = async () => {
       `baseUrl=${baseUrl}`,
       `authMode=${resolvedMode}`,
       `accessContextStatus=${accessContext.status}`,
+      `currentTenantStatus=${currentTenant.status}`,
       `bootstrapShellStatus=${bootstrapShell.status}`,
     ].join('\n') + '\n'
   );

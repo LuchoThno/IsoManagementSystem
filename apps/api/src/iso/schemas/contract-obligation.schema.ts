@@ -3,6 +3,9 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 @Schema({ timestamps: true, collection: 'contract_obligations' })
 export class ContractObligationEntity {
   @Prop({ required: true, index: true })
+  tenantId!: string;
+
+  @Prop({ required: true, index: true })
   contractId!: string;
 
   @Prop({ type: String, default: null })
@@ -35,3 +38,4 @@ export class ContractObligationEntity {
 
 export const ContractObligationSchema =
   SchemaFactory.createForClass(ContractObligationEntity);
+ContractObligationSchema.index({ tenantId: 1, contractId: 1, dueDate: 1 });

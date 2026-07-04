@@ -1,4 +1,5 @@
 import type { AppUserRole } from '../roles.decorator';
+import type { TenantSummaryDto } from './tenants.dto';
 
 export type AccessContextDto = {
   mode: 'clerk' | 'demo' | 'disabled';
@@ -23,6 +24,7 @@ export type AccessContextDto = {
     active: boolean;
     createdAt: string;
   } | null;
+  tenant: TenantSummaryDto | null;
   permissions: {
     canViewUserDirectory: boolean;
     canManageUsers: boolean;

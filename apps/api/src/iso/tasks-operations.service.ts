@@ -2,7 +2,6 @@ import { Injectable } from '@nestjs/common';
 import { TASK_PRIORITY_VALUES, TASK_STATUS_VALUES } from './domain.constants';
 import type { ClerkSessionIdentity } from './clerk.types';
 import type { CreateTaskDto, UpdateTaskDto, UpdateTaskStatusDto } from './dto/tasks.dto';
-import { IsoService } from './iso.service';
 import { PlatformAuditService } from './platform-audit.service';
 import {
   ensureEnumValue,
@@ -13,16 +12,17 @@ import {
   ensureOptionalString,
   ensureStringArray,
 } from './request-validation';
+import { TasksDomainService } from './tasks-domain.service';
 
 @Injectable()
 export class TasksOperationsService {
   constructor(
-    private readonly isoService: IsoService,
+    private readonly tasksDomainService: TasksDomainService,
     private readonly platformAuditService: PlatformAuditService
   ) {}
 
   listTasks() {
-    return this.isoService.getTasks();
+    return this.tasksDomainService.listTasks();
   }
 
   async createTask(clerkAuth: ClerkSessionIdentity | null, body: CreateTaskDto) {
@@ -35,7 +35,7 @@ export class TasksOperationsService {
     ensureNonEmptyString(body.standard, 'standard');
     ensureStringArray(body.relatedDocuments, 'relatedDocuments');
 
-    const task = await this.isoService.createTask(body);
+    const task = await this.tasksDomainService.createTask(body);
     await this.platformAuditService.captureFromSession(clerkAuth, {
       action: 'tasks.create',
       resourceType: 'task',
@@ -62,7 +62,7 @@ export class TasksOperationsService {
       ensureStringArray(body.relatedDocuments, 'relatedDocuments');
     }
 
-    const task = await this.isoService.updateTask(id, body);
+    const task = await this.tasksDomainService.updateTask(id, body);
     await this.platformAuditService.captureFromSession(clerkAuth, {
       action: 'tasks.update',
       resourceType: 'task',
@@ -84,7 +84,7 @@ export class TasksOperationsService {
   ) {
     ensureEnumValue(body.status, 'status', TASK_STATUS_VALUES);
 
-    const task = await this.isoService.updateTaskStatus(id, body.status);
+    const task = await this.tasksDomainService.updateTaskStatus(id, body.status);
     await this.platformAuditService.captureFromSession(clerkAuth, {
       action: 'tasks.status.update',
       resourceType: 'task',
@@ -98,7 +98,7 @@ export class TasksOperationsService {
   }
 
   async deleteTask(id: string, clerkAuth: ClerkSessionIdentity | null) {
-    const result = await this.isoService.deleteTask(id);
+    const result = await this.tasksDomainService.deleteTask(id);
     await this.platformAuditService.captureFromSession(clerkAuth, {
       action: 'tasks.delete',
       resourceType: 'task',

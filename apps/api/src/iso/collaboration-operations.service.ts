@@ -2,20 +2,20 @@ import { Injectable } from '@nestjs/common';
 import { AuthModeService } from './auth-mode.service';
 import { ChatGateway } from './chat.gateway';
 import type { ClerkSessionIdentity } from './clerk.types';
+import { CollaborationDomainService } from './collaboration-domain.service';
 import type {
   MarkThreadAsReadDto,
   OpenDirectThreadDto,
   SendChatMessageDto,
 } from './dto/collaboration.dto';
 import { GoogleCalendarService } from './google-calendar.service';
-import { IsoService } from './iso.service';
 import { PlatformAuditService } from './platform-audit.service';
 import { ensureNonEmptyString, ensureStringArray } from './request-validation';
 
 @Injectable()
 export class CollaborationOperationsService {
   constructor(
-    private readonly isoService: IsoService,
+    private readonly collaborationDomainService: CollaborationDomainService,
     private readonly chatGateway: ChatGateway,
     private readonly googleCalendarService: GoogleCalendarService,
     private readonly authModeService: AuthModeService,
@@ -39,7 +39,7 @@ export class CollaborationOperationsService {
 
   getChatThreads(userId: string, clerkAuth: ClerkSessionIdentity | null) {
     ensureNonEmptyString(userId, 'userId');
-    return this.isoService.getChatThreads(
+    return this.collaborationDomainService.getChatThreads(
       this.authModeService.isClerkMode() ? (clerkAuth?.appUserId ?? userId) : userId
     );
   }
@@ -60,7 +60,7 @@ export class CollaborationOperationsService {
         ]
       : body.participantIds;
 
-    const thread = await this.isoService.openDirectThread(participantIds);
+    const thread = await this.collaborationDomainService.openDirectThread(participantIds);
     this.chatGateway.emitThreadUpsert(thread);
     return thread;
   }
@@ -74,7 +74,7 @@ export class CollaborationOperationsService {
     ensureNonEmptyString(body.authorId, 'authorId');
     ensureNonEmptyString(body.content, 'content');
 
-    const thread = await this.isoService.sendChatMessage(
+    const thread = await this.collaborationDomainService.sendChatMessage(
       id,
       this.authModeService.isClerkMode() ? (clerkAuth?.appUserId ?? body.authorId) : body.authorId,
       body.content
@@ -91,7 +91,7 @@ export class CollaborationOperationsService {
     ensureNonEmptyString(id, 'id');
     ensureNonEmptyString(body.userId, 'userId');
 
-    const thread = await this.isoService.markThreadAsRead(
+    const thread = await this.collaborationDomainService.markThreadAsRead(
       id,
       this.authModeService.isClerkMode() ? (clerkAuth?.appUserId ?? body.userId) : body.userId
     );

@@ -2,6 +2,9 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 
 @Schema({ timestamps: true, collection: 'contracts' })
 export class ContractEntity {
+  @Prop({ required: true, index: true })
+  tenantId!: string;
+
   @Prop({ required: true })
   title!: string;
 
@@ -31,3 +34,4 @@ export class ContractEntity {
 }
 
 export const ContractSchema = SchemaFactory.createForClass(ContractEntity);
+ContractSchema.index({ tenantId: 1, status: 1, updatedAt: -1 });

@@ -1,5 +1,6 @@
 import type { DirectoryUser, ClerkSessionIdentity } from './clerk.types';
 import type { AccessContextDto } from './dto/auth.dto';
+import type { TenantSummaryDto } from './dto/tenants.dto';
 import type { AppAuthMode } from './auth-mode.service';
 import type { AppUserRole } from './roles.decorator';
 
@@ -29,11 +30,13 @@ export const buildAccessContext = ({
   capabilities,
   session,
   user,
+  tenant,
 }: {
   mode: AppAuthMode;
   capabilities: PublicCapabilities;
   session: ClerkSessionIdentity | null;
   user: DirectoryUser | null;
+  tenant: TenantSummaryDto | null;
 }): AccessContextDto => {
   const role = user?.role ?? null;
 
@@ -50,6 +53,7 @@ export const buildAccessContext = ({
         }
       : null,
     user,
+    tenant,
     permissions: {
       canViewUserDirectory: hasAnyRole(role, ['admin', 'manager']),
       canManageUsers: capabilities.manualUserManagement || hasAnyRole(role, ['admin']),

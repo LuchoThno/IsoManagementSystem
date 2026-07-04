@@ -2,6 +2,9 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 
 @Schema({ timestamps: true, collection: 'corrective_actions' })
 export class CorrectiveActionEntity {
+  @Prop({ required: true, index: true })
+  tenantId!: string;
+
   @Prop({ required: true })
   title!: string;
 
@@ -44,3 +47,4 @@ export class CorrectiveActionEntity {
 
 export const CorrectiveActionSchema =
   SchemaFactory.createForClass(CorrectiveActionEntity);
+CorrectiveActionSchema.index({ tenantId: 1, status: 1, updatedAt: -1 });

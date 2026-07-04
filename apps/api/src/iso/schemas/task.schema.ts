@@ -2,6 +2,9 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 
 @Schema({ timestamps: true, collection: 'tasks' })
 export class TaskEntity {
+  @Prop({ required: true, index: true })
+  tenantId!: string;
+
   @Prop({ required: true })
   title!: string;
 
@@ -32,3 +35,4 @@ export class TaskEntity {
 }
 
 export const TaskSchema = SchemaFactory.createForClass(TaskEntity);
+TaskSchema.index({ tenantId: 1, status: 1, dueDate: 1 });

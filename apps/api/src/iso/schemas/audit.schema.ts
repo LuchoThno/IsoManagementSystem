@@ -23,6 +23,9 @@ export class Finding {
 
 @Schema({ timestamps: true, collection: 'audits' })
 export class Audit {
+  @Prop({ required: true, index: true })
+  tenantId!: string;
+
   @Prop({ required: true, enum: ['internal', 'external'] })
   type!: 'internal' | 'external';
 
@@ -60,3 +63,4 @@ export class Audit {
 }
 
 export const AuditSchema = SchemaFactory.createForClass(Audit);
+AuditSchema.index({ tenantId: 1, status: 1, date: 1 });

@@ -21,7 +21,8 @@ Behavior:
   - Skips roles whose token is not provided
   - Verifies admin-only, admin-or-manager, admin-or-manager-or-auditor,
     and authenticated-access routes across key domains
-  - Verifies auth/access-context resolves the expected role and permission flags
+  - Verifies auth/access-context resolves the expected role, permission flags,
+    and tenant context
   - Includes mutation-route authorization checks using intentionally invalid payloads
     so authorized roles return 400 without mutating real data
 `);
@@ -97,6 +98,15 @@ const readRouteMatrix = [
     },
   },
   {
+    path: '/api/iso/tenants/current',
+    expectedByRole: {
+      admin: 200,
+      manager: 200,
+      auditor: 200,
+      viewer: 200,
+    },
+  },
+  {
     path: '/api/iso/auth/clerk/me',
     expectedByRole: {
       admin: 200,
@@ -121,6 +131,15 @@ const readRouteMatrix = [
       manager: 200,
       auditor: 200,
       viewer: 200,
+    },
+  },
+  {
+    path: '/api/iso/tenants',
+    expectedByRole: {
+      admin: 200,
+      manager: 200,
+      auditor: 403,
+      viewer: 403,
     },
   },
   {
@@ -420,6 +439,17 @@ const assert = (condition, message) => {
   }
 };
 
+const assertTenantSummary = (tenant, label) => {
+  assert(tenant && typeof tenant === 'object', `${label} must be JSON object`);
+  assert(typeof tenant.id === 'string' && tenant.id.trim(), `${label}.id must be a non-empty string`);
+  assert(typeof tenant.name === 'string' && tenant.name.trim(), `${label}.name must be a non-empty string`);
+  assert(typeof tenant.slug === 'string' && tenant.slug.trim(), `${label}.slug must be a non-empty string`);
+  assert(
+    tenant.status === 'active' || tenant.status === 'inactive',
+    `${label}.status must be active or inactive`
+  );
+};
+
 const assertAccessContext = (role, response) => {
   const expected = expectedAccessContextByRole[role];
   assert(response.json && typeof response.json === 'object', `${role} access-context must be JSON`);
@@ -442,6 +472,7 @@ const assertAccessContext = (role, response) => {
     `${role} access-context authenticatedRoutesAvailable: expected true, got ${String(response.json.capabilities?.authenticatedRoutesAvailable)}`
   );
   assert(response.json.user?.role === expected.role, `${role} access-context user.role: expected ${expected.role}, got ${String(response.json.user?.role)}`);
+  assertTenantSummary(response.json.tenant, `${role} access-context tenant`);
 
   for (const [permission, expectedValue] of Object.entries(expected.permissions)) {
     assert(
@@ -449,6 +480,11 @@ const assertAccessContext = (role, response) => {
       `${role} access-context permission ${permission}: expected ${String(expectedValue)}, got ${String(response.json.permissions?.[permission])}`
     );
   }
+};
+
+const assertCurrentTenant = (role, response) => {
+  assert(response.json && typeof response.json === 'object', `${role} current tenant must be JSON`);
+  assertTenantSummary(response.json, `${role} current tenant`);
 };
 
 const run = async () => {
@@ -499,6 +535,9 @@ const run = async () => {
       assertStatus(response.status, expectedStatus, `${role} ${route.method} ${route.path}`);
       if (route.method === 'GET' && route.path === '/api/iso/auth/access-context') {
         assertAccessContext(role, response);
+      }
+      if (route.method === 'GET' && route.path === '/api/iso/tenants/current') {
+        assertCurrentTenant(role, response);
       }
       checks += 1;
     }

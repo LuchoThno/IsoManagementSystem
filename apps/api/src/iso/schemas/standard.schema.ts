@@ -2,7 +2,10 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 
 @Schema({ timestamps: true, collection: 'standards' })
 export class StandardEntity {
-  @Prop({ required: true, unique: true, trim: true })
+  @Prop({ required: true, index: true })
+  tenantId!: string;
+
+  @Prop({ required: true, trim: true })
   code!: string;
 
   @Prop({ required: true, trim: true })
@@ -35,3 +38,4 @@ export class StandardEntity {
 }
 
 export const StandardSchema = SchemaFactory.createForClass(StandardEntity);
+StandardSchema.index({ tenantId: 1, code: 1 }, { unique: true });

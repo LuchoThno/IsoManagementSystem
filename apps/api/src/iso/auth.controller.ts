@@ -8,6 +8,7 @@ import type { AccessContextDto } from './dto/auth.dto';
 import { PlatformAuditService } from './platform-audit.service';
 import { Public } from './public.decorator';
 import { RolesGuard } from './roles.guard';
+import { TenantContextService } from './tenant-context.service';
 import type { ClerkSessionIdentity } from './clerk.types';
 
 @Controller('iso/auth')
@@ -16,7 +17,8 @@ export class AuthController {
   constructor(
     private readonly authModeService: AuthModeService,
     private readonly clerkDirectoryService: ClerkDirectoryService,
-    private readonly platformAuditService: PlatformAuditService
+    private readonly platformAuditService: PlatformAuditService,
+    private readonly tenantContextService: TenantContextService
   ) {}
 
   @Public()
@@ -74,11 +76,13 @@ export class AuthController {
       clerkAuth?.userId && this.authModeService.isClerkMode()
         ? await this.clerkDirectoryService.getCurrentUser(clerkAuth.userId)
         : null;
+    const tenant = await this.tenantContextService.resolveEffectiveTenant();
     const response = buildAccessContext({
       mode,
       capabilities,
       session: clerkAuth,
       user: currentUser,
+      tenant,
     });
 
     await this.platformAuditService.captureFromSession(clerkAuth, {
@@ -90,6 +94,7 @@ export class AuthController {
         mode: response.mode,
         provider: response.provider,
         role: currentUser?.role ?? null,
+        tenantId: tenant.id,
         permissions: response.permissions,
       },
     });

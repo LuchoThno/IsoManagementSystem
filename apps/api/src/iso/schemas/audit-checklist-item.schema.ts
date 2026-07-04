@@ -3,6 +3,9 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 @Schema({ timestamps: true, collection: 'audit_checklist_items' })
 export class AuditChecklistItemEntity {
   @Prop({ required: true, index: true })
+  tenantId!: string;
+
+  @Prop({ required: true, index: true })
   checklistId!: string;
 
   @Prop({ required: true, index: true })
@@ -42,3 +45,4 @@ export class AuditChecklistItemEntity {
 
 export const AuditChecklistItemSchema =
   SchemaFactory.createForClass(AuditChecklistItemEntity);
+AuditChecklistItemSchema.index({ tenantId: 1, checklistId: 1, order: 1 });

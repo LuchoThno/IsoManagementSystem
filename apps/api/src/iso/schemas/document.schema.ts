@@ -18,6 +18,9 @@ const auditEntrySchema = {
 
 @Schema({ timestamps: true, collection: 'documents' })
 export class DocumentEntity {
+  @Prop({ required: true, index: true })
+  tenantId!: string;
+
   @Prop({ required: true })
   title!: string;
 
@@ -72,3 +75,4 @@ export class DocumentEntity {
 }
 
 export const DocumentSchema = SchemaFactory.createForClass(DocumentEntity);
+DocumentSchema.index({ tenantId: 1, status: 1, updatedAt: -1 });

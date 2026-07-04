@@ -10,8 +10,8 @@ import type {
   UpdateAuditDto,
   UpdateAuditStatusDto,
 } from './dto/audits.dto';
-import { GrcService } from './grc.service';
-import { IsoService } from './iso.service';
+import { AuditsDomainService } from './audits-domain.service';
+import { GrcStandardsDomainService } from './grc-standards-domain.service';
 import { PlatformAuditService } from './platform-audit.service';
 import {
   ensureEnumValue,
@@ -26,17 +26,17 @@ import type { ClerkSessionIdentity } from './clerk.types';
 @Injectable()
 export class AuditsOperationsService {
   constructor(
-    private readonly isoService: IsoService,
-    private readonly grcService: GrcService,
+    private readonly auditsDomainService: AuditsDomainService,
+    private readonly grcStandardsDomainService: GrcStandardsDomainService,
     private readonly platformAuditService: PlatformAuditService
   ) {}
 
   listAudits() {
-    return this.isoService.getAudits();
+    return this.auditsDomainService.listAudits();
   }
 
   getAuditChecklist(id: string) {
-    return this.grcService.getAuditChecklist(id);
+    return this.grcStandardsDomainService.getAuditChecklist(id);
   }
 
   async createAudit(clerkAuth: ClerkSessionIdentity | null, body: CreateAuditDto) {
@@ -46,7 +46,7 @@ export class AuditsOperationsService {
     ensureEnumValue(body.status, 'status', AUDIT_STATUS_VALUES);
     this.validateFindings(body.findings);
 
-    const audit = await this.isoService.createAudit(body);
+    const audit = await this.auditsDomainService.createAudit(body);
     await this.platformAuditService.captureFromSession(clerkAuth, {
       action: 'audits.create',
       resourceType: 'audit',
@@ -70,7 +70,7 @@ export class AuditsOperationsService {
       this.validateFindings(body.findings);
     }
 
-    const audit = await this.isoService.updateAudit(id, body);
+    const audit = await this.auditsDomainService.updateAudit(id, body);
     await this.platformAuditService.captureFromSession(clerkAuth, {
       action: 'audits.update',
       resourceType: 'audit',
@@ -90,7 +90,7 @@ export class AuditsOperationsService {
     clerkAuth: ClerkSessionIdentity | null,
     body: UpdateAuditStatusDto
   ) {
-    const audit = await this.isoService.updateAuditStatus(id, body.status);
+    const audit = await this.auditsDomainService.updateAuditStatus(id, body.status);
     await this.platformAuditService.captureFromSession(clerkAuth, {
       action: 'audits.status.update',
       resourceType: 'audit',
@@ -104,7 +104,7 @@ export class AuditsOperationsService {
   }
 
   async deleteAudit(id: string, clerkAuth: ClerkSessionIdentity | null) {
-    const result = await this.isoService.deleteAudit(id);
+    const result = await this.auditsDomainService.deleteAudit(id);
     await this.platformAuditService.captureFromSession(clerkAuth, {
       action: 'audits.delete',
       resourceType: 'audit',

@@ -40,6 +40,7 @@ const publicRoutes = [
 const protectedRoutes = [
   '/api/iso/bootstrap-shell',
   '/api/iso/auth/access-context',
+  '/api/iso/tenants/current',
   '/api/iso/auth/session',
   '/api/iso/documents',
   '/api/iso/tasks',
@@ -55,6 +56,7 @@ const protectedRoutes = [
 const authenticatedRoutes = [
   '/api/iso/bootstrap-shell',
   '/api/iso/auth/access-context',
+  '/api/iso/tenants/current',
   '/api/iso/auth/session',
   '/api/iso/documents',
   '/api/iso/tasks',

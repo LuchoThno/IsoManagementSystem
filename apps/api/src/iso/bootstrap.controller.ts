@@ -1,20 +1,20 @@
 import { Controller, Get, UseGuards } from '@nestjs/common';
+import { BootstrapDomainService } from './bootstrap-domain.service';
 import { ClerkAuthGuard } from './clerk-auth.guard';
-import { IsoService } from './iso.service';
 import { RolesGuard } from './roles.guard';
 
 @Controller('iso')
 @UseGuards(ClerkAuthGuard, RolesGuard)
 export class BootstrapController {
-  constructor(private readonly isoService: IsoService) {}
+  constructor(private readonly bootstrapDomainService: BootstrapDomainService) {}
 
   @Get('bootstrap')
   getBootstrap() {
-    return this.isoService.getBootstrap();
+    return this.bootstrapDomainService.getBootstrap();
   }
 
   @Get('bootstrap-shell')
   getBootstrapShell() {
-    return this.isoService.getBootstrapShell();
+    return this.bootstrapDomainService.getBootstrapShell();
   }
 }

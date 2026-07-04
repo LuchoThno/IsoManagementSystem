@@ -1,15 +1,23 @@
 import { AuditsController } from './audits.controller';
+import { AuditsDomainService } from './audits-domain.service';
 import { AuditsOperationsService } from './audits-operations.service';
 import { AuthController } from './auth.controller';
 import { BootstrapController } from './bootstrap.controller';
+import { BootstrapDomainService } from './bootstrap-domain.service';
+import { CollaborationDomainService } from './collaboration-domain.service';
 import { CollaborationOperationsService } from './collaboration-operations.service';
 import { CollaborationController } from './collaboration.controller';
+import { CommunicationsDomainService } from './communications-domain.service';
 import { CommunicationsOperationsService } from './communications-operations.service';
 import { CommunicationsController } from './communications.controller';
 import { DocumentsController } from './documents.controller';
+import { DocumentsDomainService } from './documents-domain.service';
 import { DocumentsOperationsService } from './documents-operations.service';
+import { DemoSeedService } from './demo-seed.service';
 import { GrcController } from './grc.controller';
+import { GrcOperationalDomainService } from './grc-operational-domain.service';
 import { GrcOperationsService } from './grc-operations.service';
+import { GrcStandardsDomainService } from './grc-standards-domain.service';
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { AuthModeService } from './auth-mode.service';
@@ -55,12 +63,19 @@ import {
 import { StandardSectionEntity, StandardSectionSchema } from './schemas/standard-section.schema';
 import { StandardEntity, StandardSchema } from './schemas/standard.schema';
 import { SettingsController } from './settings.controller';
+import { SettingsDocumentService } from './settings-document.service';
 import { SettingsOperationsService } from './settings-operations.service';
 import { TaskEntity, TaskSchema } from './schemas/task.schema';
 import { UsersController } from './users.controller';
 import { UsersOperationsService } from './users-operations.service';
 import { TasksOperationsService } from './tasks-operations.service';
 import { TasksController } from './tasks.controller';
+import { TasksDomainService } from './tasks-domain.service';
+import { TenantEntity, TenantSchema } from './schemas/tenant.schema';
+import { TenantContextService } from './tenant-context.service';
+import { TenantBackfillService } from './tenant-backfill.service';
+import { TenantsController } from './tenants.controller';
+import { TenantsOperationsService } from './tenants-operations.service';
 
 @Module({
   imports: [
@@ -85,11 +100,13 @@ import { TasksController } from './tasks.controller';
       { name: AuditChecklistEntity.name, schema: AuditChecklistSchema },
       { name: AuditChecklistItemEntity.name, schema: AuditChecklistItemSchema },
       { name: CorrectiveActionEntity.name, schema: CorrectiveActionSchema },
+      { name: TenantEntity.name, schema: TenantSchema },
     ]),
   ],
   controllers: [
     AuthController,
     UsersController,
+    TenantsController,
     DocumentsController,
     AuditsController,
     TasksController,
@@ -102,22 +119,35 @@ import { TasksController } from './tasks.controller';
   providers: [
     IsoService,
     GrcService,
+    GrcOperationalDomainService,
+    GrcStandardsDomainService,
     GrcOperationsService,
+    BootstrapDomainService,
+    AuditsDomainService,
     AuditsOperationsService,
+    CollaborationDomainService,
     CollaborationOperationsService,
     ChatGateway,
     GoogleCalendarService,
     EmailDeliveryService,
     AuthModeService,
     PlatformAuditService,
+    DocumentsDomainService,
+    TasksDomainService,
+    CommunicationsDomainService,
     DocumentsOperationsService,
     CommunicationsOperationsService,
     ClerkAuthService,
     ClerkAuthGuard,
     ClerkDirectoryService,
+    DemoSeedService,
     UsersOperationsService,
+    SettingsDocumentService,
     SettingsOperationsService,
     TasksOperationsService,
+    TenantContextService,
+    TenantBackfillService,
+    TenantsOperationsService,
     RolesGuard,
   ],
 })

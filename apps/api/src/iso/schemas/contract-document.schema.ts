@@ -3,6 +3,9 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 @Schema({ timestamps: false, collection: 'contract_documents' })
 export class ContractDocumentEntity {
   @Prop({ required: true, index: true })
+  tenantId!: string;
+
+  @Prop({ required: true, index: true })
   contractId!: string;
 
   @Prop({ required: true })
@@ -25,3 +28,4 @@ export class ContractDocumentEntity {
 }
 
 export const ContractDocumentSchema = SchemaFactory.createForClass(ContractDocumentEntity);
+ContractDocumentSchema.index({ tenantId: 1, contractId: 1 });

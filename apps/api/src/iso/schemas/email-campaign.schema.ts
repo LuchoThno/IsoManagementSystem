@@ -2,6 +2,9 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 
 @Schema({ timestamps: true, collection: 'email_campaigns' })
 export class EmailCampaignEntity {
+  @Prop({ required: true, index: true })
+  tenantId!: string;
+
   @Prop({ required: true })
   name!: string;
 
@@ -52,3 +55,4 @@ export class EmailCampaignEntity {
 }
 
 export const EmailCampaignSchema = SchemaFactory.createForClass(EmailCampaignEntity);
+EmailCampaignSchema.index({ tenantId: 1, createdAt: -1 });

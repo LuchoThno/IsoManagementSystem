@@ -318,6 +318,70 @@ Estado inicial al 2026-07-02:
 - esta linea prepara la migracion gradual desde controladores con logica
   embebida hacia capas mas claras de `controller` + `policy/permission`
 
+Avance adicional al 2026-07-03:
+
+- base inicial de `tenants` agregada con:
+  - schema persistente `tenants`
+  - servicio dedicado de resolucion del tenant efectivo
+  - endpoints `iso/tenants/current` y `iso/tenants`
+  - propagacion del tenant actual dentro de `auth/access-context`
+- este avance deja lista la primera pieza reusable para multitenencia sin
+  obligar aun a migrar todos los esquemas funcionales en el mismo paso
+- `documents` y `audits` ya persisten y consultan `tenantId`, incluyendo:
+  - backfill operativo para registros legacy sin tenant
+  - lectura y mutacion scoped al tenant efectivo
+  - indices iniciales por tenant para ambas colecciones
+- `tasks` ya sigue el mismo patron de tenant scoping en persistencia, listados y
+  mutaciones
+- `grc` ya inicia aislamiento tenant en entidades operativas:
+  - evidences
+  - contracts
+  - contract obligations
+  - contract documents
+  - corrective actions
+  con backfill operativo e indices iniciales por tenant
+- `communications` ya aplica tenant scoping en:
+  - email templates
+  - email campaigns
+  - campañas basadas en tareas del tenant efectivo
+- `chat/collaboration` ya aplica tenant scoping en:
+  - chat threads
+  - apertura de threads directos
+  - mensajes y lectura por thread
+- el nucleo estructural de `grc` ya aplica tenant scoping en:
+  - standards
+  - sections
+  - clauses
+  - requirements
+  - appendices
+  - audit checklists
+  con backfill estructural, seed por tenant e indices iniciales por tenant
+- la resolucion del tenant efectivo ya se consolido en una pieza compartida de
+  infraestructura para reducir duplicacion entre `auth`, `tenants`,
+  `IsoService` y `GrcService`
+- el backfill tenant-aware ya se consolido tambien en una pieza compartida para
+  reducir repeticion entre `IsoService` y `GrcService`
+- inicio de particion concreta de `IsoService` por dominio:
+  - logica de documentos extraida a un servicio dedicado reusable
+  - `documents-operations` y bootstrap ya consumen esa pieza
+  - logica de tareas extraida a un servicio dedicado reusable
+  - `tasks-operations` y bootstrap ya consumen esa pieza
+  - logica de auditorias extraida a un servicio dedicado reusable
+  - `audits-operations` y bootstrap ya consumen esa pieza
+  - logica de communications extraida a un servicio dedicado reusable
+  - `communications-operations` y bootstrap ya consumen esa pieza
+  - normalizacion y resolucion del documento `settings` consolidada en una
+    pieza compartida para evitar duplicacion entre `IsoService` y
+    `communications`
+  - logica de collaboration/chat extraida a un servicio dedicado reusable
+  - `collaboration-operations` ya consume esa pieza para threads y mensajes
+  - logica de bootstrap/dashboard extraida a un servicio dedicado reusable
+  - seed demo inicial extraido a una pieza dedicada del ciclo de arranque
+  - logica operacional de `grc` extraida a un servicio dedicado reusable para
+    evidencias, contratos, acciones correctivas y summary
+  - logica estructural de `grc` extraida a un servicio dedicado reusable para
+    standards, estructura normativa y audit checklist
+
 ## Fase 6 - Gestion Documental
 
 Diseño recomendado:

@@ -7,7 +7,7 @@ import type {
   UpdateCommunicationSettingsDto,
   UpdateEmailTemplateDto,
 } from './dto/communications.dto';
-import { IsoService } from './iso.service';
+import { CommunicationsDomainService } from './communications-domain.service';
 import { PlatformAuditService } from './platform-audit.service';
 import {
   ensureEnumValue,
@@ -19,12 +19,12 @@ import {
 @Injectable()
 export class CommunicationsOperationsService {
   constructor(
-    private readonly isoService: IsoService,
+    private readonly communicationsDomainService: CommunicationsDomainService,
     private readonly platformAuditService: PlatformAuditService
   ) {}
 
   getCommunicationCompatibility() {
-    return this.isoService.getCommunicationCompatibility();
+    return this.communicationsDomainService.getCommunicationCompatibility();
   }
 
   async updateCommunicationSettings(
@@ -39,7 +39,7 @@ export class CommunicationsOperationsService {
     ensureOptionalString(body.apiBaseUrl, 'apiBaseUrl');
     ensureOptionalString(body.apiKeyHint, 'apiKeyHint');
 
-    const result = await this.isoService.updateCommunicationSettings(body);
+    const result = await this.communicationsDomainService.updateCommunicationSettings(body);
     await this.platformAuditService.captureFromSession(clerkAuth, {
       action: 'communications.settings.update',
       resourceType: 'communications-settings',
@@ -58,7 +58,7 @@ export class CommunicationsOperationsService {
     ensureNonEmptyString(body.subject, 'subject');
     ensureNonEmptyString(body.content, 'content');
 
-    const template = await this.isoService.createEmailTemplate(body);
+    const template = await this.communicationsDomainService.createEmailTemplate(body);
     await this.platformAuditService.captureFromSession(clerkAuth, {
       action: 'communications.template.create',
       resourceType: 'email-template',
@@ -80,7 +80,7 @@ export class CommunicationsOperationsService {
     ensureOptionalString(body.subject, 'subject');
     ensureOptionalString(body.content, 'content');
 
-    const template = await this.isoService.updateEmailTemplate(id, body);
+    const template = await this.communicationsDomainService.updateEmailTemplate(id, body);
     await this.platformAuditService.captureFromSession(clerkAuth, {
       action: 'communications.template.update',
       resourceType: 'email-template',
@@ -94,7 +94,7 @@ export class CommunicationsOperationsService {
   }
 
   async deleteEmailTemplate(id: string, clerkAuth: ClerkSessionIdentity | null) {
-    const result = await this.isoService.deleteEmailTemplate(id);
+    const result = await this.communicationsDomainService.deleteEmailTemplate(id);
     await this.platformAuditService.captureFromSession(clerkAuth, {
       action: 'communications.template.delete',
       resourceType: 'email-template',
@@ -114,7 +114,7 @@ export class CommunicationsOperationsService {
     ensureStringArray(body.recipientNames, 'recipientNames');
     ensureStringArray(body.recipientEmails, 'recipientEmails');
 
-    const campaign = await this.isoService.sendBulkTaskReminderCampaign(body);
+    const campaign = await this.communicationsDomainService.sendBulkTaskReminderCampaign(body);
     await this.platformAuditService.captureFromSession(clerkAuth, {
       action: 'communications.campaign.send',
       resourceType: 'email-campaign',

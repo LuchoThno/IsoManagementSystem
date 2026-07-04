@@ -100,6 +100,7 @@ export interface StandardStructure {
 
 export interface Evidence {
   id: string;
+  tenantId?: string | null;
   title: string;
   description: string;
   standardId: string | null;
@@ -120,6 +121,7 @@ export interface Evidence {
 
 export interface ContractDocument {
   id: string;
+  tenantId?: string | null;
   contractId: string;
   title: string;
   kind: 'contract' | 'annex' | 'policy' | 'evidence';
@@ -131,6 +133,7 @@ export interface ContractDocument {
 
 export interface ContractObligation {
   id: string;
+  tenantId?: string | null;
   contractId: string;
   standardId: string | null;
   title: string;
@@ -147,6 +150,7 @@ export interface ContractObligation {
 
 export interface Contract {
   id: string;
+  tenantId?: string | null;
   title: string;
   counterparty: string;
   identifier: string;
@@ -190,6 +194,7 @@ export interface AuditChecklist {
 
 export interface CorrectiveAction {
   id: string;
+  tenantId?: string | null;
   title: string;
   description: string;
   sourceType: 'finding' | 'audit' | 'contract' | 'requirement' | 'evidence';
@@ -224,6 +229,7 @@ export interface DocumentAuditEntry {
 
 export interface Document {
   id: string;
+  tenantId?: string | null;
   title: string;
   fileName?: string;
   mimeType?: string;
@@ -248,6 +254,7 @@ export interface DocumentAsset {
 
 export interface Task {
   id: string;
+  tenantId?: string | null;
   title: string;
   description: string;
   assignedTo: string;
@@ -260,6 +267,7 @@ export interface Task {
 
 export interface Audit {
   id: string;
+  tenantId?: string | null;
   type: 'internal' | 'external';
   standard: ISOStandard;
   date: Date;
@@ -348,6 +356,7 @@ export interface ChatMessage {
 
 export interface ChatThread {
   id: string;
+  tenantId?: string | null;
   participantIds: string[];
   messages: ChatMessage[];
   updatedAt: Date;
@@ -355,6 +364,7 @@ export interface ChatThread {
 
 export interface EmailTemplate {
   id: string;
+  tenantId?: string | null;
   name: string;
   subject: string;
   content: string;
@@ -395,6 +405,7 @@ export interface CommunicationCompatibility {
 
 export interface EmailCampaign {
   id: string;
+  tenantId?: string | null;
   name: string;
   templateId: string;
   templateName: string;

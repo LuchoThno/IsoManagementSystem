@@ -2,6 +2,9 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 
 @Schema({ timestamps: true, collection: 'evidences' })
 export class EvidenceEntity {
+  @Prop({ required: true, index: true })
+  tenantId!: string;
+
   @Prop({ required: true })
   title!: string;
 
@@ -50,3 +53,4 @@ export class EvidenceEntity {
 }
 
 export const EvidenceSchema = SchemaFactory.createForClass(EvidenceEntity);
+EvidenceSchema.index({ tenantId: 1, requirementId: 1, updatedAt: -1 });

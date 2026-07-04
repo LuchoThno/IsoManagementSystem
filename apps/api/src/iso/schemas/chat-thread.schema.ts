@@ -22,6 +22,9 @@ export const ChatMessageSchema = SchemaFactory.createForClass(ChatMessageEntity)
 
 @Schema({ timestamps: true, collection: 'chat_threads' })
 export class ChatThreadEntity {
+  @Prop({ required: true, index: true })
+  tenantId!: string;
+
   @Prop({ type: [String], default: [] })
   participantIds!: string[];
 
@@ -33,3 +36,4 @@ export class ChatThreadEntity {
 }
 
 export const ChatThreadSchema = SchemaFactory.createForClass(ChatThreadEntity);
+ChatThreadSchema.index({ tenantId: 1, updatedAt: -1 });

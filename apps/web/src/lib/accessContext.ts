@@ -21,6 +21,18 @@ export type AccessContext = {
     active: boolean;
     createdAt: string;
   } | null;
+  tenant: {
+    id: string;
+    name: string;
+    slug: string;
+    status: 'active' | 'inactive';
+    timezone: string;
+    defaultLanguage: string;
+    isDefault: boolean;
+    organizationId: string | null;
+    createdAt: string | null;
+    updatedAt: string | null;
+  } | null;
   permissions: {
     canViewUserDirectory: boolean;
     canManageUsers: boolean;
@@ -51,6 +63,7 @@ const buildFallbackAccessContext = (authConfig: AuthConfig): AccessContext => {
     capabilities: authConfig.capabilities,
     session: null,
     user: null,
+    tenant: null,
     permissions: {
       canViewUserDirectory: isDemo,
       canManageUsers: authConfig.capabilities.manualUserManagement,

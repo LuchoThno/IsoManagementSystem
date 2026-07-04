@@ -24,7 +24,8 @@ import type {
   StandardPayload,
   StandardRequirementPayload,
 } from './dto/grc.dto';
-import { GrcService } from './grc.service';
+import { GrcOperationalDomainService } from './grc-operational-domain.service';
+import { GrcStandardsDomainService } from './grc-standards-domain.service';
 import { PlatformAuditService } from './platform-audit.service';
 import {
   ensureArray,
@@ -41,17 +42,18 @@ import type { ClerkSessionIdentity } from './clerk.types';
 @Injectable()
 export class GrcOperationsService {
   constructor(
-    private readonly grcService: GrcService,
+    private readonly grcStandardsDomainService: GrcStandardsDomainService,
+    private readonly grcOperationalDomainService: GrcOperationalDomainService,
     private readonly platformAuditService: PlatformAuditService
   ) {}
 
   listStandards() {
-    return this.grcService.listStandards();
+    return this.grcStandardsDomainService.listStandards();
   }
 
   async createStandard(clerkAuth: ClerkSessionIdentity | null, body: StandardPayload) {
     this.validateStandardPayload(body);
-    const standard = await this.grcService.createStandard(body);
+    const standard = await this.grcStandardsDomainService.createStandard(body);
     await this.platformAuditService.captureFromSession(clerkAuth, {
       action: 'standards.create',
       resourceType: 'standard',
@@ -70,7 +72,7 @@ export class GrcOperationsService {
     body: StandardPayload
   ) {
     this.validateStandardPayload(body);
-    const standard = await this.grcService.updateStandard(id, body);
+    const standard = await this.grcStandardsDomainService.updateStandard(id, body);
     await this.platformAuditService.captureFromSession(clerkAuth, {
       action: 'standards.update',
       resourceType: 'standard',
@@ -84,7 +86,7 @@ export class GrcOperationsService {
   }
 
   async deleteStandard(id: string, clerkAuth: ClerkSessionIdentity | null) {
-    const result = await this.grcService.deleteStandard(id);
+    const result = await this.grcStandardsDomainService.deleteStandard(id);
     await this.platformAuditService.captureFromSession(clerkAuth, {
       action: 'standards.delete',
       resourceType: 'standard',
@@ -95,20 +97,20 @@ export class GrcOperationsService {
   }
 
   getStandardStructure(id: string) {
-    return this.grcService.getStandardStructure(id);
+    return this.grcStandardsDomainService.getStandardStructure(id);
   }
 
   getRequirementEvidences(id: string) {
-    return this.grcService.listRequirementEvidences(id);
+    return this.grcOperationalDomainService.listRequirementEvidences(id);
   }
 
   getEvidences(params: PaginationParams) {
-    return this.grcService.listEvidences(params);
+    return this.grcOperationalDomainService.listEvidences(params);
   }
 
   async createEvidence(clerkAuth: ClerkSessionIdentity | null, body: CreateEvidenceDto) {
     this.validateEvidencePayload(body);
-    const evidence = await this.grcService.createEvidence(body);
+    const evidence = await this.grcOperationalDomainService.createEvidence(body);
     await this.platformAuditService.captureFromSession(clerkAuth, {
       action: 'evidences.create',
       resourceType: 'evidence',
@@ -123,12 +125,12 @@ export class GrcOperationsService {
   }
 
   getContracts(params: PaginationParams) {
-    return this.grcService.listContracts(params);
+    return this.grcOperationalDomainService.listContracts(params);
   }
 
   async createContract(clerkAuth: ClerkSessionIdentity | null, body: CreateContractDto) {
     this.validateContractPayload(body);
-    const contract = await this.grcService.createContract(body);
+    const contract = await this.grcOperationalDomainService.createContract(body);
     await this.platformAuditService.captureFromSession(clerkAuth, {
       action: 'contracts.create',
       resourceType: 'contract',
@@ -143,11 +145,11 @@ export class GrcOperationsService {
   }
 
   getContractObligations(id: string) {
-    return this.grcService.listContractObligations(id);
+    return this.grcOperationalDomainService.listContractObligations(id);
   }
 
   getCorrectiveActions() {
-    return this.grcService.listCorrectiveActions();
+    return this.grcOperationalDomainService.listCorrectiveActions();
   }
 
   async createCorrectiveAction(
@@ -155,7 +157,7 @@ export class GrcOperationsService {
     body: CreateCorrectiveActionDto
   ) {
     this.validateCorrectiveActionPayload(body);
-    const action = await this.grcService.createCorrectiveAction(body);
+    const action = await this.grcOperationalDomainService.createCorrectiveAction(body);
     await this.platformAuditService.captureFromSession(clerkAuth, {
       action: 'corrective-actions.create',
       resourceType: 'corrective-action',
@@ -170,7 +172,7 @@ export class GrcOperationsService {
   }
 
   getGrcSummary() {
-    return this.grcService.getOverview();
+    return this.grcOperationalDomainService.getOverview();
   }
 
   private validateStandardPayload(body: StandardPayload) {

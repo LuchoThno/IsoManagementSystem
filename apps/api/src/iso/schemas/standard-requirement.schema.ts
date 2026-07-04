@@ -3,6 +3,9 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 @Schema({ timestamps: true, collection: 'standard_requirements' })
 export class StandardRequirementEntity {
   @Prop({ required: true, index: true })
+  tenantId!: string;
+
+  @Prop({ required: true, index: true })
   standardId!: string;
 
   @Prop({ type: String, default: null })
@@ -35,3 +38,4 @@ export class StandardRequirementEntity {
 
 export const StandardRequirementSchema =
   SchemaFactory.createForClass(StandardRequirementEntity);
+StandardRequirementSchema.index({ tenantId: 1, standardId: 1, clauseId: 1, order: 1 });
