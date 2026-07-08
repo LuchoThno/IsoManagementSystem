@@ -2,6 +2,7 @@ import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { createClerkClient, verifyToken } from '@clerk/backend';
 import { AuthModeService } from './auth-mode.service';
 import type { ClerkSessionIdentity } from './clerk.types';
+import type { AppUserRole } from './roles.decorator';
 
 type RequestLike = {
   headers: {
@@ -88,6 +89,72 @@ export class ClerkAuthService {
     this.authModeService.assertClerkReady();
 
     return this.clerkClient!.users.getUserList({ limit });
+  }
+
+  async createClerkUser(payload: {
+    email: string;
+    password: string;
+    firstName: string;
+    lastName: string;
+    role: AppUserRole;
+    active: boolean;
+  }) {
+    this.authModeService.assertClerkReady();
+
+    return (this.clerkClient!.users as any).createUser({
+      emailAddress: [payload.email],
+      password: payload.password,
+      firstName: payload.firstName || undefined,
+      lastName: payload.lastName || undefined,
+      banned: !payload.active,
+      publicMetadata: {
+        role: payload.role,
+      },
+      unsafeMetadata: {
+        role: payload.role,
+      },
+    });
+  }
+
+  async updateClerkUser(
+    userId: string,
+    payload: {
+      email?: string;
+      password?: string;
+      firstName?: string;
+      lastName?: string;
+      role?: 'admin' | 'manager' | 'auditor' | 'viewer';
+      active?: boolean;
+    }
+  ) {
+    this.authModeService.assertClerkReady();
+
+    const updates: Record<string, unknown> = {};
+
+    if (payload.password) {
+      updates.password = payload.password;
+    }
+    if (payload.firstName !== undefined) {
+      updates.firstName = payload.firstName || null;
+    }
+    if (payload.lastName !== undefined) {
+      updates.lastName = payload.lastName || null;
+    }
+    if (payload.active !== undefined) {
+      updates.banned = !payload.active;
+    }
+    if (payload.role) {
+      updates.publicMetadata = { role: payload.role };
+      updates.unsafeMetadata = { role: payload.role };
+    }
+
+    return (this.clerkClient!.users as any).updateUser(userId, updates);
+  }
+
+  async deleteClerkUser(userId: string) {
+    this.authModeService.assertClerkReady();
+
+    return (this.clerkClient!.users as any).deleteUser(userId);
   }
 
   private getBearerToken(request: RequestLike) {

@@ -46,6 +46,7 @@ const protectedRoutes = [
   '/api/iso/tasks',
   '/api/iso/audits',
   '/api/iso/security/posture',
+  '/api/iso/users',
   '/api/iso/users/clerk',
   '/api/iso/platform/audit-logs?limit=5',
   '/api/iso/standards',
@@ -61,6 +62,7 @@ const authenticatedRoutes = [
   '/api/iso/documents',
   '/api/iso/tasks',
   '/api/iso/audits',
+  '/api/iso/users',
 ];
 
 const request = async (path, token = '') => {

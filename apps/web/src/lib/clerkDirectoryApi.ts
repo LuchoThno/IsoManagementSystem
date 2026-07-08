@@ -16,7 +16,7 @@ export async function listClerkDirectoryUsers(): Promise<DirectoryUser[]> {
     return [];
   }
 
-  const users = await requestIsoApi<ApiDirectoryUser[]>('/users/clerk');
+  const users = await requestIsoApi<ApiDirectoryUser[]>('/users');
 
   return users.map((user) => ({
     ...user,
@@ -41,4 +41,47 @@ export async function fetchCurrentClerkUser(): Promise<DirectoryUser | null> {
     password: '',
     createdAt: new Date(user.createdAt),
   };
+}
+
+export async function createClerkDirectoryUser(payload: {
+  name: string;
+  email: string;
+  role: DirectoryUser['role'];
+  password: string;
+  active: boolean;
+}): Promise<DirectoryUser> {
+  const user = await requestIsoApi<ApiDirectoryUser>('/users', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+
+  return {
+    ...user,
+    password: '',
+    createdAt: new Date(user.createdAt),
+  };
+}
+
+export async function updateClerkDirectoryUser(
+  userId: string,
+  updates: Partial<Pick<DirectoryUser, 'name' | 'email' | 'role' | 'active'>> & {
+    password?: string;
+  }
+): Promise<DirectoryUser> {
+  const user = await requestIsoApi<ApiDirectoryUser>(`/users/${userId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(updates),
+  });
+
+  return {
+    ...user,
+    password: '',
+    createdAt: new Date(user.createdAt),
+  };
+}
+
+export async function deleteClerkDirectoryUser(userId: string): Promise<void> {
+  await requestIsoApi(`/users/${userId}/delete`, {
+    method: 'PATCH',
+  });
 }

@@ -16,6 +16,7 @@
     "verify:restore:mongo": "node scripts/verify-mongo-restore.mjs",
     "smoke:api": "node scripts/smoke-api.mjs",
     "smoke:api:routes": "node scripts/smoke-api-routes.mjs",
+    "smoke:users": "node scripts/smoke-users-crud.mjs",
     "smoke:stack:api": "node scripts/smoke-stack.mjs",
     "smoke:rbac": "node scripts/smoke-rbac.mjs",
     "smoke:socket": "node scripts/smoke-socket.mjs",

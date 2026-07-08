@@ -12,7 +12,13 @@ import {
   openDirectThreadApi,
   sendChatMessageApi,
 } from './chatApi';
-import { listClerkDirectoryUsers } from './clerkDirectoryApi';
+import {
+  createClerkDirectoryUser,
+  deleteClerkDirectoryUser,
+  fetchCurrentClerkUser,
+  listClerkDirectoryUsers,
+  updateClerkDirectoryUser,
+} from './clerkDirectoryApi';
 import {
   createAuditApi,
   deleteAuditApi,
@@ -115,37 +121,6 @@ type ApiBootstrapShell = {
 
 let bootstrapPromise: Promise<ISOBootstrapData> | null = null;
 let bootstrapShellPromise: Promise<ISOBootstrapShellData> | null = null;
-const mergeDirectoryUsers = (
-  localUsers: UserAccount[],
-  clerkUsers: UserAccount[]
-): UserAccount[] => {
-  const merged = [...localUsers];
-  const byEmail = new Map(
-    merged.map((user, index) => [user.email.trim().toLowerCase(), { user, index }] as const)
-  );
-
-  for (const clerkUser of clerkUsers) {
-    const normalizedEmail = clerkUser.email.trim().toLowerCase();
-    const existing = byEmail.get(normalizedEmail);
-
-    if (existing) {
-      merged[existing.index] = {
-        ...existing.user,
-        name: clerkUser.name || existing.user.name,
-        email: normalizedEmail,
-        role: clerkUser.role || existing.user.role,
-        active: clerkUser.active,
-      };
-      continue;
-    }
-
-    byEmail.set(normalizedEmail, { user: clerkUser, index: merged.length });
-    merged.push(clerkUser);
-  }
-
-  return merged.sort((left, right) => left.name.localeCompare(right.name, 'es'));
-};
-
 const filterUsersByDirectoryProvider = (
   users: UserAccount[],
   directoryProvider: 'clerk' | 'local' | 'none'
@@ -195,13 +170,17 @@ export async function fetchBootstrap(): Promise<ISOBootstrapData> {
     const [bootstrap, users, chatThreads, authConfig, accessContext] =
       await Promise.all([
       requestIsoApi<ApiBootstrap>('/bootstrap'),
-      storage.listUsers(),
+      listClerkDirectoryUsers().catch(() => []),
       storage.listChatThreads(),
       fetchAuthConfig(),
       fetchAccessContext(),
     ]);
+    const sourceUsers =
+      authConfig.capabilities.directoryProvider === 'clerk'
+        ? users
+        : await storage.listUsers();
     const scopedUsers = filterUsersByAccess(
-      filterUsersByDirectoryProvider(users, authConfig.capabilities.directoryProvider),
+      filterUsersByDirectoryProvider(sourceUsers, authConfig.capabilities.directoryProvider),
       canAccessUsersPanel(accessContext)
     );
     const canAccessTemplates = canManageCommunicationTemplates(accessContext, authConfig);
@@ -266,19 +245,7 @@ export async function fetchBootstrap(): Promise<ISOBootstrapData> {
       communicationSettings: bootstrap.communicationSettings,
     };
 
-    try {
-      if (!(await shouldUseClerkDirectory())) {
-        return nextBootstrap;
-      }
-
-      const clerkUsers = await listClerkDirectoryUsers();
-      return {
-        ...nextBootstrap,
-        users: mergeDirectoryUsers(nextBootstrap.users, clerkUsers),
-      };
-    } catch {
-      return nextBootstrap;
-    }
+    return nextBootstrap;
   })();
 
   bootstrapPromise = request;
@@ -365,30 +332,27 @@ export async function fetchBootstrapShell(options?: { force?: boolean }): Promis
 }
 
 export async function listUsers(): Promise<UserAccount[]> {
+  try {
+    if (isClerkEnabled && (await shouldUseClerkDirectory())) {
+      const [users, accessContext] = await Promise.all([
+        listClerkDirectoryUsers(),
+        fetchAccessContext(),
+      ]);
+      return filterUsersByAccess(users, canAccessUsersPanel(accessContext));
+    }
+  } catch {
+    return [];
+  }
+
   const [users, authConfig, accessContext] = await Promise.all([
     storage.listUsers(),
     fetchAuthConfig(),
     fetchAccessContext(),
   ]);
-  const scopedUsers = filterUsersByAccess(
+  return filterUsersByAccess(
     filterUsersByDirectoryProvider(users, authConfig.capabilities.directoryProvider),
     canAccessUsersPanel(accessContext)
   );
-
-  if (!isClerkEnabled) {
-    return scopedUsers;
-  }
-
-  try {
-    if (!(await shouldUseClerkDirectory())) {
-      return scopedUsers;
-    }
-
-    const clerkUsers = await listClerkDirectoryUsers();
-    return mergeDirectoryUsers(scopedUsers, clerkUsers);
-  } catch {
-    return scopedUsers;
-  }
 }
 
 const assertManualUserManagementAvailable = async () => {
@@ -418,6 +382,10 @@ export const createUser = async (payload: {
   password: string;
   active: boolean;
 }) => {
+  if (isClerkEnabled && (await shouldUseClerkDirectory())) {
+    return createClerkDirectoryUser(payload);
+  }
+
   await assertManualUserManagementAvailable();
   return storage.createUser(payload);
 };
@@ -429,10 +397,20 @@ export const deleteEmailTemplate = (templateId: string) =>
 export const deleteDocument = deleteDocumentApi;
 export const deleteTask = deleteTaskApi;
 export const deleteUser = async (userId: string) => {
+  if (isClerkEnabled && (await shouldUseClerkDirectory())) {
+    return deleteClerkDirectoryUser(userId);
+  }
+
   await assertManualUserManagementAvailable();
   return storage.deleteUser(userId);
 };
-export const getCurrentUser = storage.getCurrentUser;
+export const getCurrentUser = async () => {
+  if (isClerkEnabled && (await shouldUseClerkDirectory())) {
+    return fetchCurrentClerkUser();
+  }
+
+  return storage.getCurrentUser();
+};
 export const listChatThreads = listChatThreadsApi;
 export const listEmailTemplates = async (): Promise<EmailTemplate[]> => {
   const bootstrap = await fetchBootstrap();
@@ -503,6 +481,10 @@ export const updateUser = async (
   userId: string,
   updates: Partial<Pick<UserAccount, 'name' | 'email' | 'role' | 'password' | 'active'>>
 ) => {
+  if (isClerkEnabled && (await shouldUseClerkDirectory())) {
+    return updateClerkDirectoryUser(userId, updates);
+  }
+
   await assertManualUserManagementAvailable();
   return storage.updateUser(userId, updates);
 };

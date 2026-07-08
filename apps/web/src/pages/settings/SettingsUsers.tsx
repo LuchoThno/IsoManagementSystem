@@ -39,7 +39,8 @@ export const SettingsUsers: React.FC = () => {
     password: '',
     active: true,
   });
-  const isManagedDirectory = !manualUserManagement;
+  const usesClerkDirectory = authMode === 'clerk';
+  const canPersistUsersFromPanel = manualUserManagement || usesClerkDirectory;
   const isAccessContextResolved = !loading;
   const canViewUsers = canAccessUsersPanel;
 
@@ -96,8 +97,8 @@ export const SettingsUsers: React.FC = () => {
   const handleSubmitUser = async (event: React.FormEvent) => {
     event.preventDefault();
 
-    if (isManagedDirectory) {
-      showMessage('La gestión de usuarios se realiza desde Clerk en este entorno.');
+    if (!canPersistUsersFromPanel) {
+      showMessage('La administración de usuarios no está disponible en este entorno.');
       return;
     }
 
@@ -121,8 +122,8 @@ export const SettingsUsers: React.FC = () => {
   };
 
   const handleEditUser = (user: UserAccount) => {
-    if (isManagedDirectory) {
-      showMessage('Los cambios de usuarios se administran desde Clerk.');
+    if (!canPersistUsersFromPanel) {
+      showMessage('La edición de usuarios no está disponible en este entorno.');
       return;
     }
 
@@ -137,8 +138,8 @@ export const SettingsUsers: React.FC = () => {
   };
 
   const handleDeleteUser = async (user: UserAccount) => {
-    if (isManagedDirectory) {
-      showMessage('La eliminación de usuarios se administra desde Clerk.');
+    if (!canPersistUsersFromPanel) {
+      showMessage('La eliminación de usuarios no está disponible en este entorno.');
       return;
     }
 
@@ -157,12 +158,17 @@ export const SettingsUsers: React.FC = () => {
   };
 
   const handleToggleUser = async (user: UserAccount) => {
-    if (isManagedDirectory) {
-      showMessage('La activación y desactivación de usuarios se administra desde Clerk.');
+    if (!canPersistUsersFromPanel) {
+      showMessage('La activación y desactivación de usuarios no está disponible en este entorno.');
       return;
     }
 
     try {
+      const currentUser = await getCurrentUser();
+      if (currentUser?.id === user.id && user.active) {
+        showMessage('No puedes desactivar el usuario con sesión activa.');
+        return;
+      }
       await updateUser(user.id, { active: !user.active });
       await syncUsers(`Usuario ${user.active ? 'desactivado' : 'activado'} correctamente.`);
     } catch (error) {
@@ -181,8 +187,8 @@ export const SettingsUsers: React.FC = () => {
           <p className="mt-1 text-sm text-app-muted">
             {authMode === 'disabled'
               ? 'La autenticación está deshabilitada en este entorno y no hay administración disponible.'
-              : isManagedDirectory
-              ? 'Consulta el directorio sincronizado y los roles resueltos desde Clerk.'
+              : usesClerkDirectory
+              ? 'Administra altas, roles y estado de acceso desde la app, con identidad y MFA delegados en Clerk.'
               : 'Gestiona cuentas, roles y estado de acceso del sistema.'}
           </p>
         </div>
@@ -194,11 +200,11 @@ export const SettingsUsers: React.FC = () => {
         </div>
       )}
 
-      {isManagedDirectory && (
+      {usesClerkDirectory && (
         <div className="rounded-[24px] border border-sky-200 bg-sky-50 px-5 py-4 text-sm text-sky-900">
           {authMode === 'disabled'
             ? 'Este entorno tiene la autenticación deshabilitada por configuración. La administración de usuarios no está disponible desde este panel.'
-            : 'Este entorno usa `Clerk` como directorio principal. La provisión, activación, desactivación, MFA y credenciales de usuarios deben administrarse en el proveedor de identidad.'}
+            : 'Este entorno usa `Clerk` como directorio principal. Aquí puedes crear usuarios, asignar roles y activar o desactivar acceso operativo; MFA y políticas avanzadas de credenciales siguen administrándose en Clerk.'}
         </div>
       )}
 
@@ -215,15 +221,15 @@ export const SettingsUsers: React.FC = () => {
         <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
         <section className="rounded-[28px] border border-app-border bg-app-surface p-6 shadow-panel">
           <h3 className="panel-title">
-            {isManagedDirectory ? 'Directorio administrado' : 'Gestor de usuarios'}
+            {usesClerkDirectory ? 'Directorio sincronizado' : 'Gestor de usuarios'}
           </h3>
-          {isManagedDirectory || !canManageUsers ? (
+          {!canManageUsers || !canPersistUsersFromPanel ? (
             <div className="mt-6 space-y-4 rounded-[24px] border border-dashed border-app-border bg-app-muted/30 p-5">
               <div>
                 <p className="text-sm font-bold text-app-text">Alcance en este entorno</p>
                 <p className="mt-2 text-sm text-app-muted">
                   {canManageUsers
-                    ? 'Esta vista es de solo lectura para mantener consistencia entre el directorio externo y los roles usados por el backend.'
+                    ? 'La autenticación del entorno no expone persistencia de usuarios desde este panel.'
                     : 'Tu sesión puede consultar usuarios, pero no administrarlos desde este panel.'}
                 </p>
               </div>
@@ -233,7 +239,7 @@ export const SettingsUsers: React.FC = () => {
                   {authMode === 'disabled'
                     ? 'Rehabilita primero el modo de autenticación del backend antes de intentar operar usuarios desde este entorno.'
                     : canManageUsers
-                    ? 'Crea usuarios, asigna roles y controla el acceso directamente en Clerk. Este panel seguirá mostrando el directorio resuelto para operación diaria.'
+                    ? 'Usa este panel para altas, roles y activación de usuarios. Si necesitas MFA, políticas de contraseña o sesiones, complétalo desde Clerk.'
                     : 'Solicita un rol con permisos de administración si necesitas crear, editar o desactivar usuarios desde este entorno.'}
                 </p>
               </div>
@@ -256,8 +262,14 @@ export const SettingsUsers: React.FC = () => {
                   value={userForm.email}
                   onChange={(event) => setUserForm({ ...userForm, email: event.target.value })}
                   className="admin-input mt-2"
+                  disabled={usesClerkDirectory && Boolean(editingUserId)}
                   required
                 />
+                {usesClerkDirectory && editingUserId ? (
+                  <p className="mt-2 text-xs text-app-muted">
+                    El correo de cuentas existentes se mantiene gobernado por Clerk.
+                  </p>
+                ) : null}
               </div>
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
@@ -337,8 +349,8 @@ export const SettingsUsers: React.FC = () => {
               <p className="mt-2 text-sm text-slate-400">
                 {authMode === 'disabled'
                   ? 'Revisa el último estado sincronizado disponible para este entorno.'
-                  : isManagedDirectory
-                  ? 'Busca y revisa cuentas sincronizadas para el entorno actual.'
+                  : usesClerkDirectory
+                  ? 'Busca, revisa y administra cuentas sincronizadas con Clerk para el entorno actual.'
                   : 'Busca, activa, edita o elimina cuentas disponibles en el entorno actual.'}
               </p>
             </div>
@@ -371,7 +383,7 @@ export const SettingsUsers: React.FC = () => {
                       {user.role}
                     </div>
                   </div>
-                  {canManageUsers && !isManagedDirectory && (
+                  {canManageUsers && canPersistUsersFromPanel && (
                     <div className="flex flex-wrap gap-2">
                       <button
                         type="button"

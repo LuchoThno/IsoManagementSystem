@@ -1,7 +1,7 @@
 import { AuditsController } from './audits.controller';
 import { AuditsDomainService } from './audits-domain.service';
 import { AuditsOperationsService } from './audits-operations.service';
-import { AuthController } from './auth.controller';
+import { AuthUsersTenantsModule } from './auth-users-tenants.module';
 import { BootstrapController } from './bootstrap.controller';
 import { BootstrapDomainService } from './bootstrap-domain.service';
 import { CollaborationDomainService } from './collaboration-domain.service';
@@ -20,17 +20,11 @@ import { GrcOperationsService } from './grc-operations.service';
 import { GrcStandardsDomainService } from './grc-standards-domain.service';
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import { AuthModeService } from './auth-mode.service';
 import { GrcService } from './grc.service';
 import { ChatGateway } from './chat.gateway';
-import { ClerkAuthGuard } from './clerk-auth.guard';
-import { ClerkAuthService } from './clerk-auth.service';
-import { ClerkDirectoryService } from './clerk-directory.service';
 import { EmailDeliveryService } from './email-delivery.service';
 import { GoogleCalendarService } from './google-calendar.service';
 import { IsoService } from './iso.service';
-import { PlatformAuditService } from './platform-audit.service';
-import { RolesGuard } from './roles.guard';
 import { Audit, AuditSchema } from './schemas/audit.schema';
 import { AuditChecklistEntity, AuditChecklistSchema } from './schemas/audit-checklist.schema';
 import {
@@ -49,10 +43,6 @@ import { DocumentEntity, DocumentSchema } from './schemas/document.schema';
 import { EmailCampaignEntity, EmailCampaignSchema } from './schemas/email-campaign.schema';
 import { EmailTemplateEntity, EmailTemplateSchema } from './schemas/email-template.schema';
 import { EvidenceEntity, EvidenceSchema } from './schemas/evidence.schema';
-import {
-  PlatformAuditLogEntity,
-  PlatformAuditLogSchema,
-} from './schemas/platform-audit-log.schema';
 import { SettingsEntity, SettingsSchema } from './schemas/settings.schema';
 import { StandardAppendixEntity, StandardAppendixSchema } from './schemas/standard-appendix.schema';
 import { StandardClauseEntity, StandardClauseSchema } from './schemas/standard-clause.schema';
@@ -66,19 +56,14 @@ import { SettingsController } from './settings.controller';
 import { SettingsDocumentService } from './settings-document.service';
 import { SettingsOperationsService } from './settings-operations.service';
 import { TaskEntity, TaskSchema } from './schemas/task.schema';
-import { UsersController } from './users.controller';
-import { UsersOperationsService } from './users-operations.service';
 import { TasksOperationsService } from './tasks-operations.service';
 import { TasksController } from './tasks.controller';
 import { TasksDomainService } from './tasks-domain.service';
-import { TenantEntity, TenantSchema } from './schemas/tenant.schema';
-import { TenantContextService } from './tenant-context.service';
 import { TenantBackfillService } from './tenant-backfill.service';
-import { TenantsController } from './tenants.controller';
-import { TenantsOperationsService } from './tenants-operations.service';
 
 @Module({
   imports: [
+    AuthUsersTenantsModule,
     MongooseModule.forFeature([
       { name: DocumentEntity.name, schema: DocumentSchema },
       { name: TaskEntity.name, schema: TaskSchema },
@@ -86,7 +71,6 @@ import { TenantsOperationsService } from './tenants-operations.service';
       { name: ChatThreadEntity.name, schema: ChatThreadSchema },
       { name: EmailTemplateEntity.name, schema: EmailTemplateSchema },
       { name: EmailCampaignEntity.name, schema: EmailCampaignSchema },
-      { name: PlatformAuditLogEntity.name, schema: PlatformAuditLogSchema },
       { name: SettingsEntity.name, schema: SettingsSchema },
       { name: StandardEntity.name, schema: StandardSchema },
       { name: StandardSectionEntity.name, schema: StandardSectionSchema },
@@ -100,13 +84,9 @@ import { TenantsOperationsService } from './tenants-operations.service';
       { name: AuditChecklistEntity.name, schema: AuditChecklistSchema },
       { name: AuditChecklistItemEntity.name, schema: AuditChecklistItemSchema },
       { name: CorrectiveActionEntity.name, schema: CorrectiveActionSchema },
-      { name: TenantEntity.name, schema: TenantSchema },
     ]),
   ],
   controllers: [
-    AuthController,
-    UsersController,
-    TenantsController,
     DocumentsController,
     AuditsController,
     TasksController,
@@ -130,25 +110,16 @@ import { TenantsOperationsService } from './tenants-operations.service';
     ChatGateway,
     GoogleCalendarService,
     EmailDeliveryService,
-    AuthModeService,
-    PlatformAuditService,
     DocumentsDomainService,
     TasksDomainService,
     CommunicationsDomainService,
     DocumentsOperationsService,
     CommunicationsOperationsService,
-    ClerkAuthService,
-    ClerkAuthGuard,
-    ClerkDirectoryService,
     DemoSeedService,
-    UsersOperationsService,
     SettingsDocumentService,
     SettingsOperationsService,
     TasksOperationsService,
-    TenantContextService,
     TenantBackfillService,
-    TenantsOperationsService,
-    RolesGuard,
   ],
 })
 export class IsoModule {}

@@ -143,6 +143,15 @@ const readRouteMatrix = [
     },
   },
   {
+    path: '/api/iso/users',
+    expectedByRole: {
+      admin: 200,
+      manager: 200,
+      auditor: 403,
+      viewer: 403,
+    },
+  },
+  {
     path: '/api/iso/users/clerk',
     expectedByRole: {
       admin: 200,
@@ -164,6 +173,15 @@ const readRouteMatrix = [
     path: '/api/iso/platform/audit-logs',
     expectedByRole: {
       admin: 200,
+      manager: 403,
+      auditor: 403,
+      viewer: 403,
+    },
+  },
+  {
+    path: '/api/iso/platform/audit-logs?limit=invalid',
+    expectedByRole: {
+      admin: 400,
       manager: 403,
       auditor: 403,
       viewer: 403,
@@ -273,6 +291,28 @@ const readRouteMatrix = [
 const mutationRouteMatrix = [
   {
     method: 'POST',
+    path: '/api/iso/users',
+    body: {},
+    expectedByRole: {
+      admin: 400,
+      manager: 403,
+      auditor: 403,
+      viewer: 403,
+    },
+  },
+  {
+    method: 'PATCH',
+    path: '/api/iso/users/clerk-invalid',
+    body: { role: 'invalid-role' },
+    expectedByRole: {
+      admin: 400,
+      manager: 403,
+      auditor: 403,
+      viewer: 403,
+    },
+  },
+  {
+    method: 'POST',
     path: '/api/iso/documents',
     body: {},
     expectedByRole: {
@@ -294,9 +334,31 @@ const mutationRouteMatrix = [
     },
   },
   {
+    method: 'PATCH',
+    path: '/api/iso/tasks/task-demo/status',
+    body: { status: 'invalid-status' },
+    expectedByRole: {
+      admin: 400,
+      manager: 400,
+      auditor: 403,
+      viewer: 403,
+    },
+  },
+  {
     method: 'POST',
     path: '/api/iso/audits',
     body: {},
+    expectedByRole: {
+      admin: 400,
+      manager: 400,
+      auditor: 400,
+      viewer: 403,
+    },
+  },
+  {
+    method: 'PATCH',
+    path: '/api/iso/audits/audit-demo/status',
+    body: { status: 'invalid-status' },
     expectedByRole: {
       admin: 400,
       manager: 400,
@@ -350,8 +412,39 @@ const mutationRouteMatrix = [
   },
   {
     method: 'PUT',
+    path: '/api/iso/settings',
+    body: {},
+    expectedByRole: {
+      admin: 400,
+      manager: 403,
+      auditor: 403,
+      viewer: 403,
+    },
+  },
+  {
+    method: 'PUT',
     path: '/api/iso/communications/settings',
     body: {},
+    expectedByRole: {
+      admin: 400,
+      manager: 403,
+      auditor: 403,
+      viewer: 403,
+    },
+  },
+  {
+    method: 'PUT',
+    path: '/api/iso/communications/settings',
+    body: {
+      enabled: true,
+      providerType: 'custom',
+      providerName: 'Proveedor SMTP',
+      senderName: 'Sistema ISO',
+      senderEmail: 'correo-invalido',
+      replyTo: '',
+      apiBaseUrl: 'https://api.servasmar.cl/communications/send',
+      apiKeyHint: 'configurado-en-servidor',
+    },
     expectedByRole: {
       admin: 400,
       manager: 403,
@@ -363,6 +456,24 @@ const mutationRouteMatrix = [
     method: 'POST',
     path: '/api/iso/communications/templates',
     body: {},
+    expectedByRole: {
+      admin: 400,
+      manager: 400,
+      auditor: 403,
+      viewer: 403,
+    },
+  },
+  {
+    method: 'POST',
+    path: '/api/iso/communications/campaigns/send',
+    body: {
+      name: 'Campana de prueba',
+      templateId: 'template-demo',
+      daysAhead: 7,
+      recipientIds: ['user-1'],
+      recipientNames: ['Usuario Uno', 'Usuario Dos'],
+      recipientEmails: ['usuario1@example.com'],
+    },
     expectedByRole: {
       admin: 400,
       manager: 400,
@@ -396,16 +507,24 @@ const request = async (route, token = '') => {
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    const response = await fetch(`${baseUrl}${route.path}`, {
-      method: route.method,
-      headers: {
-        accept: 'application/json',
-        ...(route.body !== undefined ? { 'content-type': 'application/json' } : {}),
-        ...(token ? { authorization: `Bearer ${token}` } : {}),
-      },
-      ...(route.body !== undefined ? { body: JSON.stringify(route.body) } : {}),
-      signal: controller.signal,
-    });
+    let response;
+    try {
+      response = await fetch(`${baseUrl}${route.path}`, {
+        method: route.method,
+        headers: {
+          accept: 'application/json',
+          ...(route.body !== undefined ? { 'content-type': 'application/json' } : {}),
+          ...(token ? { authorization: `Bearer ${token}` } : {}),
+        },
+        ...(route.body !== undefined ? { body: JSON.stringify(route.body) } : {}),
+        signal: controller.signal,
+      });
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
+      throw new Error(
+        `No se pudo conectar a ${baseUrl}${route.path}. Levanta la API y confirma que SMOKE_BASE_URL apunte al backend correcto. Detalle: ${reason}`
+      );
+    }
 
     const text = await response.text();
     let json = null;
@@ -437,6 +556,13 @@ const assert = (condition, message) => {
   if (!condition) {
     throw new Error(message);
   }
+};
+
+const getAuthConfig = async () => {
+  const authConfig = await request({ method: 'GET', path: '/api/iso/auth/config' });
+  assertStatus(authConfig.status, 200, 'Auth config endpoint');
+  assert(authConfig.json && typeof authConfig.json === 'object', 'Auth config endpoint must return JSON');
+  return authConfig;
 };
 
 const assertTenantSummary = (tenant, label) => {
@@ -488,9 +614,7 @@ const assertCurrentTenant = (role, response) => {
 };
 
 const run = async () => {
-  const authConfig = await request({ method: 'GET', path: '/api/iso/auth/config' });
-  assertStatus(authConfig.status, 200, 'Auth config endpoint');
-
+  const authConfig = await getAuthConfig();
   const authMode = authConfig.json?.mode;
   if (authMode !== 'clerk') {
     process.stdout.write(
@@ -557,7 +681,11 @@ const run = async () => {
 
 run().catch((error) => {
   process.stderr.write(
-    `RBAC smoke failed: ${error instanceof Error ? error.message : String(error)}\n`
+    [
+      `RBAC smoke failed: ${error instanceof Error ? error.message : String(error)}`,
+      `baseUrl=${baseUrl}`,
+      'hint=usa pnpm smoke:stack:api -- --auth-mode demo --down para validar la stack base o levanta el backend en modo clerk para probar RBAC por rol',
+    ].join('\n') + '\n'
   );
   process.exit(1);
 });
