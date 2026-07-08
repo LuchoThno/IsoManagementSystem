@@ -11,13 +11,13 @@ export class PlatformAuditLogEntity {
   @Prop({ type: String, default: null })
   resourceId!: string | null;
 
-  @Prop({ default: null })
+  @Prop({ type: String, default: null })
   actorId!: string | null;
 
-  @Prop({ default: null })
+  @Prop({ type: String, default: null })
   actorEmail!: string | null;
 
-  @Prop({ default: null })
+  @Prop({ type: String, default: null })
   actorRole!: string | null;
 
   @Prop({ required: true, enum: ['success', 'failure'] })
@@ -26,7 +26,7 @@ export class PlatformAuditLogEntity {
   @Prop({ type: Object, default: {} })
   metadata!: Record<string, unknown>;
 
-  @Prop({ default: null })
+  @Prop({ type: String, default: null })
   errorMessage!: string | null;
 }
 
