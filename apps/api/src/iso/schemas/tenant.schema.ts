@@ -20,7 +20,7 @@ export class TenantEntity {
   @Prop({ required: true, default: true, index: true })
   isDefault!: boolean;
 
-  @Prop({ required: false, default: null, trim: true })
+  @Prop({ type: String, required: false, default: null, trim: true })
   organizationId!: string | null;
 }
 
