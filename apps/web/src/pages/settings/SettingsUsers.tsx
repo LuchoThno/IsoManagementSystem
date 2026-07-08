@@ -26,6 +26,7 @@ export const SettingsUsers: React.FC = () => {
     canManageUsers,
   } = useUIPermissions();
   const [message, setMessage] = React.useState('');
+  const [loadingUsers, setLoadingUsers] = React.useState(false);
   const [authMode, setAuthMode] = React.useState<'clerk' | 'demo' | 'disabled'>(
     isClerkEnabled ? 'clerk' : 'demo'
   );
@@ -56,6 +57,49 @@ export const SettingsUsers: React.FC = () => {
     setAuthMode(authConfig.mode);
     setManualUserManagement(authConfig.capabilities.manualUserManagement);
   }, [authConfig]);
+
+  React.useEffect(() => {
+    if (!isAccessContextResolved || !canViewUsers) {
+      return;
+    }
+
+    let mounted = true;
+
+    const loadUsers = async () => {
+      setLoadingUsers(true);
+      try {
+        const [directoryUsers, currentUser] = await Promise.all([
+          listUsers(),
+          getCurrentUser(),
+        ]);
+
+        if (!mounted) {
+          return;
+        }
+
+        replaceUsers(directoryUsers);
+        setAuthUser(currentUser);
+      } catch (error) {
+        if (mounted) {
+          showMessage(
+            error instanceof Error
+              ? error.message
+              : 'No fue posible cargar el directorio de usuarios.'
+          );
+        }
+      } finally {
+        if (mounted) {
+          setLoadingUsers(false);
+        }
+      }
+    };
+
+    void loadUsers();
+
+    return () => {
+      mounted = false;
+    };
+  }, [canViewUsers, isAccessContextResolved, replaceUsers, setAuthUser]);
 
   const filteredUsers = React.useMemo(
     () =>
@@ -372,6 +416,12 @@ export const SettingsUsers: React.FC = () => {
               className="admin-input max-w-[220px]"
             />
           </div>
+
+          {loadingUsers ? (
+            <div className="mt-6 rounded-[24px] border border-dashed border-app-border bg-app-muted/20 px-5 py-6 text-sm text-app-muted">
+              Cargando usuarios...
+            </div>
+          ) : null}
 
           <div className="mt-6 space-y-3">
             {filteredUsers.map((user) => (
