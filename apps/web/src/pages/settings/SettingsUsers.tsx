@@ -109,7 +109,18 @@ export const SettingsUsers: React.FC = () => {
       }
 
       if (editingUserId) {
-        await updateUser(editingUserId, userForm);
+        const updates: Partial<UserAccount> & { password?: string } = {
+          name: userForm.name,
+          email: userForm.email,
+          role: userForm.role,
+          active: userForm.active,
+        };
+
+        if (userForm.password.trim()) {
+          updates.password = userForm.password.trim();
+        }
+
+        await updateUser(editingUserId, updates);
         await syncUsers('Usuario actualizado correctamente.');
         return;
       }

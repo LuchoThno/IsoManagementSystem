@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
@@ -16,6 +17,8 @@ import { TenantContextService } from './tenant-context.service';
 
 @Injectable()
 export class ClerkDirectoryService {
+  private readonly logger = new Logger(ClerkDirectoryService.name);
+
   constructor(
     @InjectModel(AppUserEntity.name)
     private readonly appUserModel: Model<AppUserEntity>,
@@ -83,14 +86,18 @@ export class ClerkDirectoryService {
     }
 
     const { firstName, lastName } = this.splitName(payload.name);
-    const clerkUser = await this.clerkAuthService.createClerkUser({
-      email: normalizedEmail,
-      password: payload.password,
-      firstName,
-      lastName,
-      role: payload.role,
-      active: payload.active,
-    });
+    const clerkUser = await this.clerkAuthService
+      .createClerkUser({
+        email: normalizedEmail,
+        password: payload.password,
+        firstName,
+        lastName,
+        role: payload.role,
+        active: payload.active,
+      })
+      .catch((error: unknown) => {
+        throw this.mapClerkWriteError(error, 'create', normalizedEmail);
+      });
 
     const profile = await this.upsertTenantProfile(tenantId, {
       externalId: clerkUser.id,
@@ -124,14 +131,18 @@ export class ClerkDirectoryService {
     const nextActive = payload.active ?? currentUser.active;
     const { firstName, lastName } = this.splitName(nextName);
 
-    await this.clerkAuthService.updateClerkUser(externalId, {
-      email: nextEmail !== currentUser.email ? nextEmail : undefined,
-      password: payload.password?.trim() ? payload.password.trim() : undefined,
-      firstName,
-      lastName,
-      role: nextRole,
-      active: nextActive,
-    });
+    await this.clerkAuthService
+      .updateClerkUser(externalId, {
+        email: nextEmail !== currentUser.email ? nextEmail : undefined,
+        password: payload.password?.trim() ? payload.password.trim() : undefined,
+        firstName,
+        lastName,
+        role: nextRole,
+        active: nextActive,
+      })
+      .catch((error: unknown) => {
+        throw this.mapClerkWriteError(error, 'update', nextEmail, externalId);
+      });
 
     const profile = await this.upsertTenantProfile(tenantId, {
       externalId,
@@ -163,7 +174,9 @@ export class ClerkDirectoryService {
     }
 
     const externalId = this.resolveExternalId(userId);
-    await this.clerkAuthService.deleteClerkUser(externalId);
+    await this.clerkAuthService.deleteClerkUser(externalId).catch((error: unknown) => {
+      throw this.mapClerkWriteError(error, 'delete', null, externalId);
+    });
     await this.appUserModel.deleteOne({
       tenantId,
       externalId,
@@ -324,6 +337,55 @@ export class ClerkDirectoryService {
     }
 
     throw new ConflictException('Ya existe un usuario con ese correo electrónico.');
+  }
+
+  private mapClerkWriteError(
+    error: unknown,
+    operation: 'create' | 'update' | 'delete',
+    email?: string | null,
+    externalId?: string | null
+  ) {
+    const typedError = error as {
+      status?: number;
+      clerkTraceId?: string;
+      errors?: Array<{
+        code?: string;
+        message?: string;
+        longMessage?: string;
+        meta?: Record<string, unknown>;
+      }>;
+      message?: string;
+    };
+
+    const message = typedError.errors
+      ?.map((entry) => entry.longMessage || entry.message || entry.code)
+      .filter(Boolean)
+      .join(' ');
+
+    this.logger.warn(
+      [
+        `Clerk user ${operation} failed.`,
+        `status=${String(typedError.status ?? 'unknown')}`,
+        `email=${email ?? 'n/a'}`,
+        `externalId=${externalId ?? 'n/a'}`,
+        `trace=${typedError.clerkTraceId ?? 'n/a'}`,
+        `message=${message ?? typedError.message ?? 'unknown_error'}`,
+      ].join(' ')
+    );
+
+    if (typedError.status === 409) {
+      return new ConflictException(message || 'Clerk rechazó la operación por conflicto.');
+    }
+
+    if (typedError.status === 400 || typedError.status === 422) {
+      return new BadRequestException(
+        message || 'Clerk rechazó los datos enviados para la operación de usuario.'
+      );
+    }
+
+    return error instanceof Error
+      ? error
+      : new BadRequestException('No fue posible completar la operación de usuario en Clerk.');
   }
 
   private async upsertTenantProfile(
