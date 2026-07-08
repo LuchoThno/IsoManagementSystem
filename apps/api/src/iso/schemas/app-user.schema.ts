@@ -21,7 +21,7 @@ export class AppUserEntity {
   @Prop({ required: true, enum: ['clerk', 'local'], default: 'clerk', index: true })
   identityProvider!: 'clerk' | 'local';
 
-  @Prop({ required: false, default: null, trim: true, index: true })
+  @Prop({ type: String, required: false, default: null, trim: true, index: true })
   externalId!: string | null;
 }
 
