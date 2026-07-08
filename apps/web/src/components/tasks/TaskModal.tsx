@@ -57,6 +57,28 @@ export const TaskModal: React.FC<TaskModalProps> = ({
     setFormData(emptyForm);
   }, [initialTask, isOpen, mode]);
 
+  React.useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !submitting) {
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleEscape);
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      window.removeEventListener('keydown', handleEscape);
+    };
+  }, [isOpen, onClose, submitting]);
+
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setSubmitting(true);
@@ -83,8 +105,18 @@ export const TaskModal: React.FC<TaskModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4">
-      <div className="w-full max-w-2xl overflow-hidden rounded-[30px] bg-app-surface shadow-floating">
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/60 p-0 sm:items-center sm:p-4"
+      onClick={() => {
+        if (!submitting) {
+          onClose();
+        }
+      }}
+    >
+      <div
+        className="flex max-h-[100vh] w-full flex-col overflow-hidden rounded-t-[32px] border border-app-border bg-app-surface shadow-floating sm:max-h-[calc(100vh-2rem)] sm:max-w-4xl sm:rounded-[32px]"
+        onClick={(event) => event.stopPropagation()}
+      >
         <div className="bg-[linear-gradient(135deg,#313a46_0%,#3f4d5f_100%)] px-6 py-5 text-white">
           <div className="flex items-start justify-between gap-4">
             <div>
@@ -101,14 +133,18 @@ export const TaskModal: React.FC<TaskModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="rounded-xl bg-white/10 p-2 text-white transition hover:bg-white/20"
+              disabled={submitting}
+              className="rounded-xl bg-white/10 p-2 text-white transition hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <X className="h-5 w-5" />
             </button>
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6 p-6">
+        <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
+          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-6 sm:py-6">
+          <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+          <div className="space-y-6">
           <div className="grid gap-4 md:grid-cols-2">
             <label className="block md:col-span-2">
               <span className="text-sm font-bold text-slate-600">Título</span>
@@ -261,19 +297,75 @@ export const TaskModal: React.FC<TaskModalProps> = ({
               )}
             </div>
           </div>
+          </div>
 
-          <div className="flex gap-3">
+          <aside className="space-y-4">
+            <div className="rounded-[26px] border border-app-border bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-5">
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-app-info/80">
+                Vista rapida
+              </p>
+              <h4 className="mt-3 text-lg font-extrabold text-app-text">
+                {mode === 'create' ? 'Nueva tarea operativa' : 'Edición de tarea'}
+              </h4>
+              <p className="mt-2 text-sm leading-6 text-app-muted">
+                Un modal más estable en móvil y desktop, con scroll interno y acciones siempre accesibles.
+              </p>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
+              <div className="rounded-[22px] border border-app-border bg-app-surface-alt/60 p-4">
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-app-muted">
+                  Prioridad
+                </p>
+                <p className="mt-2 text-sm font-bold text-app-text">
+                  {formData.priority === 'high'
+                    ? 'Alta'
+                    : formData.priority === 'medium'
+                      ? 'Media'
+                      : 'Baja'}
+                </p>
+              </div>
+              <div className="rounded-[22px] border border-app-border bg-app-surface-alt/60 p-4">
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-app-muted">
+                  Estado
+                </p>
+                <p className="mt-2 text-sm font-bold text-app-text">
+                  {formData.status === 'pending'
+                    ? 'Pendiente'
+                    : formData.status === 'in-progress'
+                      ? 'En progreso'
+                      : formData.status === 'completed'
+                        ? 'Completada'
+                        : 'Vencida'}
+                </p>
+              </div>
+              <div className="rounded-[22px] border border-app-border bg-app-surface-alt/60 p-4">
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-app-muted">
+                  Documentos
+                </p>
+                <p className="mt-2 text-sm font-bold text-app-text">
+                  {formData.relatedDocuments.length} vinculados
+                </p>
+              </div>
+            </div>
+          </aside>
+          </div>
+          </div>
+
+          <div className="border-t border-app-border bg-white/95 px-5 py-4 backdrop-blur sm:px-6">
+            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
             <button
               type="button"
               onClick={onClose}
-              className="app-button-secondary w-full"
+              disabled={submitting}
+              className="app-button-secondary w-full sm:w-auto"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="app-button-primary w-full disabled:cursor-not-allowed disabled:opacity-70"
+              className="app-button-primary w-full sm:w-auto disabled:cursor-not-allowed disabled:opacity-70"
             >
               {submitting
                 ? 'Guardando...'
@@ -281,6 +373,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                   ? 'Crear tarea'
                   : 'Guardar cambios'}
             </button>
+            </div>
           </div>
         </form>
       </div>
