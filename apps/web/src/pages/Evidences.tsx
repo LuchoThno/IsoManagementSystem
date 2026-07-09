@@ -10,6 +10,7 @@ import {
   updateEvidenceApi,
 } from '../lib/standardsApi';
 import { useISOStore } from '../store/useISOStore';
+import { useAuthStore } from '../store/useAuthStore';
 import type { Evidence } from '../types/iso';
 
 type EvidenceFormState = {
@@ -56,6 +57,7 @@ const emptyForm: EvidenceFormState = {
 
 export const Evidences: React.FC = () => {
   const { canManageAudits, canManageTasks, canManageDocuments } = useUIPermissions();
+  const currentUser = useAuthStore((state) => state.user);
   const canManage = canManageAudits || canManageTasks || canManageDocuments;
   const audits = useISOStore((state) => state.audits);
   const tasks = useISOStore((state) => state.tasks);
@@ -104,6 +106,29 @@ export const Evidences: React.FC = () => {
       setSelectedEvidenceId(evidences[0]?.id ?? null);
     }
   }, [evidences, selectedEvidence]);
+
+  React.useEffect(() => {
+    if (!isModalOpen) {
+      return;
+    }
+
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !evidenceMutation.isPending) {
+        setIsModalOpen(false);
+        setEditingEvidence(null);
+      }
+    };
+
+    window.addEventListener('keydown', handleEscape);
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      window.removeEventListener('keydown', handleEscape);
+    };
+  }, [evidenceMutation.isPending, isModalOpen]);
 
   const evidenceMutation = useMutation({
     mutationFn: async () => {
@@ -213,11 +238,12 @@ export const Evidences: React.FC = () => {
     return finding?.description ?? evidence.findingId;
   };
 
-  const handleExportEvidencePdf = (evidence: Evidence) => {
-    exportEvidenceFulfillmentPdf(
+  const handleExportEvidencePdf = async (evidence: Evidence) => {
+    await exportEvidenceFulfillmentPdf(
       evidence,
       getAuditLabel(evidence.linkedAuditIds[0] ?? ''),
-      getFindingLabel(evidence)
+      getFindingLabel(evidence),
+      currentUser
     );
   };
 
@@ -397,7 +423,7 @@ export const Evidences: React.FC = () => {
               </div>
               <button
                 type="button"
-                onClick={() => handleExportEvidencePdf(selectedEvidence)}
+                onClick={() => void handleExportEvidencePdf(selectedEvidence)}
                 className="app-button-secondary inline-flex items-center gap-2 px-4 py-2.5"
               >
                 <Download className="h-4 w-4" />
@@ -468,8 +494,19 @@ export const Evidences: React.FC = () => {
       </div>
 
       {isModalOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4">
-          <div className="w-full max-w-5xl overflow-hidden rounded-[30px] bg-app-surface shadow-floating">
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/60 p-0 sm:items-center sm:p-4"
+          onClick={() => {
+            if (!evidenceMutation.isPending) {
+              setIsModalOpen(false);
+              setEditingEvidence(null);
+            }
+          }}
+        >
+          <div
+            className="flex max-h-[100vh] w-full flex-col overflow-hidden rounded-t-[32px] border border-app-border bg-app-surface shadow-floating sm:max-h-[calc(100vh-2rem)] sm:max-w-5xl sm:rounded-[32px]"
+            onClick={(event) => event.stopPropagation()}
+          >
             <div className="bg-[linear-gradient(135deg,#313a46_0%,#3f4d5f_100%)] px-6 py-5 text-white">
               <div className="flex items-start justify-between gap-4">
                 <div>
@@ -503,284 +540,330 @@ export const Evidences: React.FC = () => {
                 event.preventDefault();
                 evidenceMutation.mutate();
               }}
-              className="space-y-6 p-6"
+              className="flex min-h-0 flex-1 flex-col"
             >
-              <div className="grid gap-4 lg:grid-cols-2">
-                <label className="block lg:col-span-2">
-                  <span className="text-sm font-bold text-slate-600">Título</span>
-                  <input
-                    className="admin-input mt-2"
-                    value={formData.title}
-                    onChange={(event) => setFormData({ ...formData, title: event.target.value })}
-                    required
-                  />
-                </label>
-                <label className="block lg:col-span-2">
-                  <span className="text-sm font-bold text-slate-600">Descripción</span>
-                  <textarea
-                    className="admin-input mt-2 min-h-[96px] resize-none"
-                    value={formData.description}
-                    onChange={(event) => setFormData({ ...formData, description: event.target.value })}
-                  />
-                </label>
-                <label className="block">
-                  <span className="text-sm font-bold text-slate-600">Norma</span>
-                  <select
-                    className="admin-select mt-2 w-full"
-                    value={formData.standardId}
-                    onChange={(event) => setFormData({ ...formData, standardId: event.target.value })}
-                  >
-                    <option value="">Sin norma</option>
-                    {standards.map((standard) => (
-                      <option key={standard.id} value={standard.id}>
-                        {standard.code} · {standard.title}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="block">
-                  <span className="text-sm font-bold text-slate-600">Responsable</span>
-                  <input
-                    className="admin-input mt-2"
-                    value={formData.owner}
-                    onChange={(event) => setFormData({ ...formData, owner: event.target.value })}
-                    required
-                  />
-                </label>
-                <label className="block">
-                  <span className="text-sm font-bold text-slate-600">Requisito</span>
-                  <input
-                    className="admin-input mt-2"
-                    value={formData.requirementId}
-                    onChange={(event) => setFormData({ ...formData, requirementId: event.target.value })}
-                    required
-                  />
-                </label>
-                <label className="block">
-                  <span className="text-sm font-bold text-slate-600">Cláusula</span>
-                  <input
-                    className="admin-input mt-2"
-                    value={formData.clauseId}
-                    onChange={(event) => setFormData({ ...formData, clauseId: event.target.value })}
-                  />
-                </label>
-                <label className="block">
-                  <span className="text-sm font-bold text-slate-600">Estado</span>
-                  <select
-                    className="admin-select mt-2 w-full"
-                    value={formData.status}
-                    onChange={(event) => setFormData({ ...formData, status: event.target.value as Evidence['status'] })}
-                  >
-                    <option value="missing">Faltante</option>
-                    <option value="pending">Pendiente</option>
-                    <option value="approved">Aprobada</option>
-                    <option value="expired">Vencida</option>
-                  </select>
-                </label>
-                <label className="block">
-                  <span className="text-sm font-bold text-slate-600">Tipo objetivo</span>
-                  <select
-                    className="admin-select mt-2 w-full"
-                    value={formData.objectiveType}
-                    onChange={(event) =>
-                      setFormData({ ...formData, objectiveType: event.target.value as Evidence['objectiveType'] })
-                    }
-                  >
-                    <option value="document">Documento</option>
-                    <option value="record">Registro</option>
-                    <option value="interview">Entrevista</option>
-                    <option value="observation">Observación</option>
-                    <option value="contract">Contrato</option>
-                  </select>
-                </label>
-                <label className="block">
-                  <span className="text-sm font-bold text-slate-600">Auditoría</span>
-                  <select
-                    className="admin-select mt-2 w-full"
-                    value={formData.linkedAuditId}
-                    onChange={(event) =>
-                      setFormData({
-                        ...formData,
-                        linkedAuditId: event.target.value,
-                        findingId: '',
-                        linkedTaskIds: [],
-                      })
-                    }
-                  >
-                    <option value="">Sin auditoría</option>
-                    {audits.map((audit) => (
-                      <option key={audit.id} value={audit.id}>
-                        {audit.type === 'internal' ? 'Interna' : 'Externa'} · {audit.standard}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="block">
-                  <span className="text-sm font-bold text-slate-600">Hallazgo</span>
-                  <select
-                    className="admin-select mt-2 w-full"
-                    value={formData.findingId}
-                    onChange={(event) => setFormData({ ...formData, findingId: event.target.value })}
-                  >
-                    <option value="">Sin hallazgo</option>
-                    {availableFindings.map((finding) => (
-                      <option key={finding.id} value={finding.id}>
-                        {finding.type} · {finding.description}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="block">
-                  <span className="text-sm font-bold text-slate-600">Cumplimiento (%)</span>
-                  <input
-                    type="number"
-                    min={0}
-                    max={100}
-                    className="admin-input mt-2"
-                    value={formData.completionPercentage}
-                    onChange={(event) =>
-                      setFormData({
-                        ...formData,
-                        completionPercentage: Number(event.target.value || 0),
-                      })
-                    }
-                  />
-                </label>
-                <label className="block">
-                  <span className="text-sm font-bold text-slate-600">Fecha compromiso</span>
-                  <input
-                    type="date"
-                    className="admin-input mt-2"
-                    value={formData.dueDate}
-                    onChange={(event) => setFormData({ ...formData, dueDate: event.target.value })}
-                  />
-                </label>
-                <label className="block lg:col-span-2">
-                  <span className="text-sm font-bold text-slate-600">Resumen del cumplimiento</span>
-                  <textarea
-                    className="admin-input mt-2 min-h-[100px] resize-none"
-                    value={formData.fulfillmentSummary}
-                    onChange={(event) =>
-                      setFormData({ ...formData, fulfillmentSummary: event.target.value })
-                    }
-                    placeholder="Detalla cómo se está cumpliendo la observación o el incumplimiento."
-                  />
-                </label>
-              </div>
-
-              <div className="grid gap-6 lg:grid-cols-2">
-                <div className="rounded-2xl border border-app-border bg-app-surface-alt p-4">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-sm font-extrabold uppercase tracking-[0.18em] text-slate-500">
-                      Tareas asociadas
-                    </h4>
-                    <span className="rounded-full bg-app-info/10 px-3 py-1 text-xs font-bold text-app-info">
-                      {formData.linkedTaskIds.length}
-                    </span>
-                  </div>
-                  <div className="mt-4 grid gap-3">
-                    {availableTasks.length > 0 ? (
-                      availableTasks.map((task) => (
-                        <label
-                          key={task.id}
-                          className="flex items-start gap-3 rounded-2xl border border-app-border bg-app-surface px-4 py-4"
+              <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-6 sm:py-6">
+                <div className="grid gap-6 xl:grid-cols-[1.08fr_0.92fr]">
+                  <div className="space-y-6">
+                    <div className="grid gap-4 lg:grid-cols-2">
+                      <label className="block lg:col-span-2">
+                        <span className="text-sm font-bold text-slate-600">Título</span>
+                        <input
+                          className="admin-input mt-2"
+                          value={formData.title}
+                          onChange={(event) =>
+                            setFormData({ ...formData, title: event.target.value })
+                          }
+                          required
+                        />
+                      </label>
+                      <label className="block lg:col-span-2">
+                        <span className="text-sm font-bold text-slate-600">Descripción</span>
+                        <textarea
+                          className="admin-input mt-2 min-h-[96px] resize-none"
+                          value={formData.description}
+                          onChange={(event) =>
+                            setFormData({ ...formData, description: event.target.value })
+                          }
+                        />
+                      </label>
+                      <label className="block">
+                        <span className="text-sm font-bold text-slate-600">Norma</span>
+                        <select
+                          className="admin-select mt-2 w-full"
+                          value={formData.standardId}
+                          onChange={(event) =>
+                            setFormData({ ...formData, standardId: event.target.value })
+                          }
                         >
-                          <input
-                            type="checkbox"
-                            checked={formData.linkedTaskIds.includes(task.id)}
-                            onChange={() => toggleSelection('linkedTaskIds', task.id)}
-                            className="mt-1 h-4 w-4 rounded border-slate-300 text-blue-600"
-                          />
-                          <div>
-                            <p className="font-bold text-app-text">{task.title}</p>
-                            <p className="mt-1 text-xs text-slate-400">
-                              {task.assignedTo} · {task.status}
-                            </p>
-                          </div>
-                        </label>
-                      ))
-                    ) : (
-                      <div className="rounded-2xl border border-dashed border-app-border bg-app-surface px-4 py-5 text-sm text-app-muted">
-                        No hay tareas disponibles para asociar.
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-app-border bg-app-surface-alt p-4">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-sm font-extrabold uppercase tracking-[0.18em] text-slate-500">
-                      Documentos soporte
-                    </h4>
-                    <span className="rounded-full bg-app-primary/10 px-3 py-1 text-xs font-bold text-app-primary">
-                      {formData.documentIds.length}
-                    </span>
-                  </div>
-                  <div className="mt-4 grid gap-3">
-                    {documents.length > 0 ? (
-                      documents.map((document) => (
-                        <label
-                          key={document.id}
-                          className="flex items-start gap-3 rounded-2xl border border-app-border bg-app-surface px-4 py-4"
+                          <option value="">Sin norma</option>
+                          {standards.map((standard) => (
+                            <option key={standard.id} value={standard.id}>
+                              {standard.code} · {standard.title}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="block">
+                        <span className="text-sm font-bold text-slate-600">Responsable</span>
+                        <input
+                          className="admin-input mt-2"
+                          value={formData.owner}
+                          onChange={(event) =>
+                            setFormData({ ...formData, owner: event.target.value })
+                          }
+                          required
+                        />
+                      </label>
+                      <label className="block">
+                        <span className="text-sm font-bold text-slate-600">Requisito</span>
+                        <input
+                          className="admin-input mt-2"
+                          value={formData.requirementId}
+                          onChange={(event) =>
+                            setFormData({ ...formData, requirementId: event.target.value })
+                          }
+                          required
+                        />
+                      </label>
+                      <label className="block">
+                        <span className="text-sm font-bold text-slate-600">Cláusula</span>
+                        <input
+                          className="admin-input mt-2"
+                          value={formData.clauseId}
+                          onChange={(event) =>
+                            setFormData({ ...formData, clauseId: event.target.value })
+                          }
+                        />
+                      </label>
+                      <label className="block">
+                        <span className="text-sm font-bold text-slate-600">Estado</span>
+                        <select
+                          className="admin-select mt-2 w-full"
+                          value={formData.status}
+                          onChange={(event) =>
+                            setFormData({
+                              ...formData,
+                              status: event.target.value as Evidence['status'],
+                            })
+                          }
                         >
-                          <input
-                            type="checkbox"
-                            checked={formData.documentIds.includes(document.id)}
-                            onChange={() => toggleSelection('documentIds', document.id)}
-                            className="mt-1 h-4 w-4 rounded border-slate-300 text-blue-600"
-                          />
-                          <div>
-                            <p className="font-bold text-app-text">{document.title}</p>
-                            <p className="mt-1 text-xs text-slate-400">
-                              {document.standard} · {document.type}
-                            </p>
-                          </div>
-                        </label>
-                      ))
-                    ) : (
-                      <div className="rounded-2xl border border-dashed border-app-border bg-app-surface px-4 py-5 text-sm text-app-muted">
-                        No hay documentos disponibles para asociar.
-                      </div>
-                    )}
+                          <option value="missing">Faltante</option>
+                          <option value="pending">Pendiente</option>
+                          <option value="approved">Aprobada</option>
+                          <option value="expired">Vencida</option>
+                        </select>
+                      </label>
+                      <label className="block">
+                        <span className="text-sm font-bold text-slate-600">Tipo objetivo</span>
+                        <select
+                          className="admin-select mt-2 w-full"
+                          value={formData.objectiveType}
+                          onChange={(event) =>
+                            setFormData({
+                              ...formData,
+                              objectiveType: event.target.value as Evidence['objectiveType'],
+                            })
+                          }
+                        >
+                          <option value="document">Documento</option>
+                          <option value="record">Registro</option>
+                          <option value="interview">Entrevista</option>
+                          <option value="observation">Observación</option>
+                          <option value="contract">Contrato</option>
+                        </select>
+                      </label>
+                      <label className="block">
+                        <span className="text-sm font-bold text-slate-600">Auditoría</span>
+                        <select
+                          className="admin-select mt-2 w-full"
+                          value={formData.linkedAuditId}
+                          onChange={(event) =>
+                            setFormData({
+                              ...formData,
+                              linkedAuditId: event.target.value,
+                              findingId: '',
+                              linkedTaskIds: [],
+                            })
+                          }
+                        >
+                          <option value="">Sin auditoría</option>
+                          {audits.map((audit) => (
+                            <option key={audit.id} value={audit.id}>
+                              {audit.type === 'internal' ? 'Interna' : 'Externa'} ·{' '}
+                              {audit.standard}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="block">
+                        <span className="text-sm font-bold text-slate-600">Hallazgo</span>
+                        <select
+                          className="admin-select mt-2 w-full"
+                          value={formData.findingId}
+                          onChange={(event) =>
+                            setFormData({ ...formData, findingId: event.target.value })
+                          }
+                        >
+                          <option value="">Sin hallazgo</option>
+                          {availableFindings.map((finding) => (
+                            <option key={finding.id} value={finding.id}>
+                              {finding.type} · {finding.description}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="block">
+                        <span className="text-sm font-bold text-slate-600">Cumplimiento (%)</span>
+                        <input
+                          type="number"
+                          min={0}
+                          max={100}
+                          className="admin-input mt-2"
+                          value={formData.completionPercentage}
+                          onChange={(event) =>
+                            setFormData({
+                              ...formData,
+                              completionPercentage: Number(event.target.value || 0),
+                            })
+                          }
+                        />
+                      </label>
+                      <label className="block">
+                        <span className="text-sm font-bold text-slate-600">Fecha compromiso</span>
+                        <input
+                          type="date"
+                          className="admin-input mt-2"
+                          value={formData.dueDate}
+                          onChange={(event) =>
+                            setFormData({ ...formData, dueDate: event.target.value })
+                          }
+                        />
+                      </label>
+                      <label className="block lg:col-span-2">
+                        <span className="text-sm font-bold text-slate-600">
+                          Resumen del cumplimiento
+                        </span>
+                        <textarea
+                          className="admin-input mt-2 min-h-[100px] resize-none"
+                          value={formData.fulfillmentSummary}
+                          onChange={(event) =>
+                            setFormData({
+                              ...formData,
+                              fulfillmentSummary: event.target.value,
+                            })
+                          }
+                          placeholder="Detalla cómo se está cumpliendo la observación o el incumplimiento."
+                        />
+                      </label>
+                      <label className="block">
+                        <span className="text-sm font-bold text-slate-600">Notas</span>
+                        <textarea
+                          className="admin-input mt-2 min-h-[96px] resize-none"
+                          value={formData.notes}
+                          onChange={(event) =>
+                            setFormData({ ...formData, notes: event.target.value })
+                          }
+                        />
+                      </label>
+                      <label className="block">
+                        <span className="text-sm font-bold text-slate-600">Resumen del cambio</span>
+                        <textarea
+                          className="admin-input mt-2 min-h-[96px] resize-none"
+                          value={formData.changeSummary}
+                          onChange={(event) =>
+                            setFormData({ ...formData, changeSummary: event.target.value })
+                          }
+                          placeholder="Ej: se adjunta evidencia del cierre parcial de la observación."
+                        />
+                      </label>
+                    </div>
                   </div>
+
+                  <aside className="space-y-6">
+                    <div className="rounded-[28px] border border-app-border bg-app-surface-alt/70 p-5">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-sm font-extrabold uppercase tracking-[0.18em] text-slate-500">
+                          Tareas asociadas
+                        </h4>
+                        <span className="rounded-full bg-app-info/10 px-3 py-1 text-xs font-bold text-app-info">
+                          {formData.linkedTaskIds.length}
+                        </span>
+                      </div>
+                      <div className="mt-4 grid gap-3">
+                        {availableTasks.length > 0 ? (
+                          availableTasks.map((task) => (
+                            <label
+                              key={task.id}
+                              className="flex items-start gap-3 rounded-2xl border border-app-border bg-white/85 px-4 py-4"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={formData.linkedTaskIds.includes(task.id)}
+                                onChange={() => toggleSelection('linkedTaskIds', task.id)}
+                                className="mt-1 h-4 w-4 rounded border-slate-300 text-blue-600"
+                              />
+                              <div>
+                                <p className="font-bold text-app-text">{task.title}</p>
+                                <p className="mt-1 text-xs text-slate-400">
+                                  {task.assignedTo} · {task.status}
+                                </p>
+                              </div>
+                            </label>
+                          ))
+                        ) : (
+                          <div className="rounded-2xl border border-dashed border-app-border bg-white/85 px-4 py-5 text-sm text-app-muted">
+                            No hay tareas disponibles para asociar.
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="rounded-[28px] border border-app-border bg-app-surface-alt/70 p-5">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-sm font-extrabold uppercase tracking-[0.18em] text-slate-500">
+                          Documentos soporte
+                        </h4>
+                        <span className="rounded-full bg-app-primary/10 px-3 py-1 text-xs font-bold text-app-primary">
+                          {formData.documentIds.length}
+                        </span>
+                      </div>
+                      <div className="mt-4 grid gap-3">
+                        {documents.length > 0 ? (
+                          documents.map((document) => (
+                            <label
+                              key={document.id}
+                              className="flex items-start gap-3 rounded-2xl border border-app-border bg-white/85 px-4 py-4"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={formData.documentIds.includes(document.id)}
+                                onChange={() => toggleSelection('documentIds', document.id)}
+                                className="mt-1 h-4 w-4 rounded border-slate-300 text-blue-600"
+                              />
+                              <div>
+                                <p className="font-bold text-app-text">{document.title}</p>
+                                <p className="mt-1 text-xs text-slate-400">
+                                  {document.standard} · {document.type}
+                                </p>
+                              </div>
+                            </label>
+                          ))
+                        ) : (
+                          <div className="rounded-2xl border border-dashed border-app-border bg-white/85 px-4 py-5 text-sm text-app-muted">
+                            No hay documentos disponibles para asociar.
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </aside>
                 </div>
               </div>
 
-              <div className="grid gap-4 lg:grid-cols-2">
-                <label className="block">
-                  <span className="text-sm font-bold text-slate-600">Notas</span>
-                  <textarea
-                    className="admin-input mt-2 min-h-[96px] resize-none"
-                    value={formData.notes}
-                    onChange={(event) => setFormData({ ...formData, notes: event.target.value })}
-                  />
-                </label>
-                <label className="block">
-                  <span className="text-sm font-bold text-slate-600">Resumen del cambio</span>
-                  <textarea
-                    className="admin-input mt-2 min-h-[96px] resize-none"
-                    value={formData.changeSummary}
-                    onChange={(event) => setFormData({ ...formData, changeSummary: event.target.value })}
-                    placeholder="Ej: se adjunta evidencia del cierre parcial de la observación."
-                  />
-                </label>
-              </div>
-
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="app-button-secondary w-full"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  disabled={evidenceMutation.isPending}
-                  className="app-button-primary w-full disabled:cursor-not-allowed disabled:opacity-70"
-                >
-                  {evidenceMutation.isPending ? 'Guardando...' : editingEvidence ? 'Guardar cambios' : 'Crear evidencia'}
-                </button>
+              <div className="border-t border-app-border bg-white/95 px-5 py-4 backdrop-blur sm:px-6">
+                <div className="flex flex-col gap-3 sm:flex-row">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsModalOpen(false);
+                      setEditingEvidence(null);
+                    }}
+                    className="app-button-secondary w-full sm:w-auto sm:min-w-[160px]"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={evidenceMutation.isPending}
+                    className="app-button-primary w-full disabled:cursor-not-allowed disabled:opacity-70 sm:flex-1"
+                  >
+                    {evidenceMutation.isPending
+                      ? 'Guardando...'
+                      : editingEvidence
+                      ? 'Guardar cambios'
+                      : 'Crear evidencia'}
+                  </button>
+                </div>
               </div>
             </form>
           </div>

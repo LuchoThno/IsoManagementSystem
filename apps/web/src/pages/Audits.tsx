@@ -19,9 +19,11 @@ import {
   updateAuditApi,
 } from '../lib/auditsApi';
 import { useISOStore } from '../store/useISOStore';
+import { useAuthStore } from '../store/useAuthStore';
 
 export const Audits: React.FC = () => {
   const { canManageAudits } = useUIPermissions();
+  const currentUser = useAuthStore((state) => state.user);
   const audits = useISOStore((state) => state.audits);
   const tasks = useISOStore((state) => state.tasks);
   const documents = useISOStore((state) => state.documents);
@@ -159,7 +161,7 @@ export const Audits: React.FC = () => {
     }
 
     const report = await fetchAuditExecutionReport(selectedAudit.id);
-    exportAuditExecutionPdf(selectedAudit, report);
+    await exportAuditExecutionPdf(selectedAudit, report, currentUser);
   };
 
   return (
