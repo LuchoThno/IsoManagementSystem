@@ -382,6 +382,21 @@ Avance adicional al 2026-07-03:
   - logica estructural de `grc` extraida a un servicio dedicado reusable para
     standards, estructura normativa y audit checklist
 
+Avance adicional al 2026-07-05:
+
+- `auth/users/tenants` ya no cuelgan directamente del arreglo principal de
+  controladores y providers de `IsoModule`
+- se creo un submodulo dedicado `AuthUsersTenantsModule` para encapsular:
+  - `AuthController`
+  - `UsersController`
+  - `TenantsController`
+  - guards y servicios base de autenticacion/autorizacion
+  - resolucion de tenant y auditoria de plataforma
+- `IsoModule` ahora consume ese submodulo y conserva el resto de dominios
+  funcionales desacoplados de ese bloque de identidad
+- este corte deja un limite modular real para seguir refactorando sin mezclar
+  de nuevo seguridad, directorio y multitenencia con todos los demas dominios
+
 ## Fase 6 - Gestion Documental
 
 Diseño recomendado:

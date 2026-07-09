@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { COMMUNICATION_PROVIDER_VALUES } from './domain.constants';
 import type { ClerkSessionIdentity } from './clerk.types';
 import type {
@@ -10,8 +10,13 @@ import type {
 import { CommunicationsDomainService } from './communications-domain.service';
 import { PlatformAuditService } from './platform-audit.service';
 import {
+  ensureBoolean,
+  ensureEmailString,
   ensureEnumValue,
+  ensureIntegerInRange,
   ensureNonEmptyString,
+  ensureObject,
+  ensureOptionalEmailString,
   ensureOptionalString,
   ensureStringArray,
 } from './request-validation';
@@ -31,11 +36,13 @@ export class CommunicationsOperationsService {
     clerkAuth: ClerkSessionIdentity | null,
     body: UpdateCommunicationSettingsDto
   ) {
+    ensureObject(body, 'body');
+    ensureBoolean(body.enabled, 'enabled');
     ensureEnumValue(body.providerType, 'providerType', COMMUNICATION_PROVIDER_VALUES);
     ensureNonEmptyString(body.providerName, 'providerName');
     ensureNonEmptyString(body.senderName, 'senderName');
-    ensureNonEmptyString(body.senderEmail, 'senderEmail');
-    ensureOptionalString(body.replyTo, 'replyTo');
+    ensureEmailString(body.senderEmail, 'senderEmail');
+    ensureOptionalEmailString(body.replyTo, 'replyTo');
     ensureOptionalString(body.apiBaseUrl, 'apiBaseUrl');
     ensureOptionalString(body.apiKeyHint, 'apiKeyHint');
 
@@ -54,6 +61,7 @@ export class CommunicationsOperationsService {
   }
 
   async createEmailTemplate(clerkAuth: ClerkSessionIdentity | null, body: CreateEmailTemplateDto) {
+    ensureObject(body, 'body');
     ensureNonEmptyString(body.name, 'name');
     ensureNonEmptyString(body.subject, 'subject');
     ensureNonEmptyString(body.content, 'content');
@@ -76,6 +84,8 @@ export class CommunicationsOperationsService {
     clerkAuth: ClerkSessionIdentity | null,
     body: UpdateEmailTemplateDto
   ) {
+    ensureNonEmptyString(id, 'id');
+    ensureObject(body, 'body');
     ensureOptionalString(body.name, 'name');
     ensureOptionalString(body.subject, 'subject');
     ensureOptionalString(body.content, 'content');
@@ -94,6 +104,7 @@ export class CommunicationsOperationsService {
   }
 
   async deleteEmailTemplate(id: string, clerkAuth: ClerkSessionIdentity | null) {
+    ensureNonEmptyString(id, 'id');
     const result = await this.communicationsDomainService.deleteEmailTemplate(id);
     await this.platformAuditService.captureFromSession(clerkAuth, {
       action: 'communications.template.delete',
@@ -108,11 +119,14 @@ export class CommunicationsOperationsService {
     clerkAuth: ClerkSessionIdentity | null,
     body: SendBulkTaskReminderCampaignDto
   ) {
+    ensureObject(body, 'body');
     ensureNonEmptyString(body.name, 'name');
     ensureNonEmptyString(body.templateId, 'templateId');
+    ensureIntegerInRange(body.daysAhead, 'daysAhead', { min: 0, max: 365 });
     ensureStringArray(body.recipientIds, 'recipientIds');
     ensureStringArray(body.recipientNames, 'recipientNames');
     ensureStringArray(body.recipientEmails, 'recipientEmails');
+    this.ensureRecipientArraysAreAligned(body);
 
     const campaign = await this.communicationsDomainService.sendBulkTaskReminderCampaign(body);
     await this.platformAuditService.captureFromSession(clerkAuth, {
@@ -127,5 +141,32 @@ export class CommunicationsOperationsService {
       },
     });
     return campaign;
+  }
+
+  private ensureRecipientArraysAreAligned(body: SendBulkTaskReminderCampaignDto) {
+    if (body.recipientIds.length === 0) {
+      throw new BadRequestException(
+        'El campo "recipientIds" debe contener al menos un destinatario.'
+      );
+    }
+
+    if (
+      body.recipientIds.length !== body.recipientNames.length ||
+      body.recipientIds.length !== body.recipientEmails.length
+    ) {
+      throw new BadRequestException(
+        'Los arreglos "recipientIds", "recipientNames" y "recipientEmails" deben tener la misma cantidad de elementos.'
+      );
+    }
+
+    body.recipientEmails.forEach((email, index) => {
+      ensureEmailString(email, `recipientEmails[${index}]`);
+    });
+    body.recipientNames.forEach((name, index) => {
+      ensureNonEmptyString(name, `recipientNames[${index}]`);
+    });
+    body.recipientIds.forEach((id, index) => {
+      ensureNonEmptyString(id, `recipientIds[${index}]`);
+    });
   }
 }

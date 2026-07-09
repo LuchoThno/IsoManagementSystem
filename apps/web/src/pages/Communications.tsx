@@ -107,7 +107,6 @@ const renderTemplate = (
 
 export const Communications: React.FC = () => {
   const {
-    authConfig,
     loading,
     canManageCommunicationSettings,
     canManageCommunicationTemplates,
