@@ -1,6 +1,8 @@
 import React from 'react';
 import { ClipboardCheck, Plus, ShieldCheck, Trash2, X } from 'lucide-react';
 import { useStandardOptions } from '../../hooks/useStandardOptions';
+import { useISOStore } from '../../store/useISOStore';
+import type { AuditUpsertPayload } from '../../lib/auditsApi';
 import type { Audit, Finding, ISOStandard } from '../../types/iso';
 
 interface AuditModalProps {
@@ -8,7 +10,7 @@ interface AuditModalProps {
   mode: 'create' | 'edit';
   initialAudit?: Audit | null;
   onClose: () => void;
-  onSubmit: (audit: Omit<Audit, 'id'>) => Promise<void> | void;
+  onSubmit: (audit: AuditUpsertPayload) => Promise<void> | void;
 }
 
 const emptyFinding = {
@@ -25,6 +27,9 @@ const emptyForm = {
   date: '',
   status: 'planned' as Audit['status'],
   findings: [] as Omit<Finding, 'id'>[],
+  relatedTaskIds: [] as string[],
+  relatedDocumentIds: [] as string[],
+  changeSummary: '',
 };
 
 export const AuditModal: React.FC<AuditModalProps> = ({
@@ -35,6 +40,8 @@ export const AuditModal: React.FC<AuditModalProps> = ({
   onSubmit,
 }) => {
   const standardOptions = useStandardOptions();
+  const tasks = useISOStore((state) => state.tasks);
+  const documents = useISOStore((state) => state.documents);
   const [formData, setFormData] = React.useState(emptyForm);
   const [newFinding, setNewFinding] = React.useState(emptyFinding);
   const [submitting, setSubmitting] = React.useState(false);
@@ -57,6 +64,9 @@ export const AuditModal: React.FC<AuditModalProps> = ({
           dueDate: finding.dueDate.toISOString().slice(0, 10),
           assignedTo: finding.assignedTo,
         })),
+        relatedTaskIds: initialAudit.relatedTaskIds ?? [],
+        relatedDocumentIds: initialAudit.relatedDocumentIds ?? [],
+        changeSummary: '',
       });
       setNewFinding(emptyFinding);
       return;
@@ -76,6 +86,18 @@ export const AuditModal: React.FC<AuditModalProps> = ({
       findings: [...current.findings, newFinding],
     }));
     setNewFinding(emptyFinding);
+  };
+
+  const toggleSelection = (
+    field: 'relatedTaskIds' | 'relatedDocumentIds',
+    value: string
+  ) => {
+    setFormData((current) => ({
+      ...current,
+      [field]: current[field].includes(value)
+        ? current[field].filter((currentValue) => currentValue !== value)
+        : [...current[field], value],
+    }));
   };
 
   const removeFinding = (index: number) => {
@@ -325,6 +347,104 @@ export const AuditModal: React.FC<AuditModalProps> = ({
               Agregar hallazgo
             </button>
           </div>
+
+          <div className="grid gap-6 xl:grid-cols-2">
+            <div className="rounded-[26px] border border-app-border bg-app-surface-alt/70 p-5">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h4 className="text-base font-extrabold text-app-text">Tareas vinculadas</h4>
+                  <p className="mt-1 text-sm text-app-muted">
+                    Conecta responsables y acciones correctivas asociadas.
+                  </p>
+                </div>
+                <span className="rounded-full bg-app-primary/10 px-3 py-1 text-xs font-bold text-app-primary">
+                  {formData.relatedTaskIds.length}
+                </span>
+              </div>
+
+              <div className="mt-4 grid gap-3">
+                {tasks.length > 0 ? (
+                  tasks.map((task) => (
+                    <label
+                      key={task.id}
+                      className="flex items-start gap-3 rounded-2xl border border-app-border bg-app-surface px-4 py-4"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={formData.relatedTaskIds.includes(task.id)}
+                        onChange={() => toggleSelection('relatedTaskIds', task.id)}
+                        className="mt-1 h-4 w-4 rounded border-slate-300 text-blue-600"
+                      />
+                      <div>
+                        <p className="font-bold text-app-text">{task.title}</p>
+                        <p className="mt-1 text-xs text-slate-400">
+                          {task.assignedTo} · {task.status} · {task.standard}
+                        </p>
+                      </div>
+                    </label>
+                  ))
+                ) : (
+                  <div className="rounded-2xl border border-dashed border-app-border bg-app-surface px-4 py-5 text-sm text-app-muted">
+                    No hay tareas cargadas para vincular todavía.
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="rounded-[26px] border border-app-border bg-app-surface-alt/70 p-5">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h4 className="text-base font-extrabold text-app-text">Documentos vinculados</h4>
+                  <p className="mt-1 text-sm text-app-muted">
+                    Relaciona evidencia, procedimientos o registros del proceso.
+                  </p>
+                </div>
+                <span className="rounded-full bg-app-info/10 px-3 py-1 text-xs font-bold text-app-info">
+                  {formData.relatedDocumentIds.length}
+                </span>
+              </div>
+
+              <div className="mt-4 grid gap-3">
+                {documents.length > 0 ? (
+                  documents.map((document) => (
+                    <label
+                      key={document.id}
+                      className="flex items-start gap-3 rounded-2xl border border-app-border bg-app-surface px-4 py-4"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={formData.relatedDocumentIds.includes(document.id)}
+                        onChange={() => toggleSelection('relatedDocumentIds', document.id)}
+                        className="mt-1 h-4 w-4 rounded border-slate-300 text-blue-600"
+                      />
+                      <div>
+                        <p className="font-bold text-app-text">{document.title}</p>
+                        <p className="mt-1 text-xs text-slate-400">
+                          {document.standard} · {document.type} · v{document.version}
+                        </p>
+                      </div>
+                    </label>
+                  ))
+                ) : (
+                  <div className="rounded-2xl border border-dashed border-app-border bg-app-surface px-4 py-5 text-sm text-app-muted">
+                    No hay documentos disponibles para vincular.
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <label className="block">
+            <span className="text-sm font-bold text-slate-600">Resumen del cambio</span>
+            <textarea
+              value={formData.changeSummary}
+              onChange={(event) =>
+                setFormData({ ...formData, changeSummary: event.target.value })
+              }
+              className="admin-input mt-2 min-h-[96px] resize-none"
+              placeholder="Ej: se agregan tareas de cierre y documentos evidencia para esta auditoría."
+            />
+          </label>
 
           <div className="flex gap-3">
             <button

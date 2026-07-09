@@ -1,5 +1,14 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 
+const evidenceActivitySchema = {
+  id: { type: String, required: true },
+  date: { type: Date, required: true },
+  author: { type: String, required: true },
+  action: { type: String, required: true },
+  details: { type: String, required: true },
+  status: { type: String, required: true },
+};
+
 @Schema({ timestamps: true, collection: 'evidences' })
 export class EvidenceEntity {
   @Prop({ required: true, index: true })
@@ -42,6 +51,18 @@ export class EvidenceEntity {
   @Prop({ type: [String], default: [] })
   linkedAuditIds!: string[];
 
+  @Prop({ type: String, default: null })
+  findingId!: string | null;
+
+  @Prop({ type: [String], default: [] })
+  linkedTaskIds!: string[];
+
+  @Prop({ required: true, default: '' })
+  fulfillmentSummary!: string;
+
+  @Prop({ required: true, min: 0, max: 100, default: 0 })
+  completionPercentage!: number;
+
   @Prop({ type: Date, default: null })
   dueDate!: Date | null;
 
@@ -50,6 +71,16 @@ export class EvidenceEntity {
 
   @Prop({ required: true, default: '' })
   notes!: string;
+
+  @Prop({ type: [evidenceActivitySchema], default: [] })
+  activityLog!: Array<{
+    id: string;
+    date: Date;
+    author: string;
+    action: string;
+    details: string;
+    status: string;
+  }>;
 }
 
 export const EvidenceSchema = SchemaFactory.createForClass(EvidenceEntity);

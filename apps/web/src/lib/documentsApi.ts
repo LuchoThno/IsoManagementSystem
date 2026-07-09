@@ -1,6 +1,12 @@
 import type { Document, DocumentAsset } from '../types/iso';
 import { requestIsoApi } from './isoApiClient';
 
+export type DocumentUpdatePayload = Partial<
+  Pick<Document, 'title' | 'topic' | 'format' | 'version' | 'status' | 'linkedAuditIds' | 'linkedTaskIds'>
+> & {
+  changeSummary?: string;
+};
+
 type ApiDocument = Omit<Document, 'createdAt' | 'updatedAt' | 'versionHistory' | 'auditTrail'> & {
   createdAt: string;
   updatedAt: string;
@@ -17,6 +23,8 @@ type ApiDocument = Omit<Document, 'createdAt' | 'updatedAt' | 'versionHistory' |
     date: string;
     author: string;
     details: string;
+    relatedAuditIds?: string[];
+    relatedTaskIds?: string[];
   }>;
 };
 
@@ -51,6 +59,9 @@ export async function createDocumentApi(payload: {
   fileName: string;
   mimeType: string;
   fileContentUrl: string;
+  linkedAuditIds?: string[];
+  linkedTaskIds?: string[];
+  changeSummary?: string;
 }): Promise<Document> {
   const document = await requestIsoApi<ApiDocument>('/documents', {
     method: 'POST',
@@ -62,7 +73,7 @@ export async function createDocumentApi(payload: {
 
 export async function updateDocumentApi(
   documentId: string,
-  updates: Partial<Pick<Document, 'title' | 'topic' | 'format' | 'version' | 'status'>>
+  updates: DocumentUpdatePayload
 ): Promise<Document> {
   const document = await requestIsoApi<ApiDocument>(`/documents/${documentId}`, {
     method: 'PATCH',

@@ -7,6 +7,7 @@ import type {
   CreateEvidenceDto,
   PaginationParams,
   StandardPayload,
+  UpdateEvidenceDto,
 } from './dto/grc.dto';
 import { GrcOperationsService } from './grc-operations.service';
 import { Roles } from './roles.decorator';
@@ -65,12 +66,18 @@ export class GrcController {
   getEvidences(
     @Query('page') page?: string,
     @Query('pageSize') pageSize?: string,
-    @Query('search') search?: string
+    @Query('search') search?: string,
+    @Query('auditId') auditId?: string,
+    @Query('findingId') findingId?: string,
+    @Query('status') status?: string
   ) {
     const params: PaginationParams = {
       page: page ? Number(page) : undefined,
       pageSize: pageSize ? Number(pageSize) : undefined,
       search,
+      auditId,
+      findingId,
+      status,
     };
     return this.grcOperationsService.getEvidences(params);
   }
@@ -82,6 +89,25 @@ export class GrcController {
     @Body() body: CreateEvidenceDto
   ) {
     return this.grcOperationsService.createEvidence(clerkAuth, body);
+  }
+
+  @Put('evidences/:id')
+  @Roles('admin', 'manager', 'auditor')
+  async updateEvidence(
+    @Param('id') id: string,
+    @ClerkAuth() clerkAuth: ClerkSessionIdentity | null,
+    @Body() body: UpdateEvidenceDto
+  ) {
+    return this.grcOperationsService.updateEvidence(id, clerkAuth, body);
+  }
+
+  @Delete('evidences/:id')
+  @Roles('admin', 'manager')
+  async deleteEvidence(
+    @Param('id') id: string,
+    @ClerkAuth() clerkAuth: ClerkSessionIdentity | null
+  ) {
+    return this.grcOperationsService.deleteEvidence(id, clerkAuth);
   }
 
   @Get('contracts')
@@ -129,5 +155,10 @@ export class GrcController {
   @Get('grc/summary')
   getGrcSummary() {
     return this.grcOperationsService.getGrcSummary();
+  }
+
+  @Get('audits/:id/execution-report')
+  getAuditExecutionReport(@Param('id') id: string) {
+    return this.grcOperationsService.getAuditExecutionReport(id);
   }
 }

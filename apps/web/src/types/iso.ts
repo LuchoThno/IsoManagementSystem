@@ -112,6 +112,18 @@ export interface Evidence {
   sourceDocumentId: string | null;
   documentIds: string[];
   linkedAuditIds: string[];
+  findingId?: string | null;
+  linkedTaskIds?: string[];
+  fulfillmentSummary?: string;
+  completionPercentage?: number;
+  activityLog?: Array<{
+    id: string;
+    date: Date;
+    author: string;
+    action: string;
+    details: string;
+    status: string;
+  }>;
   dueDate: Date | null;
   collectedAt: Date | null;
   notes: string;
@@ -219,12 +231,22 @@ export interface DocumentVersionEntry {
   notes: string;
 }
 
+export interface TraceabilityEntry {
+  id: string;
+  date: Date;
+  author: string;
+  action: string;
+  summary: string;
+}
+
 export interface DocumentAuditEntry {
   id: string;
   action: 'created' | 'updated' | 'viewed';
   date: Date;
   author: string;
   details: string;
+  relatedAuditIds?: string[];
+  relatedTaskIds?: string[];
 }
 
 export interface Document {
@@ -242,6 +264,8 @@ export interface Document {
   updatedAt: Date;
   status: 'draft' | 'active' | 'archived';
   url?: string;
+  linkedAuditIds?: string[];
+  linkedTaskIds?: string[];
   versionHistory: DocumentVersionEntry[];
   auditTrail: DocumentAuditEntry[];
 }
@@ -263,6 +287,9 @@ export interface Task {
   priority: 'low' | 'medium' | 'high';
   standard: ISOStandard;
   relatedDocuments: string[];
+  relatedAuditIds?: string[];
+  relatedFindingIds?: string[];
+  changeLog?: TraceabilityEntry[];
 }
 
 export interface Audit {
@@ -273,6 +300,9 @@ export interface Audit {
   date: Date;
   status: 'planned' | 'in-progress' | 'completed';
   findings: Finding[];
+  relatedTaskIds?: string[];
+  relatedDocumentIds?: string[];
+  changeLog?: TraceabilityEntry[];
 }
 
 export interface Finding {
@@ -282,6 +312,21 @@ export interface Finding {
   status: 'open' | 'in-progress' | 'closed';
   dueDate: Date;
   assignedTo: string;
+}
+
+export interface AuditExecutionReport {
+  evidences: Evidence[];
+  tasks: Array<{
+    id: string;
+    title: string;
+    description: string;
+    assignedTo: string;
+    dueDate: Date;
+    status: Task['status'];
+    priority: Task['priority'];
+    standard: ISOStandard;
+    relatedFindingIds?: string[];
+  }>;
 }
 
 export interface CalendarEvent {

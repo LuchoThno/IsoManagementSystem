@@ -1,4 +1,5 @@
 import type {
+  AuditExecutionReport,
   Evidence,
   PaginatedResult,
   StandardStructure,
@@ -26,6 +27,16 @@ type ApiEvidence = Omit<Evidence, 'dueDate' | 'collectedAt' | 'createdAt' | 'upd
   collectedAt: string | null;
   createdAt: string;
   updatedAt: string;
+  activityLog?: Array<
+    Omit<NonNullable<Evidence['activityLog']>[number], 'date'> & {
+      date: string;
+    }
+  >;
+};
+
+type ApiAuditExecutionReport = {
+  evidences: ApiEvidence[];
+  tasks: Array<Omit<AuditExecutionReport['tasks'][number], 'dueDate'> & { dueDate: string }>;
 };
 
 export type StandardEditorRequirement = {
@@ -82,6 +93,10 @@ const toEvidence = (evidence: ApiEvidence): Evidence => ({
   ...evidence,
   dueDate: evidence.dueDate ? new Date(evidence.dueDate) : null,
   collectedAt: evidence.collectedAt ? new Date(evidence.collectedAt) : null,
+  activityLog: (evidence.activityLog ?? []).map((entry) => ({
+    ...entry,
+    date: new Date(entry.date),
+  })),
   createdAt: new Date(evidence.createdAt),
   updatedAt: new Date(evidence.updatedAt),
 });
@@ -138,6 +153,9 @@ export async function listEvidences(params?: {
   page?: number;
   pageSize?: number;
   search?: string;
+  auditId?: string;
+  findingId?: string;
+  status?: Evidence['status'];
 }): Promise<PaginatedResult<Evidence>> {
   const query = new URLSearchParams();
 
@@ -151,6 +169,15 @@ export async function listEvidences(params?: {
 
   if (params?.search?.trim()) {
     query.set('search', params.search.trim());
+  }
+  if (params?.auditId) {
+    query.set('auditId', params.auditId);
+  }
+  if (params?.findingId) {
+    query.set('findingId', params.findingId);
+  }
+  if (params?.status) {
+    query.set('status', params.status);
   }
 
   const path = query.size > 0 ? `/evidences?${query.toString()}` : '/evidences';
@@ -174,9 +201,14 @@ export async function createEvidenceApi(payload: {
   sourceDocumentId?: string | null;
   documentIds?: string[];
   linkedAuditIds?: string[];
+  findingId?: string | null;
+  linkedTaskIds?: string[];
+  fulfillmentSummary?: string;
+  completionPercentage?: number;
   dueDate?: Date | null;
   collectedAt?: Date | null;
   notes?: string;
+  changeSummary?: string;
 }) {
   const evidence = await requestIsoApi<ApiEvidence>('/evidences', {
     method: 'POST',
@@ -188,4 +220,62 @@ export async function createEvidenceApi(payload: {
   });
 
   return toEvidence(evidence);
+}
+
+export async function updateEvidenceApi(
+  evidenceId: string,
+  payload: Partial<{
+    title: string;
+    description: string;
+    standardId: string | null;
+    requirementId: string;
+    clauseId: string | null;
+    status: Evidence['status'];
+    objectiveType: Evidence['objectiveType'];
+    owner: string;
+    sourceDocumentId: string | null;
+    documentIds: string[];
+    linkedAuditIds: string[];
+    findingId: string | null;
+    linkedTaskIds: string[];
+    fulfillmentSummary: string;
+    completionPercentage: number;
+    dueDate: Date | null;
+    collectedAt: Date | null;
+    notes: string;
+    changeSummary: string;
+  }>
+) {
+  const evidence = await requestIsoApi<ApiEvidence>(`/evidences/${evidenceId}`, {
+    method: 'PUT',
+    body: JSON.stringify({
+      ...payload,
+      dueDate: payload.dueDate !== undefined ? (payload.dueDate ? payload.dueDate.toISOString() : null) : undefined,
+      collectedAt:
+        payload.collectedAt !== undefined
+          ? payload.collectedAt
+            ? payload.collectedAt.toISOString()
+            : null
+          : undefined,
+    }),
+  });
+
+  return toEvidence(evidence);
+}
+
+export async function deleteEvidenceApi(evidenceId: string) {
+  return requestIsoApi<{ success: boolean }>(`/evidences/${evidenceId}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function fetchAuditExecutionReport(auditId: string): Promise<AuditExecutionReport> {
+  const report = await requestIsoApi<ApiAuditExecutionReport>(`/audits/${auditId}/execution-report`);
+  return {
+    evidences: report.evidences.map(toEvidence),
+    tasks: report.tasks.map((task) => ({
+      ...task,
+      dueDate: new Date(task.dueDate),
+    })),
+  };
 }

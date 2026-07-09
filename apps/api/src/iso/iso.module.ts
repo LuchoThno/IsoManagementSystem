@@ -60,6 +60,7 @@ import { TasksOperationsService } from './tasks-operations.service';
 import { TasksController } from './tasks.controller';
 import { TasksDomainService } from './tasks-domain.service';
 import { TenantBackfillService } from './tenant-backfill.service';
+import { TraceabilitySyncService } from './traceability-sync.service';
 
 @Module({
   imports: [
@@ -120,6 +121,7 @@ import { TenantBackfillService } from './tenant-backfill.service';
     SettingsOperationsService,
     TasksOperationsService,
     TenantBackfillService,
+    TraceabilitySyncService,
   ],
 })
 export class IsoModule {}

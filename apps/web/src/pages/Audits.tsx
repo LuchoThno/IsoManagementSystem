@@ -1,11 +1,13 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Plus } from 'lucide-react';
+import { Download, Plus } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { fetchBootstrapShell } from '../lib/api';
 import { useUIPermissions } from '../hooks/useUIPermissions';
 import { fetchAuditChecklist } from '../lib/auditChecklistApi';
+import { exportAuditExecutionPdf } from '../lib/auditReportPdf';
 import { listCorrectiveActions } from '../lib/correctiveActionsApi';
+import { fetchAuditExecutionReport } from '../lib/standardsApi';
 import { AuditList } from '../components/audits/AuditList';
 import { AuditFilters } from '../components/audits/AuditFilters';
 import { AuditModal } from '../components/audits/AuditModal';
@@ -21,6 +23,8 @@ import { useISOStore } from '../store/useISOStore';
 export const Audits: React.FC = () => {
   const { canManageAudits } = useUIPermissions();
   const audits = useISOStore((state) => state.audits);
+  const tasks = useISOStore((state) => state.tasks);
+  const documents = useISOStore((state) => state.documents);
   const bootstrapped = useISOStore((state) => state.bootstrapped);
   const hydrateShell = useISOStore((state) => state.hydrateShell);
   const replaceAudits = useISOStore((state) => state.replaceAudits);
@@ -107,6 +111,15 @@ export const Audits: React.FC = () => {
   const selectedAuditActions = correctiveActions.filter(
     (action) => action.auditId === selectedAuditId
   );
+  const selectedAudit = selectedAuditId
+    ? audits.find((audit) => audit.id === selectedAuditId) ?? null
+    : null;
+  const selectedAuditTasks = tasks.filter((task) =>
+    selectedAudit?.relatedTaskIds?.includes(task.id)
+  );
+  const selectedAuditDocuments = documents.filter((document) =>
+    selectedAudit?.relatedDocumentIds?.includes(document.id)
+  );
 
   const handleCreateAudit = async (auditData: Omit<Audit, 'id'>) => {
     if (!canManage) {
@@ -140,6 +153,15 @@ export const Audits: React.FC = () => {
     refreshShell();
   };
 
+  const handleExportAuditPdf = async () => {
+    if (!selectedAudit) {
+      return;
+    }
+
+    const report = await fetchAuditExecutionReport(selectedAudit.id);
+    exportAuditExecutionPdf(selectedAudit, report);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -158,6 +180,16 @@ export const Audits: React.FC = () => {
           <Plus className="h-5 w-5" />
           <span>Programar auditoria</span>
         </button>
+        {selectedAudit ? (
+          <button
+            type="button"
+            onClick={() => void handleExportAuditPdf()}
+            className="app-button-secondary inline-flex items-center gap-2 px-4 py-2.5"
+          >
+            <Download className="h-4 w-4" />
+            Exportar PDF
+          </button>
+        ) : null}
       </div>
 
       {!canManage && (
@@ -207,7 +239,103 @@ export const Audits: React.FC = () => {
           />
 
           {selectedAuditId && auditChecklist ? (
-            <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+            <div className="space-y-6">
+              <div className="grid gap-6 xl:grid-cols-3">
+                <section className="panel-card p-6">
+                  <h3 className="text-xl font-extrabold text-app-text">Trazabilidad operativa</h3>
+                  <p className="mt-1 text-sm text-slate-500">
+                    Tareas conectadas con esta auditoría.
+                  </p>
+                  <div className="mt-5 space-y-3">
+                    {selectedAuditTasks.length > 0 ? (
+                      selectedAuditTasks.map((task) => (
+                        <article
+                          key={task.id}
+                          className="rounded-2xl border border-slate-200 bg-app-surface-alt p-4"
+                        >
+                          <p className="font-extrabold text-app-text">{task.title}</p>
+                          <p className="mt-2 text-sm text-slate-500">{task.description}</p>
+                          <p className="mt-2 text-xs text-slate-400">
+                            {task.assignedTo} · {task.status}
+                          </p>
+                        </article>
+                      ))
+                    ) : (
+                      <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
+                        No hay tareas vinculadas todavía.
+                      </div>
+                    )}
+                  </div>
+                </section>
+
+                <section className="panel-card p-6">
+                  <h3 className="text-xl font-extrabold text-app-text">Evidencia vinculada</h3>
+                  <p className="mt-1 text-sm text-slate-500">
+                    Documentos relacionados con el proceso auditado.
+                  </p>
+                  <div className="mt-5 space-y-3">
+                    {selectedAuditDocuments.length > 0 ? (
+                      selectedAuditDocuments.map((document) => (
+                        <article
+                          key={document.id}
+                          className="rounded-2xl border border-slate-200 bg-app-surface-alt p-4"
+                        >
+                          <p className="font-extrabold text-app-text">{document.title}</p>
+                          <p className="mt-2 text-sm text-slate-500">
+                            {document.topic} · v{document.version}
+                          </p>
+                          <p className="mt-2 text-xs text-slate-400">
+                            {document.standard} · {document.status}
+                          </p>
+                        </article>
+                      ))
+                    ) : (
+                      <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
+                        No hay documentos vinculados todavía.
+                      </div>
+                    )}
+                  </div>
+                </section>
+
+                <section className="panel-card p-6">
+                  <h3 className="text-xl font-extrabold text-app-text">Bitácora de cambios</h3>
+                  <p className="mt-1 text-sm text-slate-500">
+                    Registro de ajustes vinculados a la auditoría.
+                  </p>
+                  <div className="mt-5 space-y-3">
+                    {selectedAudit?.changeLog && selectedAudit.changeLog.length > 0 ? (
+                      selectedAudit.changeLog
+                        .slice()
+                        .reverse()
+                        .map((entry) => (
+                          <article
+                            key={entry.id}
+                            className="rounded-2xl border border-slate-200 bg-app-surface-alt p-4"
+                          >
+                            <div className="flex items-center justify-between gap-3">
+                              <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-600">
+                                {entry.action}
+                              </span>
+                              <span className="text-xs text-slate-400">
+                                {entry.date.toLocaleString('es-CL')}
+                              </span>
+                            </div>
+                            <p className="mt-2 text-sm text-slate-600">{entry.summary}</p>
+                            <p className="mt-2 text-xs font-bold uppercase tracking-wide text-slate-400">
+                              {entry.author}
+                            </p>
+                          </article>
+                        ))
+                    ) : (
+                      <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
+                        Aún no hay cambios registrados.
+                      </div>
+                    )}
+                  </div>
+                </section>
+              </div>
+
+              <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
               <section className="panel-card p-6">
                 <div className="flex items-start justify-between gap-4">
                   <div>
@@ -286,6 +414,7 @@ export const Audits: React.FC = () => {
                   ) : null}
                 </div>
               </section>
+              </div>
             </div>
           ) : null}
         </div>

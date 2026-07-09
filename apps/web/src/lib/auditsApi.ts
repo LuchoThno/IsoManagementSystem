@@ -1,11 +1,20 @@
 import type { Audit } from '../types/iso';
 import { requestIsoApi } from './isoApiClient';
 
-type ApiAudit = Omit<Audit, 'date' | 'findings'> & {
+export type AuditUpsertPayload = Omit<Audit, 'id'> & {
+  changeSummary?: string;
+};
+
+type ApiAudit = Omit<Audit, 'date' | 'findings' | 'changeLog'> & {
   date: string;
   findings: Array<
     Omit<Audit['findings'][number], 'dueDate'> & {
       dueDate: string;
+    }
+  >;
+  changeLog?: Array<
+    Omit<NonNullable<Audit['changeLog']>[number], 'date'> & {
+      date: string;
     }
   >;
 };
@@ -17,6 +26,10 @@ const toAudit = (audit: ApiAudit): Audit => ({
     ...finding,
     dueDate: new Date(finding.dueDate),
   })),
+  changeLog: (audit.changeLog ?? []).map((entry) => ({
+    ...entry,
+    date: new Date(entry.date),
+  })),
 });
 
 export async function listAudits(): Promise<Audit[]> {
@@ -24,7 +37,7 @@ export async function listAudits(): Promise<Audit[]> {
   return audits.map(toAudit);
 }
 
-export async function createAuditApi(payload: Omit<Audit, 'id'>): Promise<Audit> {
+export async function createAuditApi(payload: AuditUpsertPayload): Promise<Audit> {
   const audit = await requestIsoApi<ApiAudit>('/audits', {
     method: 'POST',
     body: JSON.stringify({
@@ -40,10 +53,7 @@ export async function createAuditApi(payload: Omit<Audit, 'id'>): Promise<Audit>
   return toAudit(audit);
 }
 
-export async function updateAuditApi(
-  auditId: string,
-  updates: Partial<Omit<Audit, 'id'>>
-): Promise<Audit> {
+export async function updateAuditApi(auditId: string, updates: Partial<AuditUpsertPayload>): Promise<Audit> {
   const audit = await requestIsoApi<ApiAudit>(`/audits/${auditId}`, {
     method: 'PATCH',
     body: JSON.stringify({

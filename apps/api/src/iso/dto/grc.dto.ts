@@ -60,6 +60,9 @@ export type PaginationParams = {
   page?: number;
   pageSize?: number;
   search?: string;
+  auditId?: string;
+  findingId?: string;
+  status?: string;
 };
 
 export type CreateEvidenceDto = {
@@ -74,9 +77,36 @@ export type CreateEvidenceDto = {
   sourceDocumentId?: string | null;
   documentIds?: string[];
   linkedAuditIds?: string[];
+  findingId?: string | null;
+  linkedTaskIds?: string[];
+  fulfillmentSummary?: string;
+  completionPercentage?: number;
   dueDate?: string | null;
   collectedAt?: string | null;
   notes?: string;
+  changeSummary?: string;
+};
+
+export type UpdateEvidenceDto = {
+  title?: string;
+  description?: string;
+  standardId?: string | null;
+  requirementId?: string;
+  clauseId?: string | null;
+  status?: EvidenceStatus;
+  objectiveType?: EvidenceObjectiveType;
+  owner?: string;
+  sourceDocumentId?: string | null;
+  documentIds?: string[];
+  linkedAuditIds?: string[];
+  findingId?: string | null;
+  linkedTaskIds?: string[];
+  fulfillmentSummary?: string;
+  completionPercentage?: number;
+  dueDate?: string | null;
+  collectedAt?: string | null;
+  notes?: string;
+  changeSummary?: string;
 };
 
 export type CreateContractDto = {

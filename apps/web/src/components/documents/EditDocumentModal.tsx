@@ -1,15 +1,14 @@
 import React from 'react';
 import { FileBadge2, ScrollText, ShieldCheck, X } from 'lucide-react';
+import type { DocumentUpdatePayload } from '../../lib/documentsApi';
+import { useISOStore } from '../../store/useISOStore';
 import type { Document } from '../../types/iso';
 
 interface EditDocumentModalProps {
   isOpen: boolean;
   document: Document | null;
   onClose: () => void;
-  onSubmit: (
-    documentId: string,
-    updates: Partial<Pick<Document, 'title' | 'topic' | 'format' | 'version' | 'status'>>
-  ) => Promise<void> | void;
+  onSubmit: (documentId: string, updates: DocumentUpdatePayload) => Promise<void> | void;
 }
 
 const validFormats: Document['format'][] = [
@@ -36,8 +35,13 @@ export const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
     version: '',
     format: 'PDF' as Document['format'],
     status: 'draft' as Document['status'],
+    linkedAuditIds: [] as string[],
+    linkedTaskIds: [] as string[],
+    changeSummary: '',
   });
   const [submitting, setSubmitting] = React.useState(false);
+  const audits = useISOStore((state) => state.audits);
+  const tasks = useISOStore((state) => state.tasks);
 
   React.useEffect(() => {
     if (!isOpen || !document) {
@@ -50,8 +54,20 @@ export const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
       version: document.version,
       format: document.format,
       status: document.status,
+      linkedAuditIds: document.linkedAuditIds ?? [],
+      linkedTaskIds: document.linkedTaskIds ?? [],
+      changeSummary: '',
     });
   }, [document, isOpen]);
+
+  const toggleSelection = (field: 'linkedAuditIds' | 'linkedTaskIds', value: string) => {
+    setFormData((current) => ({
+      ...current,
+      [field]: current[field].includes(value)
+        ? current[field].filter((currentValue) => currentValue !== value)
+        : [...current[field], value],
+    }));
+  };
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -172,6 +188,90 @@ export const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
           <div className="rounded-2xl border border-app-border bg-app-surface-alt px-4 py-4 text-sm text-slate-500">
             Archivo actual: <span className="font-semibold text-app-text">{document.fileName ?? document.title}</span>
           </div>
+
+          <div className="grid gap-6 lg:grid-cols-2">
+            <div className="rounded-2xl border border-app-border bg-app-surface-alt p-4">
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-extrabold uppercase tracking-[0.18em] text-slate-500">
+                  Auditorías vinculadas
+                </h4>
+                <span className="rounded-full bg-app-info/10 px-3 py-1 text-xs font-bold text-app-info">
+                  {formData.linkedAuditIds.length}
+                </span>
+              </div>
+              <div className="mt-4 grid gap-3">
+                {audits.length > 0 ? (
+                  audits.map((audit) => (
+                    <label
+                      key={audit.id}
+                      className="flex items-start gap-3 rounded-2xl border border-app-border bg-app-surface px-4 py-4"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={formData.linkedAuditIds.includes(audit.id)}
+                        onChange={() => toggleSelection('linkedAuditIds', audit.id)}
+                        className="mt-1 h-4 w-4 rounded border-slate-300 text-blue-600"
+                      />
+                      <div>
+                        <p className="font-bold text-app-text">{audit.standard}</p>
+                        <p className="mt-1 text-xs text-slate-400">{audit.status}</p>
+                      </div>
+                    </label>
+                  ))
+                ) : (
+                  <div className="rounded-2xl border border-dashed border-app-border bg-app-surface px-4 py-5 text-sm text-app-muted">
+                    No hay auditorías para vincular.
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-app-border bg-app-surface-alt p-4">
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-extrabold uppercase tracking-[0.18em] text-slate-500">
+                  Tareas vinculadas
+                </h4>
+                <span className="rounded-full bg-app-primary/10 px-3 py-1 text-xs font-bold text-app-primary">
+                  {formData.linkedTaskIds.length}
+                </span>
+              </div>
+              <div className="mt-4 grid gap-3">
+                {tasks.length > 0 ? (
+                  tasks.map((task) => (
+                    <label
+                      key={task.id}
+                      className="flex items-start gap-3 rounded-2xl border border-app-border bg-app-surface px-4 py-4"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={formData.linkedTaskIds.includes(task.id)}
+                        onChange={() => toggleSelection('linkedTaskIds', task.id)}
+                        className="mt-1 h-4 w-4 rounded border-slate-300 text-blue-600"
+                      />
+                      <div>
+                        <p className="font-bold text-app-text">{task.title}</p>
+                        <p className="mt-1 text-xs text-slate-400">{task.assignedTo}</p>
+                      </div>
+                    </label>
+                  ))
+                ) : (
+                  <div className="rounded-2xl border border-dashed border-app-border bg-app-surface px-4 py-5 text-sm text-app-muted">
+                    No hay tareas para vincular.
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <label className="block">
+            <span className="text-sm font-bold text-slate-600">Resumen del cambio</span>
+            <textarea
+              value={formData.changeSummary}
+              onChange={(event) => setFormData({ ...formData, changeSummary: event.target.value })}
+              className="admin-input mt-2 min-h-[96px] resize-none"
+              placeholder="Ej: documento actualizado y vinculado a auditoría/tarea para evidencia."
+            />
+          </label>
 
           <div className="flex gap-3">
             <button

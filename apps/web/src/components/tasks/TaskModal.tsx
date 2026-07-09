@@ -1,6 +1,7 @@
 import React from 'react';
 import { CalendarClock, ClipboardPenLine, Flag, UserRound, X } from 'lucide-react';
 import { useStandardOptions } from '../../hooks/useStandardOptions';
+import type { TaskUpsertPayload } from '../../lib/tasksApi';
 import type { ISOStandard, Task } from '../../types/iso';
 import { useISOStore } from '../../store/useISOStore';
 
@@ -9,7 +10,7 @@ interface TaskModalProps {
   mode: 'create' | 'edit';
   initialTask?: Task | null;
   onClose: () => void;
-  onSubmit: (task: Omit<Task, 'id'>) => Promise<void> | void;
+  onSubmit: (task: TaskUpsertPayload) => Promise<void> | void;
 }
 
 const emptyForm = {
@@ -21,6 +22,9 @@ const emptyForm = {
   standard: 'ISO9001' as ISOStandard,
   status: 'pending' as Task['status'],
   relatedDocuments: [] as string[],
+  relatedAuditIds: [] as string[],
+  relatedFindingIds: [] as string[],
+  changeSummary: '',
 };
 
 export const TaskModal: React.FC<TaskModalProps> = ({
@@ -31,6 +35,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
   onSubmit,
 }) => {
   const documents = useISOStore((state) => state.documents);
+  const audits = useISOStore((state) => state.audits);
   const standardOptions = useStandardOptions();
   const [formData, setFormData] = React.useState(emptyForm);
   const [submitting, setSubmitting] = React.useState(false);
@@ -50,6 +55,9 @@ export const TaskModal: React.FC<TaskModalProps> = ({
         standard: initialTask.standard,
         status: initialTask.status,
         relatedDocuments: initialTask.relatedDocuments,
+        relatedAuditIds: initialTask.relatedAuditIds ?? [],
+        relatedFindingIds: initialTask.relatedFindingIds ?? [],
+        changeSummary: '',
       });
       return;
     }
@@ -103,6 +111,34 @@ export const TaskModal: React.FC<TaskModalProps> = ({
         : [...current.relatedDocuments, documentId],
     }));
   };
+
+  const toggleRelatedAudit = (auditId: string) => {
+    setFormData((current) => ({
+      ...current,
+      relatedAuditIds: current.relatedAuditIds.includes(auditId)
+        ? current.relatedAuditIds.filter((currentId) => currentId !== auditId)
+        : [...current.relatedAuditIds, auditId],
+    }));
+  };
+
+  const toggleRelatedFinding = (findingId: string) => {
+    setFormData((current) => ({
+      ...current,
+      relatedFindingIds: current.relatedFindingIds.includes(findingId)
+        ? current.relatedFindingIds.filter((currentId) => currentId !== findingId)
+        : [...current.relatedFindingIds, findingId],
+    }));
+  };
+
+  const availableFindings = audits
+    .filter((audit) => formData.relatedAuditIds.includes(audit.id))
+    .flatMap((audit) =>
+      audit.findings.map((finding) => ({
+        ...finding,
+        auditId: audit.id,
+        auditLabel: `${audit.type === 'internal' ? 'Interna' : 'Externa'} · ${audit.standard}`,
+      }))
+    );
 
   return (
     <div
@@ -297,6 +333,106 @@ export const TaskModal: React.FC<TaskModalProps> = ({
               )}
             </div>
           </div>
+
+          <div className="rounded-[24px] border border-app-border bg-app-surface-alt/80 p-5">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <h4 className="text-sm font-extrabold uppercase tracking-[0.18em] text-slate-500">
+                  Auditorías relacionadas
+                </h4>
+                <p className="mt-2 text-sm text-slate-400">
+                  Deja esta tarea conectada con el proceso de auditoría que la originó.
+                </p>
+              </div>
+              <span className="rounded-full bg-app-info/10 px-3 py-1.5 text-xs font-bold text-app-info">
+                {formData.relatedAuditIds.length} vinculada(s)
+              </span>
+            </div>
+
+            <div className="mt-4 grid gap-3">
+              {audits.length > 0 ? (
+                audits.map((audit) => (
+                  <label
+                    key={audit.id}
+                    className="flex items-start gap-3 rounded-2xl border border-app-border bg-app-surface px-4 py-4"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={formData.relatedAuditIds.includes(audit.id)}
+                      onChange={() => toggleRelatedAudit(audit.id)}
+                      className="mt-1 h-4 w-4 rounded border-slate-300 text-blue-600"
+                    />
+                    <div>
+                      <p className="font-bold text-app-text">
+                        {audit.type === 'internal' ? 'Auditoría interna' : 'Auditoría externa'} · {audit.standard}
+                      </p>
+                      <p className="mt-1 text-xs text-slate-400">
+                        {audit.status} · {audit.date.toLocaleDateString('es-CL')}
+                      </p>
+                    </div>
+                  </label>
+                ))
+              ) : (
+                <div className="rounded-2xl border border-dashed border-app-border bg-app-surface px-4 py-5 text-sm text-app-muted">
+                  No hay auditorías disponibles para relacionar.
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="rounded-[24px] border border-app-border bg-app-surface-alt/80 p-5">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <h4 className="text-sm font-extrabold uppercase tracking-[0.18em] text-slate-500">
+                  Hallazgos vinculados
+                </h4>
+                <p className="mt-2 text-sm text-slate-400">
+                  Asocia esta tarea a observaciones, incumplimientos u oportunidades de mejora.
+                </p>
+              </div>
+              <span className="rounded-full bg-amber-100 px-3 py-1.5 text-xs font-bold text-amber-700">
+                {formData.relatedFindingIds.length} hallazgo(s)
+              </span>
+            </div>
+
+            <div className="mt-4 grid gap-3">
+              {availableFindings.length > 0 ? (
+                availableFindings.map((finding) => (
+                  <label
+                    key={`${finding.auditId}-${finding.id}`}
+                    className="flex items-start gap-3 rounded-2xl border border-app-border bg-app-surface px-4 py-4"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={formData.relatedFindingIds.includes(finding.id)}
+                      onChange={() => toggleRelatedFinding(finding.id)}
+                      className="mt-1 h-4 w-4 rounded border-slate-300 text-blue-600"
+                    />
+                    <div>
+                      <p className="font-bold text-app-text">{finding.description}</p>
+                      <p className="mt-1 text-xs text-slate-400">
+                        {finding.auditLabel} · {finding.type} · {finding.status}
+                      </p>
+                    </div>
+                  </label>
+                ))
+              ) : (
+                <div className="rounded-2xl border border-dashed border-app-border bg-app-surface px-4 py-5 text-sm text-app-muted">
+                  Selecciona una auditoría para habilitar sus hallazgos.
+                </div>
+              )}
+            </div>
+          </div>
+
+          <label className="block">
+            <span className="text-sm font-bold text-slate-600">Resumen del cambio</span>
+            <textarea
+              value={formData.changeSummary}
+              onChange={(event) => setFormData({ ...formData, changeSummary: event.target.value })}
+              className="admin-input mt-2 min-h-[96px] resize-none"
+              placeholder="Ej: tarea creada desde hallazgo de auditoría y enlazada con evidencia documental."
+            />
+          </label>
           </div>
 
           <aside className="space-y-4">
@@ -344,7 +480,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                   Documentos
                 </p>
                 <p className="mt-2 text-sm font-bold text-app-text">
-                  {formData.relatedDocuments.length} vinculados
+                  {formData.relatedDocuments.length} docs · {formData.relatedAuditIds.length} auditorías · {formData.relatedFindingIds.length} hallazgos
                 </p>
               </div>
             </div>

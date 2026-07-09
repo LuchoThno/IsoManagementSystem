@@ -136,6 +136,10 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                         <span>{document.standard}</span>
                         <span className="h-1 w-1 rounded-full bg-slate-300" />
                         <span className="max-w-[220px] truncate">{getDisplayFileName(document)}</span>
+                        <span className="h-1 w-1 rounded-full bg-slate-300" />
+                        <span>{document.linkedAuditIds?.length ?? 0} auditorías</span>
+                        <span className="h-1 w-1 rounded-full bg-slate-300" />
+                        <span>{document.linkedTaskIds?.length ?? 0} tareas</span>
                       </div>
                     </div>
                   </div>

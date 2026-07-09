@@ -118,6 +118,10 @@ export const AuditList: React.FC<AuditListProps> = ({
                   <span>{audit.type === 'internal' ? 'Interna' : 'Externa'}</span>
                   <span className="h-1 w-1 rounded-full bg-slate-300" />
                   <span>{audit.findings.length} hallazgos registrados</span>
+                  <span className="h-1 w-1 rounded-full bg-slate-300" />
+                  <span>{audit.relatedTaskIds?.length ?? 0} tareas</span>
+                  <span className="h-1 w-1 rounded-full bg-slate-300" />
+                  <span>{audit.relatedDocumentIds?.length ?? 0} documentos</span>
                 </div>
               </div>
             </div>

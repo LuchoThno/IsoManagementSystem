@@ -6,6 +6,7 @@ import type {
   CreateCorrectiveActionDto,
   CreateEvidenceDto,
   PaginationParams,
+  UpdateEvidenceDto,
 } from './dto/grc.dto';
 import { ContractDocumentEntity } from './schemas/contract-document.schema';
 import { ContractObligationEntity } from './schemas/contract-obligation.schema';
@@ -13,6 +14,7 @@ import { ContractEntity } from './schemas/contract.schema';
 import { CorrectiveActionEntity } from './schemas/corrective-action.schema';
 import { EvidenceEntity } from './schemas/evidence.schema';
 import { StandardEntity } from './schemas/standard.schema';
+import { TaskEntity } from './schemas/task.schema';
 import { TenantBackfillService } from './tenant-backfill.service';
 import { TenantContextService } from './tenant-context.service';
 
@@ -21,6 +23,8 @@ export class GrcOperationalDomainService {
   constructor(
     @InjectModel(EvidenceEntity.name)
     private readonly evidenceModel: Model<EvidenceEntity>,
+    @InjectModel(TaskEntity.name)
+    private readonly taskModel: Model<TaskEntity>,
     @InjectModel(ContractEntity.name)
     private readonly contractModel: Model<ContractEntity>,
     @InjectModel(ContractObligationEntity.name)
@@ -47,6 +51,9 @@ export class GrcOperationalDomainService {
 
   async createEvidence(payload: CreateEvidenceDto) {
     const tenantId = await this.resolveEffectiveTenantId();
+    const linkedAuditIds = this.normalizeIds(payload.linkedAuditIds);
+    const linkedTaskIds = this.normalizeIds(payload.linkedTaskIds);
+    const findingId = payload.findingId?.trim() || null;
     const evidence = await this.evidenceModel.create({
       tenantId,
       title: payload.title,
@@ -59,13 +66,93 @@ export class GrcOperationalDomainService {
       owner: payload.owner ?? 'Administrador ISO',
       sourceDocumentId: payload.sourceDocumentId ?? null,
       documentIds: payload.documentIds ?? [],
-      linkedAuditIds: payload.linkedAuditIds ?? [],
+      linkedAuditIds,
+      findingId,
+      linkedTaskIds,
+      fulfillmentSummary: payload.fulfillmentSummary ?? '',
+      completionPercentage: payload.completionPercentage ?? 0,
       dueDate: payload.dueDate ? new Date(payload.dueDate) : null,
       collectedAt: payload.collectedAt ? new Date(payload.collectedAt) : null,
       notes: payload.notes ?? '',
+      activityLog: [
+        this.buildEvidenceActivity({
+          author: payload.owner ?? 'Administrador ISO',
+          action: 'created',
+          details:
+            payload.changeSummary?.trim() ||
+            'Se creó la evidencia para seguimiento de cumplimiento del hallazgo.',
+          status: payload.status ?? 'pending',
+        }),
+      ],
     });
 
     return this.serializeEvidence(evidence.toObject());
+  }
+
+  async updateEvidence(id: string, payload: UpdateEvidenceDto, author: string) {
+    const tenantId = await this.resolveEffectiveTenantId();
+    await this.backfillOperationalTenantIds(tenantId);
+    const evidence = await this.evidenceModel.findOne({ _id: id, tenantId });
+    if (!evidence) {
+      throw new NotFoundException('Evidence not found');
+    }
+
+    if (typeof payload.title === 'string') evidence.title = payload.title;
+    if (typeof payload.description === 'string') evidence.description = payload.description;
+    if (payload.standardId !== undefined) evidence.standardId = payload.standardId ?? null;
+    if (typeof payload.requirementId === 'string') evidence.requirementId = payload.requirementId;
+    if (payload.clauseId !== undefined) evidence.clauseId = payload.clauseId ?? null;
+    if (typeof payload.status === 'string') evidence.status = payload.status;
+    if (typeof payload.objectiveType === 'string') evidence.objectiveType = payload.objectiveType;
+    if (typeof payload.owner === 'string') evidence.owner = payload.owner;
+    if (payload.sourceDocumentId !== undefined) {
+      evidence.sourceDocumentId = payload.sourceDocumentId ?? null;
+    }
+    if (Array.isArray(payload.documentIds)) evidence.documentIds = this.normalizeIds(payload.documentIds);
+    if (Array.isArray(payload.linkedAuditIds)) {
+      evidence.linkedAuditIds = this.normalizeIds(payload.linkedAuditIds);
+    }
+    if (payload.findingId !== undefined) {
+      evidence.findingId = payload.findingId?.trim() || null;
+    }
+    if (Array.isArray(payload.linkedTaskIds)) {
+      evidence.linkedTaskIds = this.normalizeIds(payload.linkedTaskIds);
+    }
+    if (typeof payload.fulfillmentSummary === 'string') {
+      evidence.fulfillmentSummary = payload.fulfillmentSummary;
+    }
+    if (typeof payload.completionPercentage === 'number') {
+      evidence.completionPercentage = Math.max(0, Math.min(100, payload.completionPercentage));
+    }
+    if (payload.dueDate !== undefined) {
+      evidence.dueDate = payload.dueDate ? new Date(payload.dueDate) : null;
+    }
+    if (payload.collectedAt !== undefined) {
+      evidence.collectedAt = payload.collectedAt ? new Date(payload.collectedAt) : null;
+    }
+    if (typeof payload.notes === 'string') evidence.notes = payload.notes;
+
+    evidence.activityLog = [
+      ...(evidence.activityLog ?? []),
+      this.buildEvidenceActivity({
+        author,
+        action: 'updated',
+        details:
+          payload.changeSummary?.trim() ||
+          'Se actualizaron los avances de cumplimiento y la trazabilidad de la evidencia.',
+        status: evidence.status,
+      }),
+    ];
+
+    await evidence.save();
+    return this.serializeEvidence(evidence.toObject());
+  }
+
+  async deleteEvidence(id: string) {
+    const tenantId = await this.resolveEffectiveTenantId();
+    await this.backfillOperationalTenantIds(tenantId);
+    await this.evidenceModel.findOneAndDelete({ _id: id, tenantId });
+    return { success: true };
   }
 
   async listEvidences(params: PaginationParams = {}) {
@@ -74,6 +161,9 @@ export class GrcOperationalDomainService {
     const { page, pageSize, search } = this.resolvePaginationParams(params);
     const filter = {
       tenantId,
+      ...(params.auditId ? { linkedAuditIds: params.auditId } : {}),
+      ...(params.findingId ? { findingId: params.findingId } : {}),
+      ...(params.status ? { status: params.status } : {}),
       ...this.buildSearchFilter(search, ['title', 'description', 'owner', 'notes']),
     };
 
@@ -321,6 +411,31 @@ export class GrcOperationalDomainService {
     return this.serializeCorrectiveAction(action.toObject());
   }
 
+  async getAuditExecutionReport(auditId: string) {
+    const tenantId = await this.resolveEffectiveTenantId();
+    await this.backfillOperationalTenantIds(tenantId);
+
+    const [evidences, tasks] = await Promise.all([
+      this.evidenceModel.find({ tenantId, linkedAuditIds: auditId }).sort({ updatedAt: -1 }).lean(),
+      this.taskModel.find({ tenantId, relatedAuditIds: auditId }).sort({ dueDate: 1 }).lean(),
+    ]);
+
+    return {
+      evidences: evidences.map((evidence) => this.serializeEvidence(evidence)),
+      tasks: tasks.map((task) => ({
+        id: String(task._id),
+        title: task.title,
+        description: task.description,
+        assignedTo: task.assignedTo,
+        dueDate: task.dueDate,
+        status: task.status,
+        priority: task.priority,
+        standard: task.standard,
+        relatedFindingIds: task.relatedFindingIds ?? [],
+      })),
+    };
+  }
+
   private async listContractDocuments(contractId: string) {
     const tenantId = await this.resolveEffectiveTenantId();
     const documents = await this.contractDocumentModel.find({ contractId, tenantId }).lean();
@@ -368,6 +483,7 @@ export class GrcOperationalDomainService {
     await this.tenantBackfillService.ensureTenantIdForMany(
       [
         this.evidenceModel,
+        this.taskModel,
         this.contractModel,
         this.contractObligationModel,
         this.contractDocumentModel,
@@ -392,12 +508,60 @@ export class GrcOperationalDomainService {
       sourceDocumentId: evidence.sourceDocumentId ?? null,
       documentIds: evidence.documentIds ?? [],
       linkedAuditIds: evidence.linkedAuditIds ?? [],
+      findingId: evidence.findingId ?? null,
+      linkedTaskIds: evidence.linkedTaskIds ?? [],
+      fulfillmentSummary: evidence.fulfillmentSummary ?? '',
+      completionPercentage: evidence.completionPercentage ?? 0,
       dueDate: evidence.dueDate ?? null,
       collectedAt: evidence.collectedAt ?? null,
       notes: evidence.notes ?? '',
+      activityLog: (evidence.activityLog ?? []).map((entry: any) => ({
+        id: entry.id,
+        date: entry.date,
+        author: entry.author,
+        action: entry.action,
+        details: entry.details,
+        status: entry.status,
+      })),
       createdAt: evidence.createdAt,
       updatedAt: evidence.updatedAt,
     };
+  }
+
+  private normalizeIds(ids?: string[]) {
+    return Array.from(
+      new Set(
+        (ids ?? [])
+          .filter((value): value is string => typeof value === 'string')
+          .map((value) => value.trim())
+          .filter((value) => value.length > 0)
+      )
+    );
+  }
+
+  private buildEvidenceActivity({
+    author,
+    action,
+    details,
+    status,
+  }: {
+    author: string;
+    action: string;
+    details: string;
+    status: string;
+  }) {
+    return {
+      id: this.makeId('evidence-activity'),
+      date: new Date(),
+      author,
+      action,
+      details,
+      status,
+    };
+  }
+
+  private makeId(prefix: string) {
+    return `${prefix}-${Math.random().toString(36).slice(2, 10)}`;
   }
 
   private serializeContract(contract: any) {

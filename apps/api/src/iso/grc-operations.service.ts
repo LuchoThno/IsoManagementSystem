@@ -23,6 +23,7 @@ import type {
   StandardClausePayload,
   StandardPayload,
   StandardRequirementPayload,
+  UpdateEvidenceDto,
 } from './dto/grc.dto';
 import { GrcOperationalDomainService } from './grc-operational-domain.service';
 import { GrcStandardsDomainService } from './grc-standards-domain.service';
@@ -30,8 +31,10 @@ import { PlatformAuditService } from './platform-audit.service';
 import {
   ensureArray,
   ensureEnumValue,
+  ensureIntegerInRange,
   ensureIsoDateString,
   ensureNonEmptyString,
+  ensureObject,
   ensureOptionalEnumValue,
   ensureOptionalIsoDateString,
   ensureOptionalString,
@@ -124,6 +127,44 @@ export class GrcOperationsService {
     return evidence;
   }
 
+  async updateEvidence(
+    id: string,
+    clerkAuth: ClerkSessionIdentity | null,
+    body: UpdateEvidenceDto
+  ) {
+    ensureNonEmptyString(id, 'id');
+    this.validateEvidenceUpdatePayload(body);
+    const evidence = await this.grcOperationalDomainService.updateEvidence(
+      id,
+      body,
+      await this.platformAuditService.getActorLabel(clerkAuth)
+    );
+    await this.platformAuditService.captureFromSession(clerkAuth, {
+      action: 'evidences.update',
+      resourceType: 'evidence',
+      resourceId: id,
+      status: 'success',
+      metadata: {
+        title: body.title ?? null,
+        statusValue: body.status ?? null,
+        findingId: body.findingId ?? null,
+      },
+    });
+    return evidence;
+  }
+
+  async deleteEvidence(id: string, clerkAuth: ClerkSessionIdentity | null) {
+    ensureNonEmptyString(id, 'id');
+    const result = await this.grcOperationalDomainService.deleteEvidence(id);
+    await this.platformAuditService.captureFromSession(clerkAuth, {
+      action: 'evidences.delete',
+      resourceType: 'evidence',
+      resourceId: id,
+      status: 'success',
+    });
+    return result;
+  }
+
   getContracts(params: PaginationParams) {
     return this.grcOperationalDomainService.listContracts(params);
   }
@@ -173,6 +214,11 @@ export class GrcOperationsService {
 
   getGrcSummary() {
     return this.grcOperationalDomainService.getOverview();
+  }
+
+  getAuditExecutionReport(auditId: string) {
+    ensureNonEmptyString(auditId, 'auditId');
+    return this.grcOperationalDomainService.getAuditExecutionReport(auditId);
   }
 
   private validateStandardPayload(body: StandardPayload) {
@@ -256,6 +302,7 @@ export class GrcOperationsService {
   }
 
   private validateEvidencePayload(body: CreateEvidenceDto) {
+    ensureObject(body, 'body');
     ensureNonEmptyString(body?.title, 'title');
     ensureOptionalString(body?.description, 'description');
     ensureOptionalString(body?.standardId, 'standardId');
@@ -267,9 +314,41 @@ export class GrcOperationsService {
     ensureOptionalString(body?.sourceDocumentId, 'sourceDocumentId');
     if (body?.documentIds !== undefined) ensureStringArray(body.documentIds, 'documentIds');
     if (body?.linkedAuditIds !== undefined) ensureStringArray(body.linkedAuditIds, 'linkedAuditIds');
+    ensureOptionalString(body?.findingId, 'findingId');
+    if (body?.linkedTaskIds !== undefined) ensureStringArray(body.linkedTaskIds, 'linkedTaskIds');
+    ensureOptionalString(body?.fulfillmentSummary, 'fulfillmentSummary');
+    if (body?.completionPercentage !== undefined) {
+      ensureIntegerInRange(body.completionPercentage, 'completionPercentage', { min: 0, max: 100 });
+    }
     ensureOptionalIsoDateString(body?.dueDate, 'dueDate');
     ensureOptionalIsoDateString(body?.collectedAt, 'collectedAt');
     ensureOptionalString(body?.notes, 'notes');
+    ensureOptionalString(body?.changeSummary, 'changeSummary');
+  }
+
+  private validateEvidenceUpdatePayload(body: UpdateEvidenceDto) {
+    ensureObject(body, 'body');
+    ensureOptionalString(body?.title, 'title');
+    ensureOptionalString(body?.description, 'description');
+    ensureOptionalString(body?.standardId, 'standardId');
+    ensureOptionalString(body?.requirementId, 'requirementId');
+    ensureOptionalString(body?.clauseId, 'clauseId');
+    ensureOptionalEnumValue(body?.status, 'status', EVIDENCE_STATUS_VALUES);
+    ensureOptionalEnumValue(body?.objectiveType, 'objectiveType', EVIDENCE_OBJECTIVE_TYPE_VALUES);
+    ensureOptionalString(body?.owner, 'owner');
+    ensureOptionalString(body?.sourceDocumentId, 'sourceDocumentId');
+    if (body?.documentIds !== undefined) ensureStringArray(body.documentIds, 'documentIds');
+    if (body?.linkedAuditIds !== undefined) ensureStringArray(body.linkedAuditIds, 'linkedAuditIds');
+    ensureOptionalString(body?.findingId, 'findingId');
+    if (body?.linkedTaskIds !== undefined) ensureStringArray(body.linkedTaskIds, 'linkedTaskIds');
+    ensureOptionalString(body?.fulfillmentSummary, 'fulfillmentSummary');
+    if (body?.completionPercentage !== undefined) {
+      ensureIntegerInRange(body.completionPercentage, 'completionPercentage', { min: 0, max: 100 });
+    }
+    ensureOptionalIsoDateString(body?.dueDate, 'dueDate');
+    ensureOptionalIsoDateString(body?.collectedAt, 'collectedAt');
+    ensureOptionalString(body?.notes, 'notes');
+    ensureOptionalString(body?.changeSummary, 'changeSummary');
   }
 
   private validateContractPayload(body: CreateContractDto) {

@@ -15,6 +15,9 @@ export type CreateAuditDto = {
   date: string;
   status: AuditStatus;
   findings: AuditFindingDto[];
+  relatedTaskIds?: string[];
+  relatedDocumentIds?: string[];
+  changeSummary?: string;
 };
 
 export type UpdateAuditDto = {
@@ -23,6 +26,9 @@ export type UpdateAuditDto = {
   date?: string;
   status?: AuditStatus;
   findings?: AuditFindingDto[];
+  relatedTaskIds?: string[];
+  relatedDocumentIds?: string[];
+  changeSummary?: string;
 };
 
 export type UpdateAuditStatusDto = {

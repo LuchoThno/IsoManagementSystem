@@ -32,6 +32,32 @@ export class TaskEntity {
 
   @Prop({ type: [String], default: [] })
   relatedDocuments!: string[];
+
+  @Prop({ type: [String], default: [] })
+  relatedAuditIds!: string[];
+
+  @Prop({ type: [String], default: [] })
+  relatedFindingIds!: string[];
+
+  @Prop({
+    type: [
+      {
+        id: { type: String, required: true },
+        date: { type: Date, required: true },
+        author: { type: String, required: true },
+        action: { type: String, required: true },
+        summary: { type: String, required: true },
+      },
+    ],
+    default: [],
+  })
+  changeLog!: Array<{
+    id: string;
+    date: Date;
+    author: string;
+    action: string;
+    summary: string;
+  }>;
 }
 
 export const TaskSchema = SchemaFactory.createForClass(TaskEntity);

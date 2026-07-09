@@ -1,13 +1,26 @@
 import type { Task } from '../types/iso';
 import { requestIsoApi } from './isoApiClient';
 
-type ApiTask = Omit<Task, 'dueDate'> & {
+export type TaskUpsertPayload = Omit<Task, 'id'> & {
+  changeSummary?: string;
+};
+
+type ApiTask = Omit<Task, 'dueDate' | 'changeLog'> & {
   dueDate: string;
+  changeLog?: Array<
+    Omit<NonNullable<Task['changeLog']>[number], 'date'> & {
+      date: string;
+    }
+  >;
 };
 
 const toTask = (task: ApiTask): Task => ({
   ...task,
   dueDate: new Date(task.dueDate),
+  changeLog: (task.changeLog ?? []).map((entry) => ({
+    ...entry,
+    date: new Date(entry.date),
+  })),
 });
 
 export async function listTasks(): Promise<Task[]> {
@@ -15,7 +28,7 @@ export async function listTasks(): Promise<Task[]> {
   return tasks.map(toTask);
 }
 
-export async function createTaskApi(payload: Omit<Task, 'id'>): Promise<Task> {
+export async function createTaskApi(payload: TaskUpsertPayload): Promise<Task> {
   const task = await requestIsoApi<ApiTask>('/tasks', {
     method: 'POST',
     body: JSON.stringify({
@@ -41,7 +54,7 @@ export async function updateTaskStatusApi(
 
 export async function updateTaskApi(
   taskId: string,
-  updates: Partial<Omit<Task, 'id'>>
+  updates: Partial<TaskUpsertPayload>
 ): Promise<Task> {
   const task = await requestIsoApi<ApiTask>(`/tasks/${taskId}`, {
     method: 'PATCH',

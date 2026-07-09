@@ -17,9 +17,11 @@ import {
   ensureEnumValue,
   ensureIsoDateString,
   ensureNonEmptyString,
+  ensureObject,
   ensureOptionalEnumValue,
   ensureOptionalIsoDateString,
   ensureOptionalString,
+  ensureStringArray,
 } from './request-validation';
 import type { ClerkSessionIdentity } from './clerk.types';
 
@@ -36,17 +38,27 @@ export class AuditsOperationsService {
   }
 
   getAuditChecklist(id: string) {
+    ensureNonEmptyString(id, 'id');
     return this.grcStandardsDomainService.getAuditChecklist(id);
   }
 
   async createAudit(clerkAuth: ClerkSessionIdentity | null, body: CreateAuditDto) {
+    ensureObject(body, 'body');
     ensureNonEmptyString(body.standard, 'standard');
     ensureEnumValue(body.type, 'type', AUDIT_TYPE_VALUES);
     ensureIsoDateString(body.date, 'date');
     ensureEnumValue(body.status, 'status', AUDIT_STATUS_VALUES);
+    if (body.relatedTaskIds !== undefined) ensureStringArray(body.relatedTaskIds, 'relatedTaskIds');
+    if (body.relatedDocumentIds !== undefined) {
+      ensureStringArray(body.relatedDocumentIds, 'relatedDocumentIds');
+    }
+    ensureOptionalString(body.changeSummary, 'changeSummary');
     this.validateFindings(body.findings);
 
-    const audit = await this.auditsDomainService.createAudit(body);
+    const audit = await this.auditsDomainService.createAudit(body, {
+      author: await this.platformAuditService.getActorLabel(clerkAuth),
+      summary: body.changeSummary,
+    });
     await this.platformAuditService.captureFromSession(clerkAuth, {
       action: 'audits.create',
       resourceType: 'audit',
@@ -62,15 +74,25 @@ export class AuditsOperationsService {
   }
 
   async updateAudit(id: string, clerkAuth: ClerkSessionIdentity | null, body: UpdateAuditDto) {
+    ensureNonEmptyString(id, 'id');
+    ensureObject(body, 'body');
     ensureOptionalEnumValue(body.type, 'type', AUDIT_TYPE_VALUES);
     ensureOptionalString(body.standard, 'standard');
     ensureOptionalIsoDateString(body.date, 'date');
     ensureOptionalEnumValue(body.status, 'status', AUDIT_STATUS_VALUES);
+    if (body.relatedTaskIds !== undefined) ensureStringArray(body.relatedTaskIds, 'relatedTaskIds');
+    if (body.relatedDocumentIds !== undefined) {
+      ensureStringArray(body.relatedDocumentIds, 'relatedDocumentIds');
+    }
+    ensureOptionalString(body.changeSummary, 'changeSummary');
     if (body.findings !== undefined) {
       this.validateFindings(body.findings);
     }
 
-    const audit = await this.auditsDomainService.updateAudit(id, body);
+    const audit = await this.auditsDomainService.updateAudit(id, body, {
+      author: await this.platformAuditService.getActorLabel(clerkAuth),
+      summary: body.changeSummary,
+    });
     await this.platformAuditService.captureFromSession(clerkAuth, {
       action: 'audits.update',
       resourceType: 'audit',
@@ -90,6 +112,9 @@ export class AuditsOperationsService {
     clerkAuth: ClerkSessionIdentity | null,
     body: UpdateAuditStatusDto
   ) {
+    ensureNonEmptyString(id, 'id');
+    ensureObject(body, 'body');
+    ensureEnumValue(body.status, 'status', AUDIT_STATUS_VALUES);
     const audit = await this.auditsDomainService.updateAuditStatus(id, body.status);
     await this.platformAuditService.captureFromSession(clerkAuth, {
       action: 'audits.status.update',
@@ -104,6 +129,7 @@ export class AuditsOperationsService {
   }
 
   async deleteAudit(id: string, clerkAuth: ClerkSessionIdentity | null) {
+    ensureNonEmptyString(id, 'id');
     const result = await this.auditsDomainService.deleteAudit(id);
     await this.platformAuditService.captureFromSession(clerkAuth, {
       action: 'audits.delete',

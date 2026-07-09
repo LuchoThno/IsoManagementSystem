@@ -116,6 +116,8 @@ export const TaskList: React.FC<TaskListProps> = ({ tasks, canManage = true, onE
                   <span>{task.standard}</span>
                   <span className="h-1 w-1 rounded-full bg-slate-300" />
                   <span>{task.relatedDocuments.length} documentos relacionados</span>
+                  <span className="h-1 w-1 rounded-full bg-slate-300" />
+                  <span>{task.relatedAuditIds?.length ?? 0} auditorías</span>
                 </div>
                 {task.relatedDocuments.length > 0 && (
                   <div className="mt-3 flex flex-wrap gap-2">
@@ -131,6 +133,18 @@ export const TaskList: React.FC<TaskListProps> = ({ tasks, canManage = true, onE
                           {document!.title}
                         </span>
                       ))}
+                  </div>
+                )}
+                {(task.relatedAuditIds?.length ?? 0) > 0 && (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {task.relatedAuditIds?.slice(0, 2).map((auditId) => (
+                      <span
+                        key={auditId}
+                        className="rounded-full bg-app-info/10 px-3 py-1 text-xs font-bold text-app-info"
+                      >
+                        Auditoría vinculada
+                      </span>
+                    ))}
                   </div>
                 )}
               </div>

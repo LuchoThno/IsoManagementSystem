@@ -70,18 +70,30 @@ type ApiDocument = Omit<Document, 'createdAt' | 'updatedAt' | 'versionHistory' |
     date: string;
     author: string;
     details: string;
+    relatedAuditIds?: string[];
+    relatedTaskIds?: string[];
   }>;
 };
 
-type ApiTask = Omit<Task, 'dueDate'> & {
+type ApiTask = Omit<Task, 'dueDate' | 'changeLog'> & {
   dueDate: string;
+  changeLog?: Array<
+    Omit<NonNullable<Task['changeLog']>[number], 'date'> & {
+      date: string;
+    }
+  >;
 };
 
-type ApiAudit = Omit<Audit, 'date' | 'findings'> & {
+type ApiAudit = Omit<Audit, 'date' | 'findings' | 'changeLog'> & {
   date: string;
   findings: Array<
     Omit<Audit['findings'][number], 'dueDate'> & {
       dueDate: string;
+    }
+  >;
+  changeLog?: Array<
+    Omit<NonNullable<Audit['changeLog']>[number], 'date'> & {
+      date: string;
     }
   >;
 };
@@ -204,6 +216,10 @@ export async function fetchBootstrap(): Promise<ISOBootstrapData> {
       tasks: bootstrap.tasks.map((task) => ({
         ...task,
         dueDate: new Date(task.dueDate),
+        changeLog: (task.changeLog ?? []).map((entry) => ({
+          ...entry,
+          date: new Date(entry.date),
+        })),
       })),
       audits: bootstrap.audits.map((audit) => ({
         ...audit,
@@ -211,6 +227,10 @@ export async function fetchBootstrap(): Promise<ISOBootstrapData> {
         findings: (audit.findings ?? []).map((finding) => ({
           ...finding,
           dueDate: new Date(finding.dueDate),
+        })),
+        changeLog: (audit.changeLog ?? []).map((entry) => ({
+          ...entry,
+          date: new Date(entry.date),
         })),
       })),
       standards: bootstrap.standards,

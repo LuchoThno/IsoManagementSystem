@@ -57,6 +57,11 @@ export class PlatformAuditService {
     });
   }
 
+  async getActorLabel(clerkAuth: ClerkSessionIdentity | null) {
+    const actor = await this.resolveActor(clerkAuth);
+    return actor.actorEmail ?? actor.actorId ?? 'Sistema ISO';
+  }
+
   async listRecent(limit = 50) {
     const safeLimit = Number.isFinite(limit) ? Math.max(1, Math.min(200, limit)) : 50;
     const logs = await this.platformAuditLogModel

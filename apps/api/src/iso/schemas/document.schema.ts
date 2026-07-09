@@ -14,6 +14,8 @@ const auditEntrySchema = {
   date: { type: Date, required: true },
   author: { type: String, required: true },
   details: { type: String, required: true },
+  relatedAuditIds: { type: [String], default: [] },
+  relatedTaskIds: { type: [String], default: [] },
 };
 
 @Schema({ timestamps: true, collection: 'documents' })
@@ -71,7 +73,15 @@ export class DocumentEntity {
     date: Date;
     author: string;
     details: string;
+    relatedAuditIds: string[];
+    relatedTaskIds: string[];
   }>;
+
+  @Prop({ type: [String], default: [] })
+  linkedAuditIds!: string[];
+
+  @Prop({ type: [String], default: [] })
+  linkedTaskIds!: string[];
 }
 
 export const DocumentSchema = SchemaFactory.createForClass(DocumentEntity);

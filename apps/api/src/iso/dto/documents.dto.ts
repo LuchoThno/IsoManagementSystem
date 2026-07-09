@@ -10,6 +10,9 @@ export type CreateDocumentDto = {
   fileName: string;
   mimeType: string;
   fileContentUrl: string;
+  linkedAuditIds?: string[];
+  linkedTaskIds?: string[];
+  changeSummary?: string;
 };
 
 export type UpdateDocumentDto = {
@@ -18,4 +21,7 @@ export type UpdateDocumentDto = {
   format?: DocumentFormat;
   version?: string;
   status?: DocumentStatus;
+  linkedAuditIds?: string[];
+  linkedTaskIds?: string[];
+  changeSummary?: string;
 };

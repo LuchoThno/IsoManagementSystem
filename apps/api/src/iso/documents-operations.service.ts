@@ -9,8 +9,10 @@ import type { CreateDocumentDto, UpdateDocumentDto } from './dto/documents.dto';
 import {
   ensureEnumValue,
   ensureNonEmptyString,
+  ensureObject,
   ensureOptionalEnumValue,
   ensureOptionalString,
+  ensureStringArray,
 } from './request-validation';
 import type { ClerkSessionIdentity } from './clerk.types';
 import { DocumentsDomainService } from './documents-domain.service';
@@ -27,10 +29,12 @@ export class DocumentsOperationsService {
   }
 
   getDocumentContent(id: string) {
+    ensureNonEmptyString(id, 'id');
     return this.documentsDomainService.getDocumentContent(id);
   }
 
   async createDocument(clerkAuth: ClerkSessionIdentity | null, body: CreateDocumentDto) {
+    ensureObject(body, 'body');
     ensureNonEmptyString(body.title, 'title');
     ensureNonEmptyString(body.topic, 'topic');
     ensureEnumValue(body.type, 'type', DOCUMENT_TYPE_VALUES);
@@ -40,8 +44,14 @@ export class DocumentsOperationsService {
     ensureNonEmptyString(body.fileName, 'fileName');
     ensureNonEmptyString(body.mimeType, 'mimeType');
     ensureNonEmptyString(body.fileContentUrl, 'fileContentUrl');
+    if (body.linkedAuditIds !== undefined) ensureStringArray(body.linkedAuditIds, 'linkedAuditIds');
+    if (body.linkedTaskIds !== undefined) ensureStringArray(body.linkedTaskIds, 'linkedTaskIds');
+    ensureOptionalString(body.changeSummary, 'changeSummary');
 
-    const document = await this.documentsDomainService.createDocument(body);
+    const document = await this.documentsDomainService.createDocument(body, {
+      author: await this.platformAuditService.getActorLabel(clerkAuth),
+      summary: body.changeSummary,
+    });
     await this.platformAuditService.captureFromSession(clerkAuth, {
       action: 'documents.create',
       resourceType: 'document',
@@ -61,13 +71,21 @@ export class DocumentsOperationsService {
     clerkAuth: ClerkSessionIdentity | null,
     body: UpdateDocumentDto
   ) {
+    ensureNonEmptyString(id, 'id');
+    ensureObject(body, 'body');
     ensureOptionalString(body.title, 'title');
     ensureOptionalString(body.topic, 'topic');
     ensureOptionalEnumValue(body.format, 'format', DOCUMENT_FORMAT_VALUES);
     ensureOptionalString(body.version, 'version');
     ensureOptionalEnumValue(body.status, 'status', DOCUMENT_STATUS_VALUES);
+    if (body.linkedAuditIds !== undefined) ensureStringArray(body.linkedAuditIds, 'linkedAuditIds');
+    if (body.linkedTaskIds !== undefined) ensureStringArray(body.linkedTaskIds, 'linkedTaskIds');
+    ensureOptionalString(body.changeSummary, 'changeSummary');
 
-    const document = await this.documentsDomainService.updateDocument(id, body);
+    const document = await this.documentsDomainService.updateDocument(id, body, {
+      author: await this.platformAuditService.getActorLabel(clerkAuth),
+      summary: body.changeSummary,
+    });
     await this.platformAuditService.captureFromSession(clerkAuth, {
       action: 'documents.update',
       resourceType: 'document',
@@ -83,6 +101,7 @@ export class DocumentsOperationsService {
   }
 
   async registerDocumentView(id: string, clerkAuth: ClerkSessionIdentity | null) {
+    ensureNonEmptyString(id, 'id');
     const document = await this.documentsDomainService.registerDocumentView(id);
     await this.platformAuditService.captureFromSession(clerkAuth, {
       action: 'documents.view',
@@ -94,6 +113,7 @@ export class DocumentsOperationsService {
   }
 
   async deleteDocument(id: string, clerkAuth: ClerkSessionIdentity | null) {
+    ensureNonEmptyString(id, 'id');
     const result = await this.documentsDomainService.deleteDocument(id);
     await this.platformAuditService.captureFromSession(clerkAuth, {
       action: 'documents.delete',

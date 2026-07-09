@@ -9,6 +9,9 @@ export type CreateTaskDto = {
   priority: TaskPriority;
   standard: string;
   relatedDocuments: string[];
+  relatedAuditIds?: string[];
+  relatedFindingIds?: string[];
+  changeSummary?: string;
 };
 
 export type UpdateTaskDto = {
@@ -20,6 +23,9 @@ export type UpdateTaskDto = {
   priority?: TaskPriority;
   standard?: string;
   relatedDocuments?: string[];
+  relatedAuditIds?: string[];
+  relatedFindingIds?: string[];
+  changeSummary?: string;
 };
 
 export type UpdateTaskStatusDto = {

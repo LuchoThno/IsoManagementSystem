@@ -7,6 +7,7 @@ import {
   ensureEnumValue,
   ensureIsoDateString,
   ensureNonEmptyString,
+  ensureObject,
   ensureOptionalEnumValue,
   ensureOptionalIsoDateString,
   ensureOptionalString,
@@ -26,6 +27,7 @@ export class TasksOperationsService {
   }
 
   async createTask(clerkAuth: ClerkSessionIdentity | null, body: CreateTaskDto) {
+    ensureObject(body, 'body');
     ensureNonEmptyString(body.title, 'title');
     ensureNonEmptyString(body.description, 'description');
     ensureNonEmptyString(body.assignedTo, 'assignedTo');
@@ -34,8 +36,16 @@ export class TasksOperationsService {
     ensureEnumValue(body.priority, 'priority', TASK_PRIORITY_VALUES);
     ensureNonEmptyString(body.standard, 'standard');
     ensureStringArray(body.relatedDocuments, 'relatedDocuments');
+    if (body.relatedAuditIds !== undefined) ensureStringArray(body.relatedAuditIds, 'relatedAuditIds');
+    if (body.relatedFindingIds !== undefined) {
+      ensureStringArray(body.relatedFindingIds, 'relatedFindingIds');
+    }
+    ensureOptionalString(body.changeSummary, 'changeSummary');
 
-    const task = await this.tasksDomainService.createTask(body);
+    const task = await this.tasksDomainService.createTask(body, {
+      author: await this.platformAuditService.getActorLabel(clerkAuth),
+      summary: body.changeSummary,
+    });
     await this.platformAuditService.captureFromSession(clerkAuth, {
       action: 'tasks.create',
       resourceType: 'task',
@@ -51,6 +61,8 @@ export class TasksOperationsService {
   }
 
   async updateTask(id: string, clerkAuth: ClerkSessionIdentity | null, body: UpdateTaskDto) {
+    ensureNonEmptyString(id, 'id');
+    ensureObject(body, 'body');
     ensureOptionalString(body.title, 'title');
     ensureOptionalString(body.description, 'description');
     ensureOptionalString(body.assignedTo, 'assignedTo');
@@ -61,8 +73,18 @@ export class TasksOperationsService {
     if (body.relatedDocuments !== undefined) {
       ensureStringArray(body.relatedDocuments, 'relatedDocuments');
     }
+    if (body.relatedAuditIds !== undefined) {
+      ensureStringArray(body.relatedAuditIds, 'relatedAuditIds');
+    }
+    if (body.relatedFindingIds !== undefined) {
+      ensureStringArray(body.relatedFindingIds, 'relatedFindingIds');
+    }
+    ensureOptionalString(body.changeSummary, 'changeSummary');
 
-    const task = await this.tasksDomainService.updateTask(id, body);
+    const task = await this.tasksDomainService.updateTask(id, body, {
+      author: await this.platformAuditService.getActorLabel(clerkAuth),
+      summary: body.changeSummary,
+    });
     await this.platformAuditService.captureFromSession(clerkAuth, {
       action: 'tasks.update',
       resourceType: 'task',
@@ -82,6 +104,8 @@ export class TasksOperationsService {
     clerkAuth: ClerkSessionIdentity | null,
     body: UpdateTaskStatusDto
   ) {
+    ensureNonEmptyString(id, 'id');
+    ensureObject(body, 'body');
     ensureEnumValue(body.status, 'status', TASK_STATUS_VALUES);
 
     const task = await this.tasksDomainService.updateTaskStatus(id, body.status);
@@ -98,6 +122,7 @@ export class TasksOperationsService {
   }
 
   async deleteTask(id: string, clerkAuth: ClerkSessionIdentity | null) {
+    ensureNonEmptyString(id, 'id');
     const result = await this.tasksDomainService.deleteTask(id);
     await this.platformAuditService.captureFromSession(clerkAuth, {
       action: 'tasks.delete',

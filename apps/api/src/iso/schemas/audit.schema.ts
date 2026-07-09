@@ -60,6 +60,32 @@ export class Audit {
     default: [],
   })
   findings!: Finding[];
+
+  @Prop({ type: [String], default: [] })
+  relatedTaskIds!: string[];
+
+  @Prop({ type: [String], default: [] })
+  relatedDocumentIds!: string[];
+
+  @Prop({
+    type: [
+      raw({
+        id: { type: String, required: true },
+        date: { type: Date, required: true },
+        author: { type: String, required: true },
+        action: { type: String, required: true },
+        summary: { type: String, required: true },
+      }),
+    ],
+    default: [],
+  })
+  changeLog!: Array<{
+    id: string;
+    date: Date;
+    author: string;
+    action: string;
+    summary: string;
+  }>;
 }
 
 export const AuditSchema = SchemaFactory.createForClass(Audit);
