@@ -6,11 +6,11 @@ import { useUIPermissions } from '../hooks/useUIPermissions';
 import {
   createEvidenceApi,
   deleteEvidenceApi,
+  fetchEvidenceExportBundle,
   listEvidences,
   updateEvidenceApi,
 } from '../lib/standardsApi';
 import { useISOStore } from '../store/useISOStore';
-import { useAuthStore } from '../store/useAuthStore';
 import type { Evidence } from '../types/iso';
 
 type EvidenceFormState = {
@@ -57,7 +57,6 @@ const emptyForm: EvidenceFormState = {
 
 export const Evidences: React.FC = () => {
   const { canManageAudits, canManageTasks, canManageDocuments } = useUIPermissions();
-  const currentUser = useAuthStore((state) => state.user);
   const canManage = canManageAudits || canManageTasks || canManageDocuments;
   const audits = useISOStore((state) => state.audits);
   const tasks = useISOStore((state) => state.tasks);
@@ -107,29 +106,6 @@ export const Evidences: React.FC = () => {
     }
   }, [evidences, selectedEvidence]);
 
-  React.useEffect(() => {
-    if (!isModalOpen) {
-      return;
-    }
-
-    const originalOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && !evidenceMutation.isPending) {
-        setIsModalOpen(false);
-        setEditingEvidence(null);
-      }
-    };
-
-    window.addEventListener('keydown', handleEscape);
-
-    return () => {
-      document.body.style.overflow = originalOverflow;
-      window.removeEventListener('keydown', handleEscape);
-    };
-  }, [evidenceMutation.isPending, isModalOpen]);
-
   const evidenceMutation = useMutation({
     mutationFn: async () => {
       const payload = {
@@ -174,6 +150,29 @@ export const Evidences: React.FC = () => {
       void queryClient.invalidateQueries({ queryKey: ['evidences'] });
     },
   });
+
+  React.useEffect(() => {
+    if (!isModalOpen) {
+      return;
+    }
+
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !evidenceMutation.isPending) {
+        setIsModalOpen(false);
+        setEditingEvidence(null);
+      }
+    };
+
+    window.addEventListener('keydown', handleEscape);
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      window.removeEventListener('keydown', handleEscape);
+    };
+  }, [evidenceMutation.isPending, isModalOpen]);
 
   const selectedAudit = audits.find((audit) => audit.id === formData.linkedAuditId) ?? null;
   const availableFindings = selectedAudit?.findings ?? [];
@@ -239,11 +238,12 @@ export const Evidences: React.FC = () => {
   };
 
   const handleExportEvidencePdf = async (evidence: Evidence) => {
+    const bundle = await fetchEvidenceExportBundle(evidence.id);
     await exportEvidenceFulfillmentPdf(
-      evidence,
-      getAuditLabel(evidence.linkedAuditIds[0] ?? ''),
-      getFindingLabel(evidence),
-      currentUser
+      bundle.evidence,
+      bundle.auditLabel,
+      bundle.findingLabel,
+      bundle.validation
     );
   };
 

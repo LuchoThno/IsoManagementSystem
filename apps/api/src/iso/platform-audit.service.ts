@@ -9,6 +9,7 @@ type AuditStatus = 'success' | 'failure';
 
 type AuditActor = {
   actorId?: string | null;
+  actorName?: string | null;
   actorEmail?: string | null;
   actorRole?: string | null;
 };
@@ -59,7 +60,11 @@ export class PlatformAuditService {
 
   async getActorLabel(clerkAuth: ClerkSessionIdentity | null) {
     const actor = await this.resolveActor(clerkAuth);
-    return actor.actorEmail ?? actor.actorId ?? 'Sistema ISO';
+    return actor.actorName ?? actor.actorEmail ?? actor.actorId ?? 'Sistema ISO';
+  }
+
+  async getActorDetails(clerkAuth: ClerkSessionIdentity | null) {
+    return this.resolveActor(clerkAuth);
   }
 
   async listRecent(limit = 50) {
@@ -86,12 +91,14 @@ export class PlatformAuditService {
       const currentUser = await this.clerkDirectoryService.getCurrentUser(clerkAuth.userId);
       return {
         actorId: currentUser.id,
+        actorName: currentUser.name,
         actorEmail: currentUser.email,
         actorRole: currentUser.role,
       };
     } catch {
       return {
         actorId: clerkAuth.appUserId,
+        actorName: null,
         actorEmail: null,
         actorRole: null,
       };

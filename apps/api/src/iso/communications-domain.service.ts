@@ -3,11 +3,14 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import type {
   CreateEmailTemplateDto,
+  DeliverPdfArtifactDto,
   SendBulkTaskReminderCampaignDto,
+  StorePdfArtifactDto,
   UpdateCommunicationSettingsDto,
   UpdateEmailTemplateDto,
 } from './dto/communications.dto';
 import { EmailDeliveryService } from './email-delivery.service';
+import { GoogleDriveService } from './google-drive.service';
 import { EmailCampaignEntity } from './schemas/email-campaign.schema';
 import { EmailTemplateEntity } from './schemas/email-template.schema';
 import { TaskEntity } from './schemas/task.schema';
@@ -27,7 +30,8 @@ export class CommunicationsDomainService {
     private readonly settingsDocumentService: SettingsDocumentService,
     private readonly tenantBackfillService: TenantBackfillService,
     private readonly tenantContextService: TenantContextService,
-    private readonly emailDeliveryService: EmailDeliveryService
+    private readonly emailDeliveryService: EmailDeliveryService,
+    private readonly googleDriveService: GoogleDriveService
   ) {}
 
   async listEmailTemplates() {
@@ -182,6 +186,56 @@ export class CommunicationsDomainService {
   async getCommunicationCompatibility() {
     const settings = await this.settingsDocumentService.getSettingsDocument();
     return this.emailDeliveryService.getCompatibility(settings.communicationSettings);
+  }
+
+  async storePdfArtifact(payload: StorePdfArtifactDto) {
+    return this.googleDriveService.uploadPdfArtifact({
+      fileName: payload.fileName,
+      pdfBytes: Buffer.from(payload.pdfBase64, 'base64'),
+    });
+  }
+
+  async deliverPdfArtifact(payload: DeliverPdfArtifactDto) {
+    const settings = await this.settingsDocumentService.getSettingsDocument();
+    const recipients = Array.from(
+      new Set(
+        payload.recipientEmails
+          .map((recipient) => recipient.trim().toLowerCase())
+          .filter(Boolean)
+      )
+    );
+
+    const html = [
+      `<h2>${payload.title}</h2>`,
+      `<p>Documento generado por <strong>${payload.generatedByName}</strong> (${payload.generatedByEmail}).</p>`,
+      `<p>Fuente: ${payload.sourceType} · ${payload.sourceId}</p>`,
+      `<p>Checksum: <code>${payload.checksum}</code></p>`,
+      `<p>Generado: ${new Date(payload.generatedAtIso).toLocaleString('es-CL')}</p>`,
+      payload.fileUrl
+        ? `<p>Disponible en Drive: <a href="${payload.fileUrl}">${payload.fileUrl}</a></p>`
+        : `<p>Almacenamiento: ${payload.storageLabel || 'No informado'}</p>`,
+    ].join('');
+
+    const delivery = await this.emailDeliveryService.sendEmail({
+      settings: settings.communicationSettings,
+      recipients,
+      subject: payload.subject,
+      html,
+      attachments: [
+        {
+          filename: payload.fileName,
+          contentBase64: payload.pdfBase64,
+          contentType: 'application/pdf',
+        },
+      ],
+    });
+
+    return {
+      provider: delivery.provider,
+      delivered: true,
+      reference: delivery.reference,
+      detail: `Documento enviado a ${recipients.length} destinatario(s).`,
+    };
   }
 
   async updateCommunicationSettings(communicationSettings: UpdateCommunicationSettingsDto) {

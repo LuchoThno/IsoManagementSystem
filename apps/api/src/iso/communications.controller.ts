@@ -4,7 +4,9 @@ import { ClerkAuthGuard } from './clerk-auth.guard';
 import { CommunicationsOperationsService } from './communications-operations.service';
 import type {
   CreateEmailTemplateDto,
+  DeliverPdfArtifactDto,
   SendBulkTaskReminderCampaignDto,
+  StorePdfArtifactDto,
   UpdateCommunicationSettingsDto,
   UpdateEmailTemplateDto,
 } from './dto/communications.dto';
@@ -72,5 +74,23 @@ export class CommunicationsController {
     body: SendBulkTaskReminderCampaignDto
   ) {
     return this.communicationsOperationsService.sendBulkTaskReminderCampaign(clerkAuth, body);
+  }
+
+  @Post('communications/pdf-artifacts/store')
+  async storePdfArtifact(
+    @ClerkAuth() clerkAuth: ClerkSessionIdentity | null,
+    @Body()
+    body: StorePdfArtifactDto
+  ) {
+    return this.communicationsOperationsService.storePdfArtifact(clerkAuth, body);
+  }
+
+  @Post('communications/pdf-artifacts/deliver')
+  async deliverPdfArtifact(
+    @ClerkAuth() clerkAuth: ClerkSessionIdentity | null,
+    @Body()
+    body: DeliverPdfArtifactDto
+  ) {
+    return this.communicationsOperationsService.deliverPdfArtifact(clerkAuth, body);
   }
 }

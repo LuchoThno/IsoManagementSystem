@@ -24,6 +24,7 @@ import { GrcService } from './grc.service';
 import { ChatGateway } from './chat.gateway';
 import { EmailDeliveryService } from './email-delivery.service';
 import { GoogleCalendarService } from './google-calendar.service';
+import { GoogleDriveService } from './google-drive.service';
 import { IsoService } from './iso.service';
 import { Audit, AuditSchema } from './schemas/audit.schema';
 import { AuditChecklistEntity, AuditChecklistSchema } from './schemas/audit-checklist.schema';
@@ -110,6 +111,7 @@ import { TraceabilitySyncService } from './traceability-sync.service';
     CollaborationOperationsService,
     ChatGateway,
     GoogleCalendarService,
+    GoogleDriveService,
     EmailDeliveryService,
     DocumentsDomainService,
     TasksDomainService,

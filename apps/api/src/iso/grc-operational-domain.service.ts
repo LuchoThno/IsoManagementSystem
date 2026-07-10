@@ -13,6 +13,7 @@ import { ContractObligationEntity } from './schemas/contract-obligation.schema';
 import { ContractEntity } from './schemas/contract.schema';
 import { CorrectiveActionEntity } from './schemas/corrective-action.schema';
 import { EvidenceEntity } from './schemas/evidence.schema';
+import { Audit } from './schemas/audit.schema';
 import { StandardEntity } from './schemas/standard.schema';
 import { TaskEntity } from './schemas/task.schema';
 import { TenantBackfillService } from './tenant-backfill.service';
@@ -23,6 +24,8 @@ export class GrcOperationalDomainService {
   constructor(
     @InjectModel(EvidenceEntity.name)
     private readonly evidenceModel: Model<EvidenceEntity>,
+    @InjectModel(Audit.name)
+    private readonly auditModel: Model<Audit>,
     @InjectModel(TaskEntity.name)
     private readonly taskModel: Model<TaskEntity>,
     @InjectModel(ContractEntity.name)
@@ -436,6 +439,46 @@ export class GrcOperationalDomainService {
     };
   }
 
+  async getAuditExportBundle(auditId: string) {
+    const tenantId = await this.resolveEffectiveTenantId();
+    await this.backfillOperationalTenantIds(tenantId);
+    const audit = await this.auditModel.findOne({ _id: auditId, tenantId }).lean();
+    if (!audit) {
+      throw new NotFoundException('Audit not found');
+    }
+
+    return {
+      audit: this.serializeAudit(audit),
+      report: await this.getAuditExecutionReport(auditId),
+    };
+  }
+
+  async getEvidenceExportBundle(evidenceId: string) {
+    const tenantId = await this.resolveEffectiveTenantId();
+    await this.backfillOperationalTenantIds(tenantId);
+    const evidence = await this.evidenceModel.findOne({ _id: evidenceId, tenantId }).lean();
+    if (!evidence) {
+      throw new NotFoundException('Evidence not found');
+    }
+
+    const primaryAuditId = evidence.linkedAuditIds?.[0] ?? null;
+    const linkedAudit = primaryAuditId
+      ? await this.auditModel.findOne({ _id: primaryAuditId, tenantId }).lean()
+      : null;
+    const findingLabel = evidence.findingId
+      ? linkedAudit?.findings.find((finding) => finding.id === evidence.findingId)?.description ??
+        evidence.findingId
+      : 'Sin hallazgo asociado';
+
+    return {
+      evidence: this.serializeEvidence(evidence),
+      auditLabel: linkedAudit
+        ? `${linkedAudit.type === 'internal' ? 'Interna' : 'Externa'} · ${linkedAudit.standard}`
+        : 'Auditoría no encontrada',
+      findingLabel,
+    };
+  }
+
   private async listContractDocuments(contractId: string) {
     const tenantId = await this.resolveEffectiveTenantId();
     const documents = await this.contractDocumentModel.find({ contractId, tenantId }).lean();
@@ -525,6 +568,34 @@ export class GrcOperationalDomainService {
       })),
       createdAt: evidence.createdAt,
       updatedAt: evidence.updatedAt,
+    };
+  }
+
+  private serializeAudit(audit: any) {
+    return {
+      id: String(audit._id),
+      tenantId: audit.tenantId ?? null,
+      type: audit.type,
+      standard: audit.standard,
+      date: audit.date,
+      status: audit.status,
+      relatedTaskIds: audit.relatedTaskIds ?? [],
+      relatedDocumentIds: audit.relatedDocumentIds ?? [],
+      findings: (audit.findings ?? []).map((finding: any) => ({
+        id: finding.id,
+        type: finding.type,
+        description: finding.description,
+        status: finding.status,
+        dueDate: finding.dueDate,
+        assignedTo: finding.assignedTo,
+      })),
+      changeLog: (audit.changeLog ?? []).map((entry: any) => ({
+        id: entry.id,
+        date: entry.date,
+        author: entry.author,
+        action: entry.action,
+        summary: entry.summary,
+      })),
     };
   }
 

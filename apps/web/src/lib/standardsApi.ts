@@ -1,6 +1,7 @@
 import type {
   AuditExecutionReport,
   Evidence,
+  ExportValidation,
   PaginatedResult,
   StandardStructure,
   StandardSummary,
@@ -37,6 +38,13 @@ type ApiEvidence = Omit<Evidence, 'dueDate' | 'collectedAt' | 'createdAt' | 'upd
 type ApiAuditExecutionReport = {
   evidences: ApiEvidence[];
   tasks: Array<Omit<AuditExecutionReport['tasks'][number], 'dueDate'> & { dueDate: string }>;
+};
+
+type ApiEvidenceExportBundle = {
+  evidence: ApiEvidence;
+  auditLabel: string;
+  findingLabel: string;
+  validation: ExportValidation;
 };
 
 export type StandardEditorRequirement = {
@@ -277,5 +285,23 @@ export async function fetchAuditExecutionReport(auditId: string): Promise<AuditE
       ...task,
       dueDate: new Date(task.dueDate),
     })),
+  };
+}
+
+export async function fetchEvidenceExportBundle(evidenceId: string): Promise<{
+  evidence: Evidence;
+  auditLabel: string;
+  findingLabel: string;
+  validation: ExportValidation;
+}> {
+  const bundle = await requestIsoApi<ApiEvidenceExportBundle>(`/evidences/${evidenceId}/export`, {
+    method: 'POST',
+  });
+
+  return {
+    evidence: toEvidence(bundle.evidence),
+    auditLabel: bundle.auditLabel,
+    findingLabel: bundle.findingLabel,
+    validation: bundle.validation,
   };
 }

@@ -329,6 +329,21 @@ export interface AuditExecutionReport {
   }>;
 }
 
+export interface ExportValidation {
+  version: '1.0';
+  exportId: string;
+  sourceType: 'audit' | 'evidence';
+  sourceId: string;
+  generatedAtIso: string;
+  generatedBy: {
+    id: string;
+    name: string;
+    email: string;
+    role: string;
+  };
+  checksum: string;
+}
+
 export interface CalendarEvent {
   id: string;
   title: string;

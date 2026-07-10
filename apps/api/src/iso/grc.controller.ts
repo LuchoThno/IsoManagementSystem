@@ -110,6 +110,14 @@ export class GrcController {
     return this.grcOperationsService.deleteEvidence(id, clerkAuth);
   }
 
+  @Post('evidences/:id/export')
+  async exportEvidenceBundle(
+    @Param('id') id: string,
+    @ClerkAuth() clerkAuth: ClerkSessionIdentity | null
+  ) {
+    return this.grcOperationsService.createEvidenceExportBundle(id, clerkAuth);
+  }
+
   @Get('contracts')
   getContracts(
     @Query('page') page?: string,
@@ -160,5 +168,13 @@ export class GrcController {
   @Get('audits/:id/execution-report')
   getAuditExecutionReport(@Param('id') id: string) {
     return this.grcOperationsService.getAuditExecutionReport(id);
+  }
+
+  @Post('audits/:id/export')
+  async exportAuditBundle(
+    @Param('id') id: string,
+    @ClerkAuth() clerkAuth: ClerkSessionIdentity | null
+  ) {
+    return this.grcOperationsService.createAuditExportBundle(id, clerkAuth);
   }
 }

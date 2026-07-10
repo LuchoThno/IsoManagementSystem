@@ -28,6 +28,11 @@ type SendEmailPayload = {
   recipients: string[];
   subject: string;
   html: string;
+  attachments?: Array<{
+    filename: string;
+    contentBase64: string;
+    contentType: string;
+  }>;
 };
 
 type SendEmailResult = {
@@ -96,7 +101,13 @@ export class EmailDeliveryService {
     }
 
     if (provider === 'resend') {
-      return this.sendWithResend(payload.settings, recipients, payload.subject, payload.html);
+      return this.sendWithResend(
+        payload.settings,
+        recipients,
+        payload.subject,
+        payload.html,
+        payload.attachments ?? []
+      );
     }
 
     if (provider === 'gmail') {
@@ -110,7 +121,8 @@ export class EmailDeliveryService {
     settings: SettingsEntity['communicationSettings'],
     recipients: string[],
     subject: string,
-    html: string
+    html: string,
+    attachments: SendEmailPayload['attachments']
   ): Promise<SendEmailResult> {
     const apiKey = process.env.RESEND_API_KEY?.trim();
 
@@ -126,6 +138,10 @@ export class EmailDeliveryService {
       replyTo: settings.replyTo || undefined,
       subject,
       html,
+      attachments: (attachments ?? []).map((attachment) => ({
+        filename: attachment.filename,
+        content: attachment.contentBase64,
+      })),
     });
 
     if (response.error) {

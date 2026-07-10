@@ -3,7 +3,9 @@ import { COMMUNICATION_PROVIDER_VALUES } from './domain.constants';
 import type { ClerkSessionIdentity } from './clerk.types';
 import type {
   CreateEmailTemplateDto,
+  DeliverPdfArtifactDto,
   SendBulkTaskReminderCampaignDto,
+  StorePdfArtifactDto,
   UpdateCommunicationSettingsDto,
   UpdateEmailTemplateDto,
 } from './dto/communications.dto';
@@ -141,6 +143,70 @@ export class CommunicationsOperationsService {
       },
     });
     return campaign;
+  }
+
+  async storePdfArtifact(clerkAuth: ClerkSessionIdentity | null, body: StorePdfArtifactDto) {
+    ensureObject(body, 'body');
+    ensureNonEmptyString(body.fileName, 'fileName');
+    ensureNonEmptyString(body.title, 'title');
+    ensureNonEmptyString(body.subject, 'subject');
+    ensureEnumValue(body.sourceType, 'sourceType', ['audit', 'evidence'] as const);
+    ensureNonEmptyString(body.sourceId, 'sourceId');
+    ensureNonEmptyString(body.checksum, 'checksum');
+    ensureNonEmptyString(body.generatedAtIso, 'generatedAtIso');
+    ensureNonEmptyString(body.generatedByName, 'generatedByName');
+    ensureEmailString(body.generatedByEmail, 'generatedByEmail');
+    ensureNonEmptyString(body.pdfBase64, 'pdfBase64');
+    ensureStringArray(body.keywords, 'keywords');
+
+    const result = await this.communicationsDomainService.storePdfArtifact(body);
+    await this.platformAuditService.captureFromSession(clerkAuth, {
+      action: 'communications.pdf.store',
+      resourceType: 'pdf-artifact',
+      resourceId: body.sourceId,
+      status: 'success',
+      metadata: {
+        sourceType: body.sourceType,
+        fileName: body.fileName,
+        provider: result.provider,
+      },
+    });
+    return result;
+  }
+
+  async deliverPdfArtifact(clerkAuth: ClerkSessionIdentity | null, body: DeliverPdfArtifactDto) {
+    ensureObject(body, 'body');
+    ensureNonEmptyString(body.fileName, 'fileName');
+    ensureNonEmptyString(body.title, 'title');
+    ensureNonEmptyString(body.subject, 'subject');
+    ensureEnumValue(body.sourceType, 'sourceType', ['audit', 'evidence'] as const);
+    ensureNonEmptyString(body.sourceId, 'sourceId');
+    ensureNonEmptyString(body.checksum, 'checksum');
+    ensureNonEmptyString(body.generatedAtIso, 'generatedAtIso');
+    ensureNonEmptyString(body.generatedByName, 'generatedByName');
+    ensureEmailString(body.generatedByEmail, 'generatedByEmail');
+    ensureStringArray(body.recipientEmails, 'recipientEmails');
+    ensureNonEmptyString(body.pdfBase64, 'pdfBase64');
+    ensureOptionalString(body.fileUrl, 'fileUrl');
+    ensureOptionalString(body.storageLabel, 'storageLabel');
+    body.recipientEmails.forEach((email, index) => {
+      ensureEmailString(email, `recipientEmails[${index}]`);
+    });
+
+    const result = await this.communicationsDomainService.deliverPdfArtifact(body);
+    await this.platformAuditService.captureFromSession(clerkAuth, {
+      action: 'communications.pdf.deliver',
+      resourceType: 'pdf-artifact',
+      resourceId: body.sourceId,
+      status: 'success',
+      metadata: {
+        sourceType: body.sourceType,
+        fileName: body.fileName,
+        recipientCount: body.recipientEmails.length,
+        provider: result.provider,
+      },
+    });
+    return result;
   }
 
   private ensureRecipientArraysAreAligned(body: SendBulkTaskReminderCampaignDto) {

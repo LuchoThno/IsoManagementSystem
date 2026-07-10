@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
+import { createHash, randomUUID } from 'node:crypto';
 import {
   APPENDIX_TYPE_VALUES,
   CONTRACT_DOCUMENT_KIND_VALUES,
@@ -41,6 +42,21 @@ import {
   ensureStringArray,
 } from './request-validation';
 import type { ClerkSessionIdentity } from './clerk.types';
+
+type ExportValidationPayload = {
+  version: '1.0';
+  exportId: string;
+  sourceType: 'audit' | 'evidence';
+  sourceId: string;
+  generatedAtIso: string;
+  generatedBy: {
+    id: string;
+    name: string;
+    email: string;
+    role: string;
+  };
+  checksum: string;
+};
 
 @Injectable()
 export class GrcOperationsService {
@@ -219,6 +235,54 @@ export class GrcOperationsService {
   getAuditExecutionReport(auditId: string) {
     ensureNonEmptyString(auditId, 'auditId');
     return this.grcOperationalDomainService.getAuditExecutionReport(auditId);
+  }
+
+  async createAuditExportBundle(auditId: string, clerkAuth: ClerkSessionIdentity | null) {
+    ensureNonEmptyString(auditId, 'auditId');
+    const bundle = await this.grcOperationalDomainService.getAuditExportBundle(auditId);
+    const validation = await this.buildExportValidation({
+      clerkAuth,
+      sourceType: 'audit',
+      sourceId: auditId,
+      content: bundle,
+    });
+
+    await this.platformAuditService.captureFromSession(clerkAuth, {
+      action: 'audits.export',
+      resourceType: 'audit',
+      resourceId: auditId,
+      status: 'success',
+      metadata: validation,
+    });
+
+    return {
+      ...bundle,
+      validation,
+    };
+  }
+
+  async createEvidenceExportBundle(evidenceId: string, clerkAuth: ClerkSessionIdentity | null) {
+    ensureNonEmptyString(evidenceId, 'evidenceId');
+    const bundle = await this.grcOperationalDomainService.getEvidenceExportBundle(evidenceId);
+    const validation = await this.buildExportValidation({
+      clerkAuth,
+      sourceType: 'evidence',
+      sourceId: evidenceId,
+      content: bundle,
+    });
+
+    await this.platformAuditService.captureFromSession(clerkAuth, {
+      action: 'evidences.export',
+      resourceType: 'evidence',
+      resourceId: evidenceId,
+      status: 'success',
+      metadata: validation,
+    });
+
+    return {
+      ...bundle,
+      validation,
+    };
   }
 
   private validateStandardPayload(body: StandardPayload) {
@@ -419,5 +483,72 @@ export class GrcOperationsService {
     ensureOptionalEnumValue(body?.priority, 'priority', TASK_PRIORITY_VALUES);
     if (body?.evidenceIds !== undefined) ensureStringArray(body.evidenceIds, 'evidenceIds');
     ensureOptionalString(body?.verificationNotes, 'verificationNotes');
+  }
+
+  private async buildExportValidation({
+    clerkAuth,
+    sourceType,
+    sourceId,
+    content,
+  }: {
+    clerkAuth: ClerkSessionIdentity | null;
+    sourceType: 'audit' | 'evidence';
+    sourceId: string;
+    content: unknown;
+  }): Promise<ExportValidationPayload> {
+    const actor = await this.platformAuditService.getActorDetails(clerkAuth);
+    const generatedAtIso = new Date().toISOString();
+
+    return {
+      version: '1.0',
+      exportId: `EXP-${randomUUID().slice(0, 8).toUpperCase()}`,
+      sourceType,
+      sourceId,
+      generatedAtIso,
+      generatedBy: {
+        id: actor.actorId ?? 'anonymous',
+        name: actor.actorName ?? actor.actorEmail ?? actor.actorId ?? 'Sistema ISO',
+        email: actor.actorEmail ?? 'sin-correo',
+        role: actor.actorRole ?? 'unknown',
+      },
+      checksum: `SHA256-${createHash('sha256')
+        .update(
+          this.serializeForHash({
+            sourceType,
+            sourceId,
+            generatedAtIso,
+            generatedBy: {
+              id: actor.actorId ?? 'anonymous',
+              email: actor.actorEmail ?? 'sin-correo',
+            },
+            content,
+          })
+        )
+        .digest('hex')
+        .slice(0, 24)
+        .toUpperCase()}`,
+    };
+  }
+
+  private serializeForHash(value: unknown): string {
+    if (value instanceof Date) {
+      return value.toISOString();
+    }
+
+    if (Array.isArray(value)) {
+      return `[${value.map((item) => this.serializeForHash(item)).join(',')}]`;
+    }
+
+    if (value && typeof value === 'object') {
+      const entries = Object.entries(value as Record<string, unknown>).sort(([left], [right]) =>
+        left.localeCompare(right)
+      );
+
+      return `{${entries
+        .map(([key, item]) => `${JSON.stringify(key)}:${this.serializeForHash(item)}`)
+        .join(',')}}`;
+    }
+
+    return JSON.stringify(value ?? null);
   }
 }

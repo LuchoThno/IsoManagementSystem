@@ -27,3 +27,33 @@ export type SendBulkTaskReminderCampaignDto = {
   recipientNames: string[];
   recipientEmails: string[];
 };
+
+export type StorePdfArtifactDto = {
+  fileName: string;
+  title: string;
+  subject: string;
+  sourceType: 'audit' | 'evidence';
+  sourceId: string;
+  checksum: string;
+  generatedAtIso: string;
+  generatedByName: string;
+  generatedByEmail: string;
+  pdfBase64: string;
+  keywords: string[];
+};
+
+export type DeliverPdfArtifactDto = {
+  fileName: string;
+  title: string;
+  subject: string;
+  sourceType: 'audit' | 'evidence';
+  sourceId: string;
+  checksum: string;
+  generatedAtIso: string;
+  generatedByName: string;
+  generatedByEmail: string;
+  recipientEmails: string[];
+  pdfBase64: string;
+  fileUrl?: string;
+  storageLabel?: string;
+};

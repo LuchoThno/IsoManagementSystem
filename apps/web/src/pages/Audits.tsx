@@ -7,7 +7,6 @@ import { useUIPermissions } from '../hooks/useUIPermissions';
 import { fetchAuditChecklist } from '../lib/auditChecklistApi';
 import { exportAuditExecutionPdf } from '../lib/auditReportPdf';
 import { listCorrectiveActions } from '../lib/correctiveActionsApi';
-import { fetchAuditExecutionReport } from '../lib/standardsApi';
 import { AuditList } from '../components/audits/AuditList';
 import { AuditFilters } from '../components/audits/AuditFilters';
 import { AuditModal } from '../components/audits/AuditModal';
@@ -15,15 +14,14 @@ import type { Audit, ISOStandard } from '../types/iso';
 import {
   createAuditApi,
   deleteAuditApi,
+  fetchAuditExportBundle,
   listAudits,
   updateAuditApi,
 } from '../lib/auditsApi';
 import { useISOStore } from '../store/useISOStore';
-import { useAuthStore } from '../store/useAuthStore';
 
 export const Audits: React.FC = () => {
   const { canManageAudits } = useUIPermissions();
-  const currentUser = useAuthStore((state) => state.user);
   const audits = useISOStore((state) => state.audits);
   const tasks = useISOStore((state) => state.tasks);
   const documents = useISOStore((state) => state.documents);
@@ -160,8 +158,8 @@ export const Audits: React.FC = () => {
       return;
     }
 
-    const report = await fetchAuditExecutionReport(selectedAudit.id);
-    await exportAuditExecutionPdf(selectedAudit, report, currentUser);
+    const bundle = await fetchAuditExportBundle(selectedAudit.id);
+    await exportAuditExecutionPdf(bundle.audit, bundle.report, bundle.validation);
   };
 
   return (
