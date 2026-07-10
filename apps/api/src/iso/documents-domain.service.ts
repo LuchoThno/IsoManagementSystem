@@ -240,6 +240,14 @@ export class DocumentsDomainService {
       };
     }
 
+    const driveStatus = this.googleDriveService.getStatus();
+    if (!driveStatus.configured) {
+      return {
+        url: payload.fileContentUrl,
+        locationLabel: `Aplicacion (Drive pendiente: ${driveStatus.missing.join(', ')})`,
+      };
+    }
+
     const fileBytes = this.extractBytesFromDataUrl(payload.fileContentUrl);
     const auditFolderLabel = await this.resolveAuditFolderLabel(tenantId, linkedAuditIds[0]);
     const standardFolderLabel = await this.resolveStandardFolderLabel(tenantId, payload.standard);
