@@ -25,7 +25,7 @@ const validFormats: Document['format'][] = [
 
 export const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
   isOpen,
-  document,
+  document: selectedDocument,
   onClose,
   onSubmit,
 }) => {
@@ -44,29 +44,29 @@ export const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
   const tasks = useISOStore((state) => state.tasks);
 
   React.useEffect(() => {
-    if (!isOpen || !document) {
+    if (!isOpen || !selectedDocument) {
       return;
     }
 
     setFormData({
-      title: document.title,
-      topic: document.topic,
-      version: document.version,
-      format: document.format,
-      status: document.status,
-      linkedAuditIds: document.linkedAuditIds ?? [],
-      linkedTaskIds: document.linkedTaskIds ?? [],
+      title: selectedDocument.title,
+      topic: selectedDocument.topic,
+      version: selectedDocument.version,
+      format: selectedDocument.format,
+      status: selectedDocument.status,
+      linkedAuditIds: selectedDocument.linkedAuditIds ?? [],
+      linkedTaskIds: selectedDocument.linkedTaskIds ?? [],
       changeSummary: '',
     });
-  }, [document, isOpen]);
+  }, [selectedDocument, isOpen]);
 
   React.useEffect(() => {
-    if (!isOpen || !document) {
+    if (!isOpen || !selectedDocument) {
       return;
     }
 
-    const originalOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
+    const originalOverflow = globalThis.document.body.style.overflow;
+    globalThis.document.body.style.overflow = 'hidden';
 
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape' && !submitting) {
@@ -77,10 +77,10 @@ export const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
     window.addEventListener('keydown', handleEscape);
 
     return () => {
-      document.body.style.overflow = originalOverflow;
+      globalThis.document.body.style.overflow = originalOverflow;
       window.removeEventListener('keydown', handleEscape);
     };
-  }, [document, isOpen, onClose, submitting]);
+  }, [selectedDocument, isOpen, onClose, submitting]);
 
   const toggleSelection = (field: 'linkedAuditIds' | 'linkedTaskIds', value: string) => {
     setFormData((current) => ({
@@ -93,18 +93,18 @@ export const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!document) return;
+    if (!selectedDocument) return;
 
     setSubmitting(true);
     try {
-      await onSubmit(document.id, formData);
+      await onSubmit(selectedDocument.id, formData);
       onClose();
     } finally {
       setSubmitting(false);
     }
   };
 
-  if (!isOpen || !document) return null;
+  if (!isOpen || !selectedDocument) return null;
 
   return (
     <div
@@ -230,7 +230,7 @@ export const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
                 <div className="rounded-[28px] border border-app-border bg-app-surface-alt/70 p-5 text-sm text-slate-500">
                   Archivo actual:{' '}
                   <span className="font-semibold text-app-text">
-                    {document.fileName ?? document.title}
+                    {selectedDocument.fileName ?? selectedDocument.title}
                   </span>
                 </div>
 
