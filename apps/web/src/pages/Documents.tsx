@@ -6,7 +6,7 @@ import { DocumentFilters } from '../components/documents/DocumentFilters';
 import { EditDocumentModal } from '../components/documents/EditDocumentModal';
 import { DocumentTable } from '../components/documents/DocumentTable';
 import { DocumentUpload } from '../components/documents/DocumentUpload';
-import type { Document, ISOStandard } from '../types/iso';
+import type { Document, DocumentAsset, ISOStandard } from '../types/iso';
 import {
   createDocumentApi,
   deleteDocumentApi,
@@ -26,16 +26,47 @@ const readFileAsDataUrl = (file: File) =>
     reader.readAsDataURL(file);
   });
 
-const openDocumentAsset = (url: string) => {
-  window.open(url, '_blank', 'noopener,noreferrer');
+const resolveDocumentAssetUrl = async (asset: DocumentAsset) => {
+  if (!asset.url.startsWith('data:')) {
+    return { url: asset.url, revoke: () => {} };
+  }
+
+  const response = await fetch(asset.url);
+  const blob = await response.blob();
+  const objectUrl = window.URL.createObjectURL(
+    asset.mimeType && blob.type !== asset.mimeType ? blob.slice(0, blob.size, asset.mimeType) : blob
+  );
+
+  return {
+    url: objectUrl,
+    revoke: () => window.URL.revokeObjectURL(objectUrl),
+  };
 };
 
-const downloadDocumentAsset = (url: string, fileName: string) => {
+const openDocumentAsset = async (asset: DocumentAsset, previewWindow?: Window | null) => {
+  const { url, revoke } = await resolveDocumentAssetUrl(asset);
+  const targetWindow = previewWindow ?? window.open('', '_blank');
+
+  if (!targetWindow) {
+    revoke();
+    throw new Error('El navegador bloqueo la apertura del documento.');
+  }
+
+  targetWindow.opener = null;
+  targetWindow.location.replace(url);
+  window.setTimeout(revoke, 60_000);
+};
+
+const downloadDocumentAsset = async (asset: DocumentAsset, fileName: string) => {
+  const { url, revoke } = await resolveDocumentAssetUrl(asset);
   const anchor = window.document.createElement('a');
   anchor.href = url;
   anchor.download = fileName;
   anchor.rel = 'noopener';
+  window.document.body.appendChild(anchor);
   anchor.click();
+  anchor.remove();
+  window.setTimeout(revoke, 1_000);
 };
 
 export const Documents: React.FC = () => {
@@ -139,17 +170,22 @@ export const Documents: React.FC = () => {
   };
 
   const handleViewDocument = async (doc: Document) => {
+    const previewWindow = window.open('', '_blank');
+    previewWindow?.document.write(
+      '<!doctype html><html><head><title>Abriendo documento...</title></head><body style="font-family:sans-serif;padding:24px">Cargando documento...</body></html>'
+    );
+
     await registerDocumentViewApi(doc.id);
     const asset = await fetchDocumentAsset(doc.id);
     await refreshDocuments();
     refreshShell();
-    openDocumentAsset(asset.url);
+    await openDocumentAsset(asset, previewWindow);
   };
 
   const handleDownloadDocument = async (doc: Document) => {
     const asset = await fetchDocumentAsset(doc.id);
-    downloadDocumentAsset(
-      asset.url,
+    await downloadDocumentAsset(
+      asset,
       asset.fileName ?? doc.fileName ?? `${doc.title}.${doc.format.toLowerCase()}`
     );
   };
