@@ -24,8 +24,10 @@ import type {
   StandardClausePayload,
   StandardPayload,
   StandardRequirementPayload,
+  UploadEvidenceDocumentDto,
   UpdateEvidenceDto,
 } from './dto/grc.dto';
+import { DocumentsDomainService } from './documents-domain.service';
 import { GrcOperationalDomainService } from './grc-operational-domain.service';
 import { GrcStandardsDomainService } from './grc-standards-domain.service';
 import { PlatformAuditService } from './platform-audit.service';
@@ -63,7 +65,8 @@ export class GrcOperationsService {
   constructor(
     private readonly grcStandardsDomainService: GrcStandardsDomainService,
     private readonly grcOperationalDomainService: GrcOperationalDomainService,
-    private readonly platformAuditService: PlatformAuditService
+    private readonly platformAuditService: PlatformAuditService,
+    private readonly documentsDomainService: DocumentsDomainService
   ) {}
 
   listStandards() {
@@ -285,6 +288,61 @@ export class GrcOperationsService {
     };
   }
 
+  async uploadEvidenceDocument(
+    evidenceId: string,
+    clerkAuth: ClerkSessionIdentity | null,
+    body: UploadEvidenceDocumentDto
+  ) {
+    ensureNonEmptyString(evidenceId, 'evidenceId');
+    this.validateEvidenceDocumentPayload(body);
+
+    const actorLabel = await this.platformAuditService.getActorLabel(clerkAuth);
+    const context = await this.grcOperationalDomainService.getEvidenceDocumentContext(evidenceId);
+    const document = await this.documentsDomainService.createDocument(
+      {
+        title: body.title,
+        topic: body.topic?.trim() || 'Evidencias',
+        type: body.type ?? 'record',
+        format: body.format,
+        standard: context.standardLabel,
+        version: body.version?.trim() || '1.0',
+        fileName: body.fileName,
+        mimeType: body.mimeType,
+        fileContentUrl: body.fileContentUrl,
+        storageMode: 'google-drive',
+        linkedAuditIds: context.linkedAuditIds,
+        changeSummary:
+          body.changeSummary?.trim() || `Carga de evidencia documental para ${context.evidence.title}`,
+      },
+      {
+        author: actorLabel,
+        summary: body.changeSummary,
+      }
+    );
+
+    const evidence = await this.grcOperationalDomainService.attachDocumentToEvidence(
+      evidenceId,
+      document.id,
+      actorLabel
+    );
+
+    await this.platformAuditService.captureFromSession(clerkAuth, {
+      action: 'evidences.document-upload',
+      resourceType: 'evidence',
+      resourceId: evidenceId,
+      status: 'success',
+      metadata: {
+        documentId: document.id,
+        documentTitle: document.title,
+      },
+    });
+
+    return {
+      evidence,
+      document,
+    };
+  }
+
   private validateStandardPayload(body: StandardPayload) {
     ensureNonEmptyString(body?.code, 'code');
     ensureNonEmptyString(body?.title, 'title');
@@ -412,6 +470,29 @@ export class GrcOperationsService {
     ensureOptionalIsoDateString(body?.dueDate, 'dueDate');
     ensureOptionalIsoDateString(body?.collectedAt, 'collectedAt');
     ensureOptionalString(body?.notes, 'notes');
+    ensureOptionalString(body?.changeSummary, 'changeSummary');
+  }
+
+  private validateEvidenceDocumentPayload(body: UploadEvidenceDocumentDto) {
+    ensureObject(body, 'body');
+    ensureNonEmptyString(body?.title, 'title');
+    ensureOptionalString(body?.topic, 'topic');
+    ensureOptionalEnumValue(body?.type, 'type', ['manual', 'procedure', 'record'] as const);
+    ensureEnumValue(body?.format, 'format', [
+      'PDF',
+      'DOCX',
+      'XLSX',
+      'PPTX',
+      'TXT',
+      'PNG',
+      'JPG',
+      'WEBP',
+      'GIF',
+    ] as const);
+    ensureOptionalString(body?.version, 'version');
+    ensureNonEmptyString(body?.fileName, 'fileName');
+    ensureNonEmptyString(body?.mimeType, 'mimeType');
+    ensureNonEmptyString(body?.fileContentUrl, 'fileContentUrl');
     ensureOptionalString(body?.changeSummary, 'changeSummary');
   }
 

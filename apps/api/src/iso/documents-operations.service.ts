@@ -44,6 +44,7 @@ export class DocumentsOperationsService {
     ensureNonEmptyString(body.fileName, 'fileName');
     ensureNonEmptyString(body.mimeType, 'mimeType');
     ensureNonEmptyString(body.fileContentUrl, 'fileContentUrl');
+    ensureOptionalEnumValue(body.storageMode, 'storageMode', ['inline', 'google-drive'] as const);
     if (body.linkedAuditIds !== undefined) ensureStringArray(body.linkedAuditIds, 'linkedAuditIds');
     if (body.linkedTaskIds !== undefined) ensureStringArray(body.linkedTaskIds, 'linkedTaskIds');
     ensureOptionalString(body.changeSummary, 'changeSummary');

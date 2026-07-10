@@ -109,6 +109,18 @@ export type UpdateEvidenceDto = {
   changeSummary?: string;
 };
 
+export type UploadEvidenceDocumentDto = {
+  title: string;
+  topic?: string;
+  type?: 'manual' | 'procedure' | 'record';
+  format: 'PDF' | 'DOCX' | 'XLSX' | 'PPTX' | 'TXT' | 'PNG' | 'JPG' | 'WEBP' | 'GIF';
+  version?: string;
+  fileName: string;
+  mimeType: string;
+  fileContentUrl: string;
+  changeSummary?: string;
+};
+
 export type CreateContractDto = {
   title: string;
   counterparty: string;

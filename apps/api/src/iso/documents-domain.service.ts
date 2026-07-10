@@ -1,8 +1,11 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { isValidObjectId, Model } from 'mongoose';
 import type { CreateDocumentDto, UpdateDocumentDto } from './dto/documents.dto';
+import { GoogleDriveService } from './google-drive.service';
+import { Audit } from './schemas/audit.schema';
 import { DocumentEntity } from './schemas/document.schema';
+import { StandardEntity } from './schemas/standard.schema';
 import { TenantBackfillService } from './tenant-backfill.service';
 import { TenantContextService } from './tenant-context.service';
 import { TraceabilitySyncService } from './traceability-sync.service';
@@ -17,9 +20,14 @@ export class DocumentsDomainService {
   constructor(
     @InjectModel(DocumentEntity.name)
     private readonly documentModel: Model<DocumentEntity>,
+    @InjectModel(Audit.name)
+    private readonly auditModel: Model<Audit>,
+    @InjectModel(StandardEntity.name)
+    private readonly standardModel: Model<StandardEntity>,
     private readonly tenantBackfillService: TenantBackfillService,
     private readonly tenantContextService: TenantContextService,
-    private readonly traceabilitySyncService: TraceabilitySyncService
+    private readonly traceabilitySyncService: TraceabilitySyncService,
+    private readonly googleDriveService: GoogleDriveService
   ) {}
 
   async listDocumentSummaries() {
@@ -34,6 +42,12 @@ export class DocumentsDomainService {
     const tenantId = await this.resolveEffectiveTenantId();
     const linkedAuditIds = this.normalizeIds(payload.linkedAuditIds);
     const linkedTaskIds = this.normalizeIds(payload.linkedTaskIds);
+    const storageMode = payload.storageMode === 'google-drive' ? 'google-drive' : 'inline';
+    const storedAsset = await this.storeDocumentAsset({
+      tenantId,
+      payload,
+      linkedAuditIds,
+    });
     const document = await this.documentModel.create({
       tenantId,
       title: payload.title,
@@ -45,7 +59,7 @@ export class DocumentsDomainService {
       standard: payload.standard,
       version: payload.version || '1.0',
       status: 'draft',
-      url: payload.fileContentUrl,
+      url: storedAsset.url,
       linkedAuditIds,
       linkedTaskIds,
       versionHistory: [
@@ -64,7 +78,10 @@ export class DocumentsDomainService {
           date: now,
           author: changeContext.author,
           details:
-            changeContext.summary?.trim() || `Documento creado con formato ${payload.format}`,
+            changeContext.summary?.trim() ||
+            `Documento creado con formato ${payload.format}${
+              storageMode === 'google-drive' ? ` en ${storedAsset.locationLabel}` : ''
+            }`,
           relatedAuditIds: linkedAuditIds,
           relatedTaskIds: linkedTaskIds,
         },
@@ -207,6 +224,48 @@ export class DocumentsDomainService {
     return this.tenantContextService.resolveEffectiveTenantId();
   }
 
+  private async storeDocumentAsset({
+    tenantId,
+    payload,
+    linkedAuditIds,
+  }: {
+    tenantId: string;
+    payload: CreateDocumentDto;
+    linkedAuditIds: string[];
+  }) {
+    if (payload.storageMode !== 'google-drive') {
+      return {
+        url: payload.fileContentUrl,
+        locationLabel: 'Aplicacion',
+      };
+    }
+
+    const fileBytes = this.extractBytesFromDataUrl(payload.fileContentUrl);
+    const auditFolderLabel = await this.resolveAuditFolderLabel(tenantId, linkedAuditIds[0]);
+    const standardFolderLabel = await this.resolveStandardFolderLabel(tenantId, payload.standard);
+    const folderSegments = [
+      standardFolderLabel,
+      ...(auditFolderLabel ? ['Auditorias', auditFolderLabel] : []),
+      this.normalizeFolderSegment(payload.topic || 'Documentos'),
+    ];
+
+    const stored = await this.googleDriveService.uploadFileArtifact({
+      fileName: payload.fileName,
+      mimeType: payload.mimeType,
+      fileBytes,
+      folderSegments,
+    });
+
+    if (!stored.fileUrl) {
+      throw new BadRequestException('No fue posible obtener la URL del archivo en Google Drive.');
+    }
+
+    return {
+      url: stored.fileUrl,
+      locationLabel: stored.locationLabel,
+    };
+  }
+
   private async backfillDocumentTenantIds(tenantId: string) {
     await this.tenantBackfillService.ensureTenantId(this.documentModel, tenantId);
   }
@@ -260,6 +319,17 @@ export class DocumentsDomainService {
     return `${prefix}-${Math.random().toString(36).slice(2, 10)}`;
   }
 
+  private extractBytesFromDataUrl(value: string) {
+    const match = value.match(/^data:.*?;base64,(.+)$/);
+    if (!match?.[1]) {
+      throw new BadRequestException(
+        'Para almacenar en Google Drive el archivo debe enviarse como data URL base64.'
+      );
+    }
+
+    return Buffer.from(match[1], 'base64');
+  }
+
   private normalizeIds(ids?: string[]) {
     return Array.from(
       new Set(
@@ -269,5 +339,53 @@ export class DocumentsDomainService {
           .filter((value) => value.length > 0)
       )
     );
+  }
+
+  private normalizeFolderSegment(value: string) {
+    return value.replace(/[\\/:*?"<>|]/g, ' ').replace(/\s+/g, ' ').trim() || 'General';
+  }
+
+  private async resolveAuditFolderLabel(tenantId: string, auditId?: string) {
+    if (!auditId) {
+      return null;
+    }
+
+    const audit = await this.auditModel.findOne({ _id: auditId, tenantId }).lean();
+    if (!audit) {
+      return null;
+    }
+
+    const auditTypeLabel = audit.type === 'internal' ? 'Interna' : 'Externa';
+    const auditDateLabel =
+      audit.date instanceof Date
+        ? audit.date.toISOString().slice(0, 10)
+        : new Date(audit.date).toISOString().slice(0, 10);
+
+    return this.normalizeFolderSegment(`Auditoria ${auditTypeLabel} ${audit.standard} ${auditDateLabel}`);
+  }
+
+  private async resolveStandardFolderLabel(tenantId: string, standard: string) {
+    const normalizedStandard = standard.trim();
+    const standardFilters: Array<Record<string, string>> = [
+      { code: normalizedStandard },
+      { title: normalizedStandard },
+    ];
+
+    if (isValidObjectId(normalizedStandard)) {
+      standardFilters.unshift({ _id: normalizedStandard });
+    }
+
+    const standardRecord = await this.standardModel
+      .findOne({
+        tenantId,
+        $or: standardFilters,
+      })
+      .lean();
+
+    if (!standardRecord) {
+      return this.normalizeFolderSegment(normalizedStandard || 'General');
+    }
+
+    return this.normalizeFolderSegment(`${standardRecord.code} ${standardRecord.title}`);
   }
 }

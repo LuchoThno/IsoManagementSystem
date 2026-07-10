@@ -1,17 +1,27 @@
 import React from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Download, FileCheck2, Link2, PencilLine, Plus, ShieldCheck, Trash2, X } from 'lucide-react';
+import { Download, FileCheck2, Link2, PencilLine, Plus, ShieldCheck, Trash2, Upload, X } from 'lucide-react';
 import { exportEvidenceFulfillmentPdf } from '../lib/auditReportPdf';
 import { useUIPermissions } from '../hooks/useUIPermissions';
+import { listDocuments } from '../lib/documentsApi';
 import {
   createEvidenceApi,
   deleteEvidenceApi,
   fetchEvidenceExportBundle,
   listEvidences,
+  uploadEvidenceDocumentApi,
   updateEvidenceApi,
 } from '../lib/standardsApi';
 import { useISOStore } from '../store/useISOStore';
-import type { Evidence } from '../types/iso';
+import type { Document, Evidence } from '../types/iso';
+
+const readFileAsDataUrl = (file: File) =>
+  new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(new Error('No fue posible leer el archivo seleccionado.'));
+    reader.readAsDataURL(file);
+  });
 
 type EvidenceFormState = {
   title: string;
@@ -61,6 +71,7 @@ export const Evidences: React.FC = () => {
   const audits = useISOStore((state) => state.audits);
   const tasks = useISOStore((state) => state.tasks);
   const documents = useISOStore((state) => state.documents);
+  const replaceDocuments = useISOStore((state) => state.replaceDocuments);
   const standards = useISOStore((state) => state.standards);
   const queryClient = useQueryClient();
   const [page, setPage] = React.useState(1);
@@ -71,6 +82,9 @@ export const Evidences: React.FC = () => {
   const [editingEvidence, setEditingEvidence] = React.useState<Evidence | null>(null);
   const [isModalOpen, setIsModalOpen] = React.useState(false);
   const [formData, setFormData] = React.useState<EvidenceFormState>(emptyForm);
+  const [uploadFile, setUploadFile] = React.useState<File | null>(null);
+  const [uploadTitle, setUploadTitle] = React.useState('');
+  const [uploadNotes, setUploadNotes] = React.useState('');
   const deferredSearch = React.useDeferredValue(search);
   const pageSize = 12;
 
@@ -105,6 +119,12 @@ export const Evidences: React.FC = () => {
       setSelectedEvidenceId(evidences[0]?.id ?? null);
     }
   }, [evidences, selectedEvidence]);
+
+  React.useEffect(() => {
+    setUploadFile(null);
+    setUploadTitle(selectedEvidence?.title ?? '');
+    setUploadNotes('');
+  }, [selectedEvidence?.id, selectedEvidence?.title]);
 
   const evidenceMutation = useMutation({
     mutationFn: async () => {
@@ -148,6 +168,35 @@ export const Evidences: React.FC = () => {
     mutationFn: deleteEvidenceApi,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['evidences'] });
+    },
+  });
+
+  const uploadDocumentMutation = useMutation({
+    mutationFn: async (evidence: Evidence) => {
+      if (!uploadFile) {
+        throw new Error('Selecciona un archivo para subir.');
+      }
+
+      const fileContentUrl = await readFileAsDataUrl(uploadFile);
+      return uploadEvidenceDocumentApi(evidence.id, {
+        title: uploadTitle.trim() || uploadFile.name,
+        topic: 'Evidencias',
+        type: 'record',
+        format: resolveDocumentFormat(uploadFile),
+        version: '1.0',
+        fileName: uploadFile.name,
+        mimeType: uploadFile.type || 'application/octet-stream',
+        fileContentUrl,
+        changeSummary: uploadNotes.trim() || `Se adjunta evidencia documental ${uploadFile.name}.`,
+      });
+    },
+    onSuccess: async ({ evidence }) => {
+      await queryClient.invalidateQueries({ queryKey: ['evidences'] });
+      replaceDocuments(await listDocuments());
+      setSelectedEvidenceId(evidence.id);
+      setUploadFile(null);
+      setUploadTitle('');
+      setUploadNotes('');
     },
   });
 
@@ -236,6 +285,14 @@ export const Evidences: React.FC = () => {
     const finding = audit?.findings.find((item) => item.id === evidence.findingId);
     return finding?.description ?? evidence.findingId;
   };
+
+  const selectedEvidenceDocuments = React.useMemo(
+    () =>
+      selectedEvidence
+        ? documents.filter((document) => selectedEvidence.documentIds.includes(document.id))
+        : [],
+    [documents, selectedEvidence]
+  );
 
   const handleExportEvidencePdf = async (evidence: Evidence) => {
     const bundle = await fetchEvidenceExportBundle(evidence.id);
@@ -441,9 +498,90 @@ export const Evidences: React.FC = () => {
                 </div>
               </div>
 
+              <div className="rounded-2xl border border-app-border bg-white p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">
+                      Evidencia en Drive
+                    </p>
+                    <p className="mt-1 text-sm text-slate-600">
+                      Se guardará por norma y auditoría dentro de Google Drive.
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-app-primary/10 px-3 py-1 text-xs font-bold text-app-primary">
+                    {selectedEvidenceDocuments.length} archivo(s)
+                  </span>
+                </div>
+                <div className="mt-4 space-y-3">
+                  <input
+                    className="admin-input"
+                    placeholder="Título del documento"
+                    value={uploadTitle}
+                    onChange={(event) => setUploadTitle(event.target.value)}
+                  />
+                  <textarea
+                    className="admin-input min-h-[88px] resize-none"
+                    placeholder="Notas o trazabilidad de la carga"
+                    value={uploadNotes}
+                    onChange={(event) => setUploadNotes(event.target.value)}
+                  />
+                  <input
+                    type="file"
+                    className="admin-input"
+                    onChange={(event) => setUploadFile(event.target.files?.[0] ?? null)}
+                  />
+                  <button
+                    type="button"
+                    disabled={uploadDocumentMutation.isPending || !uploadFile}
+                    onClick={() => void uploadDocumentMutation.mutateAsync(selectedEvidence)}
+                    className="app-button-primary inline-flex w-full items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-70"
+                  >
+                    <Upload className="h-4 w-4" />
+                    {uploadDocumentMutation.isPending ? 'Subiendo a Drive...' : 'Subir evidencia'}
+                  </button>
+                  {uploadDocumentMutation.error ? (
+                    <p className="text-sm text-rose-600">
+                      {uploadDocumentMutation.error instanceof Error
+                        ? uploadDocumentMutation.error.message
+                        : 'No fue posible subir la evidencia.'}
+                    </p>
+                  ) : null}
+                  {uploadFile ? (
+                    <p className="text-xs text-slate-500">
+                      Archivo seleccionado: {uploadFile.name}
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+
               <div className="rounded-2xl border border-app-border bg-app-surface-alt/60 p-4">
                 <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Notas</p>
                 <p className="mt-2 text-sm text-slate-600">{selectedEvidence.notes || 'Sin notas registradas.'}</p>
+              </div>
+
+              <div className="rounded-2xl border border-app-border bg-app-surface-alt/60 p-4">
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">
+                  Documentos asociados
+                </p>
+                <div className="mt-3 space-y-3">
+                  {selectedEvidenceDocuments.length > 0 ? (
+                    selectedEvidenceDocuments.map((document) => (
+                      <div
+                        key={document.id}
+                        className="rounded-xl border border-slate-200 bg-white px-4 py-3"
+                      >
+                        <p className="text-sm font-bold text-app-text">{document.title}</p>
+                        <p className="mt-1 text-xs text-slate-500">
+                          {document.standard} · {document.fileName ?? document.type}
+                        </p>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-sm text-slate-500">
+                      Aún no hay documentos subidos para esta evidencia.
+                    </p>
+                  )}
+                </div>
               </div>
 
               <div>
@@ -871,4 +1009,45 @@ export const Evidences: React.FC = () => {
       ) : null}
     </div>
   );
+};
+
+const resolveDocumentFormat = (file: File): Document['format'] => {
+  const extension = file.name.split('.').pop()?.trim().toUpperCase();
+  const allowedFormats: Document['format'][] = [
+    'PDF',
+    'DOCX',
+    'XLSX',
+    'PPTX',
+    'TXT',
+    'PNG',
+    'JPG',
+    'WEBP',
+    'GIF',
+  ];
+
+  if (extension && allowedFormats.includes(extension as Document['format'])) {
+    return extension as Document['format'];
+  }
+
+  if (file.type === 'image/jpeg') {
+    return 'JPG';
+  }
+
+  if (file.type === 'image/png') {
+    return 'PNG';
+  }
+
+  if (file.type === 'image/webp') {
+    return 'WEBP';
+  }
+
+  if (file.type === 'image/gif') {
+    return 'GIF';
+  }
+
+  if (file.type === 'application/pdf') {
+    return 'PDF';
+  }
+
+  return 'TXT';
 };

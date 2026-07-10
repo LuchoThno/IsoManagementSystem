@@ -7,6 +7,7 @@ import type {
   CreateEvidenceDto,
   PaginationParams,
   StandardPayload,
+  UploadEvidenceDocumentDto,
   UpdateEvidenceDto,
 } from './dto/grc.dto';
 import { GrcOperationsService } from './grc-operations.service';
@@ -116,6 +117,16 @@ export class GrcController {
     @ClerkAuth() clerkAuth: ClerkSessionIdentity | null
   ) {
     return this.grcOperationsService.createEvidenceExportBundle(id, clerkAuth);
+  }
+
+  @Post('evidences/:id/documents')
+  @Roles('admin', 'manager', 'auditor')
+  async uploadEvidenceDocument(
+    @Param('id') id: string,
+    @ClerkAuth() clerkAuth: ClerkSessionIdentity | null,
+    @Body() body: UploadEvidenceDocumentDto
+  ) {
+    return this.grcOperationsService.uploadEvidenceDocument(id, clerkAuth, body);
   }
 
   @Get('contracts')

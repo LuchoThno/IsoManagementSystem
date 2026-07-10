@@ -163,6 +163,7 @@ export const Documents: React.FC = () => {
       fileName: data.file.name,
       fileContentUrl,
       mimeType: data.file.type || 'application/octet-stream',
+      storageMode: 'google-drive',
     });
 
     await refreshDocuments();

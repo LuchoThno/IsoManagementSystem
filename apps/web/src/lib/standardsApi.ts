@@ -1,5 +1,6 @@
 import type {
   AuditExecutionReport,
+  Document,
   Evidence,
   ExportValidation,
   PaginatedResult,
@@ -45,6 +46,46 @@ type ApiEvidenceExportBundle = {
   auditLabel: string;
   findingLabel: string;
   validation: ExportValidation;
+};
+
+type ApiEvidenceDocumentUpload = {
+  evidence: ApiEvidence;
+  document: ApiDocument;
+};
+
+type ApiDocument = {
+  id: string;
+  tenantId?: string | null;
+  title: string;
+  fileName?: string;
+  mimeType?: string;
+  topic: string;
+  type: 'manual' | 'procedure' | 'record';
+  format: Document['format'];
+  standard: string;
+  version: string;
+  createdAt: string;
+  updatedAt: string;
+  status: 'draft' | 'active' | 'archived';
+  url?: string;
+  linkedAuditIds?: string[];
+  linkedTaskIds?: string[];
+  versionHistory: Array<{
+    id: string;
+    version: string;
+    date: string;
+    author: string;
+    notes: string;
+  }>;
+  auditTrail: Array<{
+    id: string;
+    action: 'created' | 'updated' | 'viewed';
+    date: string;
+    author: string;
+    details: string;
+    relatedAuditIds?: string[];
+    relatedTaskIds?: string[];
+  }>;
 };
 
 export type StandardEditorRequirement = {
@@ -107,6 +148,20 @@ const toEvidence = (evidence: ApiEvidence): Evidence => ({
   })),
   createdAt: new Date(evidence.createdAt),
   updatedAt: new Date(evidence.updatedAt),
+});
+
+const toDocument = (document: ApiDocument) => ({
+  ...document,
+  createdAt: new Date(document.createdAt),
+  updatedAt: new Date(document.updatedAt),
+  versionHistory: (document.versionHistory ?? []).map((entry) => ({
+    ...entry,
+    date: new Date(entry.date),
+  })),
+  auditTrail: (document.auditTrail ?? []).map((entry) => ({
+    ...entry,
+    date: new Date(entry.date),
+  })),
 });
 
 export async function listStandards() {
@@ -303,5 +358,33 @@ export async function fetchEvidenceExportBundle(evidenceId: string): Promise<{
     auditLabel: bundle.auditLabel,
     findingLabel: bundle.findingLabel,
     validation: bundle.validation,
+  };
+}
+
+export async function uploadEvidenceDocumentApi(
+  evidenceId: string,
+  payload: {
+    title: string;
+    topic?: string;
+    type?: 'manual' | 'procedure' | 'record';
+    format: Document['format'];
+    version?: string;
+    fileName: string;
+    mimeType: string;
+    fileContentUrl: string;
+    changeSummary?: string;
+  }
+): Promise<{
+  evidence: Evidence;
+  document: Document;
+}> {
+  const response = await requestIsoApi<ApiEvidenceDocumentUpload>(`/evidences/${evidenceId}/documents`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+
+  return {
+    evidence: toEvidence(response.evidence),
+    document: toDocument(response.document),
   };
 }

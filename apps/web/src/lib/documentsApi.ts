@@ -59,6 +59,7 @@ export async function createDocumentApi(payload: {
   fileName: string;
   mimeType: string;
   fileContentUrl: string;
+  storageMode?: 'inline' | 'google-drive';
   linkedAuditIds?: string[];
   linkedTaskIds?: string[];
   changeSummary?: string;

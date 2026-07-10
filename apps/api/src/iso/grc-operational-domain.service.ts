@@ -479,6 +479,59 @@ export class GrcOperationalDomainService {
     };
   }
 
+  async getEvidenceDocumentContext(evidenceId: string) {
+    const tenantId = await this.resolveEffectiveTenantId();
+    await this.backfillOperationalTenantIds(tenantId);
+    const evidence = await this.evidenceModel.findOne({ _id: evidenceId, tenantId }).lean();
+    if (!evidence) {
+      throw new NotFoundException('Evidence not found');
+    }
+
+    const [standard, audit] = await Promise.all([
+      evidence.standardId
+        ? this.standardModel.findOne({ _id: evidence.standardId, tenantId }).lean()
+        : null,
+      evidence.linkedAuditIds?.[0]
+        ? this.auditModel.findOne({ _id: evidence.linkedAuditIds[0], tenantId }).lean()
+        : null,
+    ]);
+
+    return {
+      evidence: this.serializeEvidence(evidence),
+      standardLabel: standard ? `${standard.code} ${standard.title}` : audit?.standard ?? 'General',
+      linkedAuditIds: this.normalizeIds(evidence.linkedAuditIds),
+    };
+  }
+
+  async attachDocumentToEvidence(evidenceId: string, documentId: string, author: string) {
+    const tenantId = await this.resolveEffectiveTenantId();
+    await this.backfillOperationalTenantIds(tenantId);
+    const evidence = await this.evidenceModel.findOne({ _id: evidenceId, tenantId });
+    if (!evidence) {
+      throw new NotFoundException('Evidence not found');
+    }
+
+    evidence.documentIds = this.normalizeIds([...(evidence.documentIds ?? []), documentId]);
+    if (!evidence.sourceDocumentId) {
+      evidence.sourceDocumentId = documentId;
+    }
+    if (!evidence.collectedAt) {
+      evidence.collectedAt = new Date();
+    }
+    evidence.activityLog = [
+      ...(evidence.activityLog ?? []),
+      this.buildEvidenceActivity({
+        author,
+        action: 'document-attached',
+        details: 'Se adjunto evidencia documental y se sincronizo con Google Drive.',
+        status: evidence.status,
+      }),
+    ];
+
+    await evidence.save();
+    return this.serializeEvidence(evidence.toObject());
+  }
+
   private async listContractDocuments(contractId: string) {
     const tenantId = await this.resolveEffectiveTenantId();
     const documents = await this.contractDocumentModel.find({ contractId, tenantId }).lean();

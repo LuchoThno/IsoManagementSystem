@@ -13,12 +13,23 @@ type UploadPdfInput = {
   pdfBytes: Buffer;
 };
 
+type UploadFileInput = {
+  fileName: string;
+  mimeType: string;
+  fileBytes: Buffer;
+  folderSegments?: string[];
+};
+
 type UploadPdfResult = {
   provider: 'google-drive';
   stored: boolean;
   locationLabel: string;
   fileUrl?: string;
   externalId?: string;
+};
+
+type UploadFileResult = UploadPdfResult & {
+  folderPath: string[];
 };
 
 @Injectable()
@@ -45,6 +56,14 @@ export class GoogleDriveService {
   }
 
   async uploadPdfArtifact(input: UploadPdfInput): Promise<UploadPdfResult> {
+    return this.uploadFileArtifact({
+      fileName: input.fileName,
+      mimeType: 'application/pdf',
+      fileBytes: input.pdfBytes,
+    });
+  }
+
+  async uploadFileArtifact(input: UploadFileInput): Promise<UploadFileResult> {
     const status = this.getStatus();
     if (!status.configured) {
       throw new ServiceUnavailableException(
@@ -63,25 +82,97 @@ export class GoogleDriveService {
       auth,
     });
 
+    const folderPath = (input.folderSegments ?? [])
+      .map((segment) => this.normalizeFolderName(segment))
+      .filter((segment) => segment.length > 0);
+    const parentFolderId = await this.ensureFolderPath(
+      drive,
+      credentials.rootFolderId,
+      folderPath
+    );
+
     const response = await drive.files.create({
       requestBody: {
         name: input.fileName,
-        parents: credentials.rootFolderId ? [credentials.rootFolderId] : undefined,
+        parents: parentFolderId ? [parentFolderId] : undefined,
       },
       media: {
-        mimeType: 'application/pdf',
-        body: input.pdfBytes,
+        mimeType: input.mimeType,
+        body: input.fileBytes,
       },
       fields: 'id,name,webViewLink,webContentLink',
+      supportsAllDrives: true,
     });
 
     return {
       provider: 'google-drive',
       stored: true,
-      locationLabel: 'Google Drive',
+      locationLabel:
+        folderPath.length > 0 ? `Google Drive / ${folderPath.join(' / ')}` : 'Google Drive',
       fileUrl: response.data.webViewLink ?? response.data.webContentLink ?? undefined,
       externalId: response.data.id ?? undefined,
+      folderPath,
     };
+  }
+
+  private async ensureFolderPath(
+    drive: ReturnType<typeof google.drive>,
+    rootFolderId: string,
+    folderSegments: string[]
+  ) {
+    let parentId = rootFolderId;
+
+    for (const segment of folderSegments) {
+      parentId = await this.ensureFolder(drive, parentId, segment);
+    }
+
+    return parentId;
+  }
+
+  private async ensureFolder(
+    drive: ReturnType<typeof google.drive>,
+    parentId: string,
+    folderName: string
+  ) {
+    const escapedFolderName = folderName.replace(/'/g, "\\'");
+    const escapedParentId = parentId.replace(/'/g, "\\'");
+    const response = await drive.files.list({
+      q: [
+        `mimeType = 'application/vnd.google-apps.folder'`,
+        `name = '${escapedFolderName}'`,
+        `'${escapedParentId}' in parents`,
+        'trashed = false',
+      ].join(' and '),
+      fields: 'files(id,name)',
+      pageSize: 1,
+      includeItemsFromAllDrives: true,
+      supportsAllDrives: true,
+    });
+
+    const existingFolderId = response.data.files?.[0]?.id;
+    if (existingFolderId) {
+      return existingFolderId;
+    }
+
+    const createdFolder = await drive.files.create({
+      requestBody: {
+        name: folderName,
+        mimeType: 'application/vnd.google-apps.folder',
+        parents: [parentId],
+      },
+      fields: 'id',
+      supportsAllDrives: true,
+    });
+
+    if (!createdFolder.data.id) {
+      throw new ServiceUnavailableException('No fue posible crear la carpeta en Google Drive.');
+    }
+
+    return createdFolder.data.id;
+  }
+
+  private normalizeFolderName(value: string) {
+    return value.replace(/[\\/:*?"<>|]/g, ' ').replace(/\s+/g, ' ').trim();
   }
 
   private getCredentials() {
