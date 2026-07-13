@@ -9,7 +9,7 @@ export class WorkflowExecutionEntity {
   @Prop({ required: true, index: true })
   ruleId!: string;
 
-  @Prop({ required: true, enum: WORKFLOW_TRIGGER_VALUES })
+  @Prop({ type: String, required: true, enum: WORKFLOW_TRIGGER_VALUES })
   triggerType!: (typeof WORKFLOW_TRIGGER_VALUES)[number];
 
   @Prop({ required: true })
@@ -18,7 +18,7 @@ export class WorkflowExecutionEntity {
   @Prop({ required: true })
   resourceId!: string;
 
-  @Prop({ required: true, enum: WORKFLOW_EXECUTION_STATUS_VALUES })
+  @Prop({ type: String, required: true, enum: WORKFLOW_EXECUTION_STATUS_VALUES })
   status!: (typeof WORKFLOW_EXECUTION_STATUS_VALUES)[number];
 
   @Prop({ required: true })

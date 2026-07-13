@@ -12,7 +12,7 @@ export class WorkflowRuleEntity {
   @Prop({ required: true })
   name!: string;
 
-  @Prop({ required: true, enum: WORKFLOW_TRIGGER_VALUES })
+  @Prop({ type: String, required: true, enum: WORKFLOW_TRIGGER_VALUES })
   triggerType!: (typeof WORKFLOW_TRIGGER_VALUES)[number];
 
   @Prop({ required: true, default: true })
