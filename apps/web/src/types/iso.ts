@@ -468,6 +468,8 @@ export interface ChatMessage {
 export interface ChatThread {
   id: string;
   tenantId?: string | null;
+  threadType?: 'direct' | 'group';
+  title?: string | null;
   participantIds: string[];
   messages: ChatMessage[];
   updatedAt: Date;

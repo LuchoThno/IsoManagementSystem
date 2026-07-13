@@ -1,5 +1,6 @@
 export type OpenDirectThreadDto = {
   participantIds: string[];
+  title?: string;
 };
 
 export type SendChatMessageDto = {

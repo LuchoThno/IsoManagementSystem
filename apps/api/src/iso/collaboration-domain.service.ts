@@ -30,12 +30,14 @@ export class CollaborationDomainService {
     return threads.map((thread) => this.serializeChatThread(thread));
   }
 
-  async openDirectThread(participantIds: string[]) {
+  async openDirectThread(participantIds: string[], title?: string) {
     const tenantId = await this.resolveEffectiveTenantId();
     await this.backfillChatTenantIds(tenantId);
     const uniqueParticipants = Array.from(
       new Set(participantIds.map((participantId) => participantId.trim()).filter(Boolean))
     ).sort();
+    const normalizedTitle = title?.trim() || null;
+    const threadType = uniqueParticipants.length > 2 || normalizedTitle ? 'group' : 'direct';
 
     if (uniqueParticipants.length < 2) {
       throw new BadRequestException('At least two participants are required');
@@ -50,8 +52,10 @@ export class CollaborationDomainService {
 
     const existing = existingThreads.find((thread) => {
       const currentParticipants = [...(thread.participantIds ?? [])].sort();
+      const currentTitle = thread.title?.trim() || null;
       return (
         currentParticipants.length === uniqueParticipants.length &&
+        currentTitle === normalizedTitle &&
         currentParticipants.every(
           (participantId, index) => participantId === uniqueParticipants[index]
         )
@@ -64,6 +68,8 @@ export class CollaborationDomainService {
 
     const thread = await this.chatThreadModel.create({
       tenantId,
+      threadType,
+      title: normalizedTitle,
       participantIds: uniqueParticipants,
       messages: [],
       updatedAt: new Date(),
@@ -143,6 +149,8 @@ export class CollaborationDomainService {
     return {
       id: String(thread._id),
       tenantId: thread.tenantId ?? null,
+      threadType: thread.threadType ?? 'direct',
+      title: thread.title ?? null,
       participantIds: thread.participantIds ?? [],
       updatedAt: thread.updatedAt,
       messages: (thread.messages ?? []).map((message: any) => ({

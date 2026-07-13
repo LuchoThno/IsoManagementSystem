@@ -2,9 +2,12 @@ import React from 'react';
 import {
   AlertTriangle,
   BellRing,
+  Bot,
   MessageSquareMore,
+  Plus,
   Search,
   Send,
+  Sparkles,
   Users2,
   Wifi,
   WifiOff,
@@ -17,9 +20,11 @@ import {
 import {
   listChatThreadsApi,
   markThreadAsReadApi,
+  openChatThreadApi,
   openDirectThreadApi,
   sendChatMessageApi,
 } from '../lib/chatApi';
+import { assistChatThreadWithAI, type ChatAssistResult } from '../lib/aiApi';
 import { useAuthConfig } from '../hooks/useAuthConfig';
 import { connectChatSocket } from '../lib/chatSocket';
 import { useAuthStore } from '../store/useAuthStore';
@@ -37,6 +42,46 @@ const getOtherParticipant = (
   return users.find((user) => user.id === otherParticipantId);
 };
 
+const getParticipantUsers = (thread: ChatThread, users: UserAccount[]) =>
+  (thread.participantIds ?? [])
+    .map((participantId) => users.find((user) => user.id === participantId))
+    .filter(Boolean) as UserAccount[];
+
+const getThreadDisplayName = (
+  thread: ChatThread,
+  users: UserAccount[],
+  currentUserId: string
+) => {
+  if (thread.threadType === 'group') {
+    if (thread.title?.trim()) {
+      return thread.title;
+    }
+
+    const names = getParticipantUsers(thread, users)
+      .filter((user) => user.id !== currentUserId)
+      .map((user) => user.name);
+
+    return names.length > 0 ? names.slice(0, 3).join(', ') : 'Grupo interno';
+  }
+
+  return getOtherParticipant(thread, users, currentUserId)?.name ?? 'Conversación directa';
+};
+
+const getThreadMeta = (thread: ChatThread, users: UserAccount[], currentUserId: string) => {
+  const participants = getParticipantUsers(thread, users);
+
+  if (thread.threadType === 'group') {
+    const otherNames = participants
+      .filter((user) => user.id !== currentUserId)
+      .map((user) => user.name);
+
+    return `${thread.participantIds.length} participante(s) · ${otherNames.join(', ') || 'Sin detalle'}`;
+  }
+
+  const otherUser = getOtherParticipant(thread, users, currentUserId);
+  return otherUser ? `${otherUser.email} · ${otherUser.role}` : 'Conversación operativa';
+};
+
 export const Chat: React.FC = () => {
   const currentUser = useAuthStore((state) => state.user);
   const { authConfig } = useAuthConfig();
@@ -48,7 +93,13 @@ export const Chat: React.FC = () => {
   const [selectedThreadId, setSelectedThreadId] = React.useState<string | null>(null);
   const [message, setMessage] = React.useState('');
   const [directoryQuery, setDirectoryQuery] = React.useState('');
+  const [groupName, setGroupName] = React.useState('');
+  const [selectedParticipantIds, setSelectedParticipantIds] = React.useState<string[]>([]);
   const [loadingThreads, setLoadingThreads] = React.useState(true);
+  const [creatingGroup, setCreatingGroup] = React.useState(false);
+  const [aiGoal, setAiGoal] = React.useState('');
+  const [aiBusy, setAiBusy] = React.useState(false);
+  const [aiResult, setAiResult] = React.useState<ChatAssistResult | null>(null);
   const [chatError, setChatError] = React.useState<string | null>(null);
   const [connectionStatus, setConnectionStatus] = React.useState<ConnectionStatus>('disconnected');
   const [browserOnline, setBrowserOnline] = React.useState(
@@ -73,7 +124,11 @@ export const Chat: React.FC = () => {
           return current;
         }
 
-        if (statusInitializedRef.current && notifications.desktop.enabled && notifications.desktop.connectionAlerts) {
+        if (
+          statusInitializedRef.current &&
+          notifications.desktop.enabled &&
+          notifications.desktop.connectionAlerts
+        ) {
           showConnectionStatusNotification(nextStatus);
         }
 
@@ -113,7 +168,10 @@ export const Chat: React.FC = () => {
           return false;
         }
 
-        if (authConfig?.capabilities.directoryProvider === 'clerk' && !user.id.startsWith('clerk-')) {
+        if (
+          authConfig?.capabilities.directoryProvider === 'clerk' &&
+          !user.id.startsWith('clerk-')
+        ) {
           return false;
         }
 
@@ -132,10 +190,7 @@ export const Chat: React.FC = () => {
   );
 
   const sortedThreads = React.useMemo(
-    () =>
-      [...chatThreads].sort(
-        (left, right) => right.updatedAt.getTime() - left.updatedAt.getTime()
-      ),
+    () => [...chatThreads].sort((left, right) => right.updatedAt.getTime() - left.updatedAt.getTime()),
     [chatThreads]
   );
 
@@ -214,8 +269,7 @@ export const Chat: React.FC = () => {
           const previousThread = threadsRef.current.find((item) => item.id === hydratedThread.id);
           const previousMessageId =
             previousThread?.messages[previousThread.messages.length - 1]?.id ?? null;
-          const lastMessage =
-            hydratedThread.messages[hydratedThread.messages.length - 1] ?? null;
+          const lastMessage = hydratedThread.messages[hydratedThread.messages.length - 1] ?? null;
           const shouldNotify =
             Boolean(lastMessage) &&
             lastMessage?.authorId !== currentUser.id &&
@@ -271,6 +325,11 @@ export const Chat: React.FC = () => {
   }, [selectedThreadId, sortedThreads]);
 
   React.useEffect(() => {
+    setAiResult(null);
+    setAiGoal('');
+  }, [selectedThread?.id]);
+
+  React.useEffect(() => {
     if (!selectedThread || !currentUser || loadingThreads) {
       return;
     }
@@ -301,6 +360,37 @@ export const Chat: React.FC = () => {
     }
   };
 
+  const handleToggleParticipant = (userId: string) => {
+    setSelectedParticipantIds((current) =>
+      current.includes(userId)
+        ? current.filter((participantId) => participantId !== userId)
+        : [...current, userId]
+    );
+  };
+
+  const handleCreateGroupChat = async () => {
+    if (!currentUser || selectedParticipantIds.length === 0) {
+      return;
+    }
+
+    try {
+      setCreatingGroup(true);
+      const thread = await openChatThreadApi({
+        participantIds: [currentUser.id, ...selectedParticipantIds],
+        title: groupName.trim() || undefined,
+      });
+      upsertChatThread(thread);
+      setSelectedThreadId(thread.id);
+      setSelectedParticipantIds([]);
+      setGroupName('');
+      setChatError(null);
+    } catch {
+      setChatError('No fue posible crear la conversación grupal.');
+    } finally {
+      setCreatingGroup(false);
+    }
+  };
+
   const handleSendMessage = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!currentUser || !selectedThread || !message.trim()) {
@@ -314,6 +404,26 @@ export const Chat: React.FC = () => {
       setChatError(null);
     } catch {
       setChatError('No fue posible enviar el mensaje.');
+    }
+  };
+
+  const handleAssistChat = async () => {
+    if (!selectedThread) {
+      return;
+    }
+
+    try {
+      setAiBusy(true);
+      const result = await assistChatThreadWithAI({
+        threadId: selectedThread.id,
+        goal: aiGoal.trim() || undefined,
+      });
+      setAiResult(result);
+      setChatError(null);
+    } catch {
+      setChatError('No fue posible ejecutar la asistencia IA para el chat.');
+    } finally {
+      setAiBusy(false);
     }
   };
 
@@ -353,7 +463,7 @@ export const Chat: React.FC = () => {
         <div>
           <h2 className="text-2xl font-extrabold text-app-text">Chat interno</h2>
           <p className="mt-1 text-sm text-app-muted">
-            Conversaciones operativas para seguimiento de tareas, auditorías y coordinación interna.
+            Conversaciones directas y grupales para seguimiento operativo, con apoyo IA sobre el hilo activo.
           </p>
         </div>
 
@@ -389,7 +499,7 @@ export const Chat: React.FC = () => {
         </div>
       ) : null}
 
-      <div className="grid gap-6 xl:grid-cols-[330px_1fr]">
+      <div className="grid gap-6 xl:grid-cols-[360px_1fr]">
         <section className="overflow-hidden rounded-[28px] border border-app-border bg-app-surface shadow-panel">
           <div className="border-b border-slate-100 px-5 py-5">
             <div className="flex items-center gap-3">
@@ -415,28 +525,75 @@ export const Chat: React.FC = () => {
             </div>
           </div>
 
-          <div className="max-h-[270px] space-y-2 overflow-y-auto px-5 py-4">
+          <div className="max-h-[250px] space-y-2 overflow-y-auto px-5 py-4">
             {loadingThreads ? (
               <div className="rounded-xl border border-dashed border-app-border bg-app-surface-alt px-4 py-6 text-center text-sm text-app-muted">
                 Cargando conversaciones...
               </div>
             ) : null}
-            {availableUsers.map((user) => (
-              <button
-                key={user.id}
-                type="button"
-                onClick={() => void handleOpenChat(user.id)}
-                className="flex w-full items-center justify-between rounded-xl border border-app-border px-4 py-3 text-left transition hover:border-slate-300 hover:bg-app-surface-alt"
-              >
-                <div>
-                  <p className="font-bold text-app-text">{user.name}</p>
-                  <p className="mt-1 text-xs text-app-muted">{user.email}</p>
+            {availableUsers.map((user) => {
+              const selected = selectedParticipantIds.includes(user.id);
+              return (
+                <div
+                  key={user.id}
+                  className="rounded-xl border border-app-border px-4 py-3 transition hover:border-slate-300 hover:bg-app-surface-alt"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-bold text-app-text">{user.name}</p>
+                      <p className="mt-1 text-xs text-app-muted">{user.email}</p>
+                    </div>
+                    <span className="rounded-full bg-app-primary/10 px-2.5 py-1 text-xs font-bold uppercase text-app-primary">
+                      {user.role}
+                    </span>
+                  </div>
+                  <div className="mt-3 flex items-center justify-between gap-3">
+                    <label className="inline-flex items-center gap-2 text-xs font-semibold text-slate-500">
+                      <input
+                        type="checkbox"
+                        checked={selected}
+                        onChange={() => handleToggleParticipant(user.id)}
+                        className="h-4 w-4 rounded border-slate-300"
+                      />
+                      Seleccionar para grupo
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => void handleOpenChat(user.id)}
+                      className="rounded-full border border-app-border px-3 py-1.5 text-xs font-bold text-app-text transition hover:bg-white"
+                    >
+                      Chat directo
+                    </button>
+                  </div>
                 </div>
-                <span className="rounded-full bg-app-primary/10 px-2.5 py-1 text-xs font-bold uppercase text-app-primary">
-                  {user.role}
-                </span>
-              </button>
-            ))}
+              );
+            })}
+          </div>
+
+          <div className="border-t border-slate-100 bg-app-surface-alt px-5 py-5">
+            <div className="flex items-center gap-2">
+              <Plus className="h-4 w-4 text-app-primary" />
+              <h4 className="text-sm font-extrabold uppercase tracking-[0.2em] text-slate-400">
+                Nuevo grupo
+              </h4>
+            </div>
+            <input
+              value={groupName}
+              onChange={(event) => setGroupName(event.target.value)}
+              placeholder="Nombre del grupo opcional"
+              className="admin-input mt-3"
+            />
+            <p className="mt-2 text-xs text-slate-500">
+              {selectedParticipantIds.length} participante(s) seleccionado(s) además de tu usuario.
+            </p>
+            <button
+              type="button"
+              disabled={creatingGroup || selectedParticipantIds.length === 0}
+              onClick={() => void handleCreateGroupChat()}
+              className="app-button-primary mt-3 w-full disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {creatingGroup ? 'Creando grupo...' : 'Crear conversación grupal'}
+            </button>
           </div>
 
           <div className="border-t border-slate-100 px-5 py-5">
@@ -446,7 +603,6 @@ export const Chat: React.FC = () => {
             <div className="mt-3 space-y-2">
               {sortedThreads.map((thread) => {
                 if (!currentUser) return null;
-                const otherUser = getOtherParticipant(thread, users, currentUser.id);
                 const unreadCount = thread.messages.filter(
                   (item) => !item.readBy.includes(currentUser.id)
                 ).length;
@@ -464,11 +620,16 @@ export const Chat: React.FC = () => {
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div>
-                        <p className="font-bold text-app-text">
-                          {otherUser?.name ?? 'Conversacion'}
-                        </p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-bold text-app-text">
+                            {getThreadDisplayName(thread, users, currentUser.id)}
+                          </p>
+                          <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-bold uppercase text-slate-600">
+                            {thread.threadType === 'group' ? 'Grupo' : 'Directo'}
+                          </span>
+                        </div>
                         <p className="mt-1 line-clamp-1 text-xs text-app-muted">
-                          {thread.messages[thread.messages.length - 1]?.content ?? 'Sin mensajes aun'}
+                          {thread.messages[thread.messages.length - 1]?.content ?? 'Sin mensajes aún'}
                         </p>
                       </div>
                       {unreadCount > 0 && (
@@ -484,7 +645,7 @@ export const Chat: React.FC = () => {
           </div>
         </section>
 
-        <section className="panel-card flex min-h-[620px] flex-col overflow-hidden">
+        <section className="panel-card flex min-h-[680px] flex-col overflow-hidden">
           {selectedThread && currentUser ? (
             <>
               <div className="border-b border-slate-100 px-6 py-5">
@@ -493,9 +654,17 @@ export const Chat: React.FC = () => {
                     <p className="text-sm font-bold uppercase tracking-[0.18em] text-slate-400">
                       Conversación activa
                     </p>
-                    <h3 className="mt-2 text-xl font-extrabold text-app-text">
-                      {getOtherParticipant(selectedThread, users, currentUser.id)?.name ?? 'Equipo'}
-                    </h3>
+                    <div className="mt-2 flex items-center gap-2">
+                      <h3 className="text-xl font-extrabold text-app-text">
+                        {getThreadDisplayName(selectedThread, users, currentUser.id)}
+                      </h3>
+                      <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold uppercase text-slate-600">
+                        {selectedThread.threadType === 'group' ? 'Grupo' : 'Directo'}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-sm text-app-muted">
+                      {getThreadMeta(selectedThread, users, currentUser.id)}
+                    </p>
                     <p className="mt-1 text-sm text-app-muted">
                       {selectedThread.messages.length} mensaje(s) en este hilo
                     </p>
@@ -504,6 +673,81 @@ export const Chat: React.FC = () => {
                     {connectionMeta.label}
                   </span>
                 </div>
+              </div>
+
+              <div className="border-b border-slate-100 bg-white px-6 py-5">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <div className="inline-flex items-center gap-2 rounded-full bg-app-primary/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-app-primary">
+                      <Bot className="h-3.5 w-3.5" />
+                      IA del chat
+                    </div>
+                    <p className="mt-3 text-sm text-slate-500">
+                      Resume el hilo activo, detecta próximos pasos y sugiere respuestas listas para enviar.
+                    </p>
+                  </div>
+                  <Sparkles className="h-5 w-5 text-app-primary" />
+                </div>
+
+                <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_auto]">
+                  <input
+                    value={aiGoal}
+                    onChange={(event) => setAiGoal(event.target.value)}
+                    placeholder="Objetivo opcional: cierre, seguimiento, coordinación, etc."
+                    className="admin-input"
+                  />
+                  <button
+                    type="button"
+                    disabled={aiBusy}
+                    onClick={() => void handleAssistChat()}
+                    className="app-button-secondary px-5 py-3 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {aiBusy ? 'Analizando hilo...' : 'Asistir conversación'}
+                  </button>
+                </div>
+
+                {aiResult ? (
+                  <div className="mt-4 rounded-3xl border border-slate-200 bg-app-surface-alt p-5">
+                    <p className="text-sm font-extrabold text-app-text">Resumen IA</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-600">{aiResult.summary}</p>
+
+                    <div className="mt-4 grid gap-4 lg:grid-cols-2">
+                      <div>
+                        <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">
+                          Respuestas sugeridas
+                        </p>
+                        <div className="mt-2 space-y-2">
+                          {aiResult.suggestedReplies.map((reply, index) => (
+                            <button
+                              key={`${aiResult.id}-reply-${index + 1}`}
+                              type="button"
+                              onClick={() => setMessage(reply)}
+                              className="block w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left text-sm text-slate-600 transition hover:border-app-primary hover:bg-app-primary/5"
+                            >
+                              {reply}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div>
+                        <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">
+                          Próximas acciones
+                        </p>
+                        <div className="mt-2 space-y-2">
+                          {aiResult.actionItems.map((action, index) => (
+                            <div
+                              key={`${aiResult.id}-action-${index + 1}`}
+                              className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600"
+                            >
+                              {index + 1}. {action}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
               </div>
 
               <div className="flex-1 space-y-4 overflow-y-auto bg-[linear-gradient(180deg,#f8fafc_0%,#eef2f7_100%)] px-6 py-6">
@@ -560,9 +804,9 @@ export const Chat: React.FC = () => {
                 <MessageSquareMore className="h-8 w-8" />
               </div>
               <div>
-                <p className="text-lg font-extrabold text-app-text">Selecciona una conversacion</p>
+                <p className="text-lg font-extrabold text-app-text">Selecciona una conversación</p>
                 <p className="mt-2 text-sm text-app-muted">
-                  Elige un usuario activo para iniciar un chat interno.
+                  Elige un usuario activo o crea un grupo para iniciar un chat interno con apoyo IA.
                 </p>
               </div>
             </div>

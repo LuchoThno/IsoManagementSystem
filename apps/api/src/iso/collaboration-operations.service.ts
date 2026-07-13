@@ -60,7 +60,10 @@ export class CollaborationOperationsService {
         ]
       : body.participantIds;
 
-    const thread = await this.collaborationDomainService.openDirectThread(participantIds);
+    const thread = await this.collaborationDomainService.openDirectThread(
+      participantIds,
+      body.title
+    );
     this.chatGateway.emitThreadUpsert(thread);
     return thread;
   }

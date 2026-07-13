@@ -9,6 +9,8 @@ import { AiService } from './ai.service';
 import {
   AnalyzeDocumentInputDto,
   AnalyzeDocumentResultDto,
+  AssistChatThreadInputDto,
+  AssistChatThreadResultDto,
   GenerateProcedureInputDto,
   GenerateProcedureResultDto,
   ProposeCorrectiveActionsInputDto,
@@ -140,6 +142,37 @@ export class AiController {
       await this.captureAiFailure(clerkAuth, 'ai.propose_corrective_actions', {
         auditId: input.auditId ?? null,
       }, error);
+      throw error;
+    }
+  }
+
+  @Post('chat-assist')
+  @Roles('admin', 'manager', 'auditor')
+  async assistChatThread(
+    @ClerkAuth() clerkAuth: ClerkSessionIdentity | null,
+    @Body() input: AssistChatThreadInputDto
+  ): Promise<AssistChatThreadResultDto> {
+    try {
+      const result = await this.aiService.assistChatThread(input);
+      await this.platformAuditService.captureFromSession(clerkAuth, {
+        action: 'ai.chat_assist',
+        resourceType: 'ai-execution',
+        resourceId: result.id,
+        status: 'success',
+        metadata: {
+          model: result.model,
+          tenantId: result.tenantId,
+          threadId: result.threadId,
+        },
+      });
+      return result;
+    } catch (error) {
+      await this.captureAiFailure(
+        clerkAuth,
+        'ai.chat_assist',
+        { threadId: input.threadId },
+        error
+      );
       throw error;
     }
   }

@@ -25,6 +25,12 @@ export class ChatThreadEntity {
   @Prop({ required: true, index: true })
   tenantId!: string;
 
+  @Prop({ type: String, default: 'direct' })
+  threadType!: 'direct' | 'group';
+
+  @Prop({ type: String, default: null })
+  title!: string | null;
+
   @Prop({ type: [String], default: [] })
   participantIds!: string[];
 

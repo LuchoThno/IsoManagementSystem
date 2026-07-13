@@ -25,9 +25,16 @@ export async function listChatThreadsApi(userId: string): Promise<ChatThread[]> 
 }
 
 export async function openDirectThreadApi(participantIds: string[]): Promise<ChatThread> {
+  return openChatThreadApi({ participantIds });
+}
+
+export async function openChatThreadApi(input: {
+  participantIds: string[];
+  title?: string;
+}): Promise<ChatThread> {
   const thread = await requestIsoApi<ApiChatThread>('/chat/threads/direct', {
     method: 'POST',
-    body: JSON.stringify({ participantIds }),
+    body: JSON.stringify(input),
   });
 
   return toChatThread(thread);

@@ -10,6 +10,8 @@ import { ClerkAuthService } from './clerk-auth.service';
 
 type SerializedChatThread = {
   id: string;
+  threadType?: 'direct' | 'group';
+  title?: string | null;
   participantIds: string[];
   updatedAt: Date;
   messages: Array<{

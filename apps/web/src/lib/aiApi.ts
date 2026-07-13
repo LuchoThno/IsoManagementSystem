@@ -21,6 +21,18 @@ export type CorrectiveActionsResult = {
   actions: string[];
 };
 
+export type ChatAssistResult = {
+  id: string;
+  status: AIResultStatus;
+  model: 'stub';
+  tenantId: string;
+  threadId: string;
+  participants: string[];
+  summary: string;
+  suggestedReplies: string[];
+  actionItems: string[];
+};
+
 export async function summarizeAuditWithAI(auditId: string): Promise<AuditSummaryResult> {
   return requestIsoApi<AuditSummaryResult>('/ai/summarize-audit', {
     method: 'POST',
@@ -33,6 +45,16 @@ export async function proposeCorrectiveActionsWithAI(input: {
   riskContext?: string;
 }): Promise<CorrectiveActionsResult> {
   return requestIsoApi<CorrectiveActionsResult>('/ai/propose-corrective-actions', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+export async function assistChatThreadWithAI(input: {
+  threadId: string;
+  goal?: string;
+}): Promise<ChatAssistResult> {
+  return requestIsoApi<ChatAssistResult>('/ai/chat-assist', {
     method: 'POST',
     body: JSON.stringify(input),
   });

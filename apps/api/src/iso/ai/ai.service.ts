@@ -5,6 +5,8 @@ import { Model } from 'mongoose';
 import {
   AnalyzeDocumentInputDto,
   AnalyzeDocumentResultDto,
+  AssistChatThreadInputDto,
+  AssistChatThreadResultDto,
   GenerateProcedureInputDto,
   GenerateProcedureResultDto,
   ProposeCorrectiveActionsInputDto,
@@ -14,6 +16,7 @@ import {
 } from '../dto/ai.dto';
 import { TenantContextService } from '../tenant-context.service';
 import { Audit } from '../schemas/audit.schema';
+import { ChatThreadEntity } from '../schemas/chat-thread.schema';
 import { DocumentEntity } from '../schemas/document.schema';
 
 @Injectable()
@@ -23,6 +26,8 @@ export class AiService {
     private readonly documentModel: Model<DocumentEntity>,
     @InjectModel(Audit.name)
     private readonly auditModel: Model<Audit>,
+    @InjectModel(ChatThreadEntity.name)
+    private readonly chatThreadModel: Model<ChatThreadEntity>,
     private readonly tenantContextService: TenantContextService
   ) {}
 
@@ -143,6 +148,59 @@ export class AiService {
     input: ProposeCorrectiveActionsInputDto
   ): Promise<ProposeCorrectiveActionsResultDto> {
     return this.buildCorrectiveActionsResult(input);
+  }
+
+  async assistChatThread(
+    input: AssistChatThreadInputDto
+  ): Promise<AssistChatThreadResultDto> {
+    const tenantId = await this.tenantContextService.resolveEffectiveTenantId();
+    const thread = await this.chatThreadModel.findOne({ _id: input.threadId, tenantId }).lean();
+
+    if (!thread) {
+      throw new NotFoundException(
+        'No encontramos la conversación solicitada dentro del tenant activo.'
+      );
+    }
+
+    const recentMessages = (thread.messages ?? []).slice(-5);
+    const participantCount = (thread.participantIds ?? []).length;
+    const goal = input.goal?.trim();
+    const latestMessage = recentMessages[recentMessages.length - 1];
+
+    return {
+      id: randomUUID(),
+      status: 'success',
+      model: 'stub',
+      tenantId,
+      threadId: String(thread._id),
+      participants: thread.participantIds ?? [],
+      summary:
+        recentMessages.length > 0
+          ? `Stub chat summary: conversación ${thread.threadType ?? 'direct'} con ${participantCount} participante(s), ${recentMessages.length} mensaje(s) recientes y foco en "${goal ?? 'coordinación operativa'}". Último mensaje: "${latestMessage?.content ?? 'sin contenido'}".`
+          : `Stub chat summary: conversación sin mensajes todavía, preparada para ${goal ?? 'coordinación operativa'}.`,
+      suggestedReplies: recentMessages.length > 0
+        ? [
+            'Propongo cerrar responsables y fecha objetivo en este hilo.',
+            'Puedo consolidar los puntos abiertos y dejar el siguiente paso acordado.',
+            goal
+              ? `Tomando el objetivo "${goal}", sugiero priorizar el entregable pendiente y confirmar dueños.`
+              : 'Sugiero validar estado, bloqueo y siguiente acción antes del cierre del día.',
+          ]
+        : [
+            'Abramos el contexto del tema y asignemos responsables iniciales.',
+            'Partamos definiendo objetivo, plazo y evidencia esperada para este hilo.',
+          ],
+      actionItems:
+        recentMessages.length > 0
+          ? [
+              'Identificar responsable principal del hilo.',
+              'Confirmar siguiente entregable mencionado en la conversación.',
+              latestMessage?.content
+                ? `Registrar seguimiento sobre: ${latestMessage.content.slice(0, 80)}`
+                : 'Registrar seguimiento del último acuerdo.',
+            ]
+          : ['Definir propósito del hilo.', 'Invitar participantes clave.', 'Enviar primer acuerdo operativo.'],
+    };
   }
 
   private async buildCorrectiveActionsResult(

@@ -78,3 +78,20 @@ export type ProposeCorrectiveActionsResultDto = {
   auditId?: string;
   actions: string[];
 };
+
+export type AssistChatThreadInputDto = {
+  threadId: string;
+  goal?: string;
+};
+
+export type AssistChatThreadResultDto = {
+  id: string;
+  status: 'success' | 'failure';
+  model: 'stub';
+  tenantId: string;
+  threadId: string;
+  participants: string[];
+  summary: string;
+  suggestedReplies: string[];
+  actionItems: string[];
+};
