@@ -7,6 +7,8 @@ import {
   AnalyzeDocumentResultDto,
   AssistChatThreadInputDto,
   AssistChatThreadResultDto,
+  DraftCommunicationCampaignInputDto,
+  DraftCommunicationCampaignResultDto,
   GenerateProcedureInputDto,
   GenerateProcedureResultDto,
   ProposeCorrectiveActionsInputDto,
@@ -200,6 +202,53 @@ export class AiService {
                 : 'Registrar seguimiento del último acuerdo.',
             ]
           : ['Definir propósito del hilo.', 'Invitar participantes clave.', 'Enviar primer acuerdo operativo.'],
+    };
+  }
+
+  async draftCommunicationCampaign(
+    input: DraftCommunicationCampaignInputDto
+  ): Promise<DraftCommunicationCampaignResultDto> {
+    const tenantId = await this.tenantContextService.resolveEffectiveTenantId();
+    const normalizedTone = input.tone?.trim() || 'claro, profesional y accionable';
+    const audience = input.audienceLabel.trim();
+    const goal = input.campaignGoal.trim();
+    const templateBase = input.currentTemplateName?.trim() || 'Comunicado operativo';
+
+    return {
+      id: randomUUID(),
+      status: 'success',
+      model: 'stub',
+      tenantId,
+      recommendedTemplateName: `${templateBase} · ${audience}`,
+      recommendedCampaignName: `${goal} · ${audience} · ${input.daysAhead} días`,
+      subject: `[${input.companyName}] ${goal} para ${audience} en los próximos ${input.daysAhead} días`,
+      html: `<div style="font-family:Arial,sans-serif;color:#1e293b;line-height:1.6">
+  <p style="font-size:12px;text-transform:uppercase;letter-spacing:.14em;color:#64748b;margin:0 0 12px">Comunicación ${input.deliveryMode}</p>
+  <h1 style="font-size:24px;margin:0 0 16px">Hola {{userName}},</h1>
+  <p>Te contactamos para apoyar <strong>${goal}</strong> con foco en <strong>${audience}</strong> durante los próximos <strong>{{daysAhead}}</strong> días.</p>
+  <p>Actualmente tienes <strong>{{taskCount}}</strong> tarea(s) dentro de la ventana definida.</p>
+  <div style="margin:20px 0;padding:20px;border:1px solid #dbeafe;border-radius:18px;background:#f8fbff">
+    <p style="margin:0 0 10px;font-weight:700;color:#0f172a">Qué revisar ahora</p>
+    <p style="margin:0 0 12px">{{dueSummary}}</p>
+    <div>{{taskTable}}</div>
+  </div>
+  <p>Acción sugerida: revisa prioridades, confirma bloqueos y actualiza el estado antes del siguiente corte operativo.</p>
+  <p>Si necesitas apoyo, responde este correo para coordinar con ${input.senderName}.</p>
+  <p style="margin-top:24px">Saludos,<br /><strong>${input.senderName}</strong><br />${input.companyName}</p>
+</div>`,
+      rationale: [
+        `El asunto prioriza claridad y horizonte temporal para mejorar apertura en campañas ${input.deliveryMode}.`,
+        `El cuerpo usa resumen ejecutivo + bloque escaneable para reducir fricción de lectura masiva.`,
+        `El tono propuesto es ${normalizedTone} para mantener credibilidad operativa sin sonar genérico.`,
+      ],
+      bestPracticesChecklist: [
+        'Mantener un solo objetivo principal por envío.',
+        'Usar asunto específico, sin mayúsculas excesivas ni ambigüedad.',
+        'Abrir con contexto y urgencia proporcional, no alarmista.',
+        'Incluir CTA claro y único antes del cierre.',
+        'Mantener bloques cortos y contenido escaneable para móvil.',
+        `Validar segmentación antes de enviar por ${input.providerType}.`,
+      ],
     };
   }
 

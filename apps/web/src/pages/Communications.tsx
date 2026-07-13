@@ -1,5 +1,6 @@
 import React from 'react';
 import {
+  Bot,
   CheckCircle2,
   Layers3,
   MailCheck,
@@ -12,6 +13,10 @@ import {
   Users,
   Users2,
 } from 'lucide-react';
+import {
+  draftCommunicationCampaignWithAI,
+  type CommunicationCampaignDraftResult,
+} from '../lib/aiApi';
 import {
   createEmailTemplate,
   deleteEmailTemplate,
@@ -134,6 +139,12 @@ export const Communications: React.FC = () => {
   const [deliveryMode, setDeliveryMode] = React.useState<DeliveryMode>('massive');
   const [selectedRole, setSelectedRole] = React.useState<UserRole | 'all'>('all');
   const [selectedRecipientId, setSelectedRecipientId] = React.useState<string>('');
+  const [aiCampaignGoal, setAiCampaignGoal] = React.useState(
+    'impulsar seguimiento de tareas próximas y confirmar responsables'
+  );
+  const [aiTone, setAiTone] = React.useState('claro, ejecutivo y accionable');
+  const [aiBusy, setAiBusy] = React.useState(false);
+  const [aiDraft, setAiDraft] = React.useState<CommunicationCampaignDraftResult | null>(null);
   const [compatibility, setCompatibility] = React.useState<CommunicationCompatibility | null>(null);
   const [compatibilityLoading, setCompatibilityLoading] = React.useState(true);
   const [campaignForm, setCampaignForm] = React.useState({
@@ -237,8 +248,17 @@ export const Communications: React.FC = () => {
     deliveryMode === 'personal'
       ? 'Envio personalizado'
       : deliveryMode === 'group'
-        ? 'Envio por grupo'
-        : 'Envio masivo';
+      ? 'Envio por grupo'
+      : 'Envio masivo';
+
+  const audienceLabel =
+    deliveryMode === 'personal'
+      ? resolvedRecipients[0]?.name ?? 'destinatario individual'
+      : deliveryMode === 'group'
+        ? selectedRole === 'all'
+          ? 'todos los roles activos'
+          : `rol ${selectedRole}`
+        : 'toda la base activa';
 
   const selectedTemplate =
     templates.find((template) => template.id === campaignForm.templateId) ?? templates[0] ?? null;
@@ -376,6 +396,56 @@ export const Communications: React.FC = () => {
         : `${recipientModeLabel} enviado por ${providerLabels[settingsForm.providerType]}.`
     );
     await refreshCompatibility();
+  };
+
+  const handleDraftCampaignWithAI = async () => {
+    if (!canManageTemplates && !canSendCampaigns) {
+      showMessage('Tu sesión no tiene permisos para usar el copiloto de comunicaciones.');
+      return;
+    }
+
+    try {
+      setAiBusy(true);
+      const result = await draftCommunicationCampaignWithAI({
+        companyName: settings.companyName,
+        senderName: settingsForm.senderName,
+        deliveryMode,
+        audienceLabel,
+        campaignGoal: aiCampaignGoal,
+        daysAhead: campaignForm.daysAhead,
+        providerType: settingsForm.providerType,
+        tone: aiTone,
+        currentTemplateName: templateForm.name,
+      });
+      setAiDraft(result);
+      showMessage('Borrador IA generado para la campaña.');
+    } catch (error) {
+      showMessage(
+        error instanceof Error
+          ? error.message
+          : 'No fue posible generar el borrador IA para comunicaciones.'
+      );
+    } finally {
+      setAiBusy(false);
+    }
+  };
+
+  const applyAiDraftToTemplate = () => {
+    if (!aiDraft) {
+      return;
+    }
+
+    setTemplateForm({
+      name: aiDraft.recommendedTemplateName,
+      subject: aiDraft.subject,
+      content: aiDraft.html,
+    });
+    setCampaignForm((current) => ({
+      ...current,
+      name: aiDraft.recommendedCampaignName,
+    }));
+    setEditingTemplateId(null);
+    showMessage('Borrador IA aplicado al constructor.');
   };
 
   return (
@@ -862,6 +932,133 @@ export const Communications: React.FC = () => {
                     Diseno recomendado: cabecera clara, resumen ejecutivo y bloque de tareas escaneable.
                   </p>
                 </div>
+              </div>
+
+              <div className="mt-5 rounded-[26px] border border-app-primary/15 bg-[linear-gradient(135deg,#eff6ff_0%,#f8fafc_45%,#fff7ed_100%)] p-5">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <div className="inline-flex items-center gap-2 rounded-full bg-app-primary/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-app-primary">
+                      <Bot className="h-3.5 w-3.5" />
+                      Copilot de comunicaciones
+                    </div>
+                    <h4 className="mt-3 text-lg font-extrabold text-slate-700">
+                      Diseña y redacta campañas masivas con mejores prácticas
+                    </h4>
+                    <p className="mt-2 text-sm leading-6 text-slate-500">
+                      Genera una propuesta de asunto, HTML, enfoque editorial y checklist operativo según canal, audiencia y objetivo.
+                    </p>
+                  </div>
+                  <Sparkles className="h-5 w-5 text-app-primary" />
+                </div>
+
+                <div className="mt-4 grid gap-4 md:grid-cols-2">
+                  <div>
+                    <label className="block text-sm font-bold text-slate-600">Objetivo del envío</label>
+                    <input
+                      value={aiCampaignGoal}
+                      disabled={!canManageTemplates && !canSendCampaigns}
+                      onChange={(event) => setAiCampaignGoal(event.target.value)}
+                      className="admin-input mt-2"
+                      placeholder="Ej: acelerar cierre de tareas críticas"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-slate-600">Tono</label>
+                    <input
+                      value={aiTone}
+                      disabled={!canManageTemplates && !canSendCampaigns}
+                      onChange={(event) => setAiTone(event.target.value)}
+                      className="admin-input mt-2"
+                      placeholder="Ej: ejecutivo, cercano y accionable"
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <span className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-slate-600 ring-1 ring-slate-200">
+                    Audiencia: {audienceLabel}
+                  </span>
+                  <span className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-slate-600 ring-1 ring-slate-200">
+                    Modo: {recipientModeLabel}
+                  </span>
+                  <span className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-slate-600 ring-1 ring-slate-200">
+                    Ventana: {campaignForm.daysAhead} días
+                  </span>
+                </div>
+
+                <div className="mt-4 flex flex-wrap gap-3">
+                  <button
+                    type="button"
+                    disabled={aiBusy || (!canManageTemplates && !canSendCampaigns)}
+                    onClick={() => void handleDraftCampaignWithAI()}
+                    className="app-button-primary px-5 py-3 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {aiBusy ? 'Diseñando campaña...' : 'Generar borrador IA'}
+                  </button>
+                  {aiDraft ? (
+                    <button
+                      type="button"
+                      disabled={!canManageTemplates}
+                      onClick={applyAiDraftToTemplate}
+                      className="rounded-xl border border-slate-200 bg-white px-5 py-3 font-bold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      Aplicar al constructor
+                    </button>
+                  ) : null}
+                </div>
+
+                {aiDraft ? (
+                  <div className="mt-5 rounded-3xl border border-slate-200 bg-white p-5">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">
+                          Propuesta IA
+                        </p>
+                        <p className="mt-2 text-lg font-extrabold text-slate-700">
+                          {aiDraft.recommendedCampaignName}
+                        </p>
+                        <p className="mt-1 text-sm text-slate-500">{aiDraft.subject}</p>
+                      </div>
+                      <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">
+                        {aiDraft.model}
+                      </span>
+                    </div>
+
+                    <div className="mt-4 grid gap-4 xl:grid-cols-2">
+                      <div>
+                        <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">
+                          Criterio de diseño
+                        </p>
+                        <div className="mt-2 space-y-2">
+                          {aiDraft.rationale.map((item, index) => (
+                            <div
+                              key={`${aiDraft.id}-rationale-${index + 1}`}
+                              className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600"
+                            >
+                              {item}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div>
+                        <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">
+                          Checklist de buenas prácticas
+                        </p>
+                        <div className="mt-2 space-y-2">
+                          {aiDraft.bestPracticesChecklist.map((item, index) => (
+                            <div
+                              key={`${aiDraft.id}-check-${index + 1}`}
+                              className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600"
+                            >
+                              {index + 1}. {item}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
               </div>
 
               <form onSubmit={handleTemplateSubmit} className="mt-6 space-y-4">

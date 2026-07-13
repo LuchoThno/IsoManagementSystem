@@ -95,3 +95,28 @@ export type AssistChatThreadResultDto = {
   suggestedReplies: string[];
   actionItems: string[];
 };
+
+export type DraftCommunicationCampaignInputDto = {
+  companyName: string;
+  senderName: string;
+  deliveryMode: 'personal' | 'group' | 'massive';
+  audienceLabel: string;
+  campaignGoal: string;
+  daysAhead: number;
+  providerType: 'resend' | 'gmail' | 'custom';
+  tone?: string;
+  currentTemplateName?: string;
+};
+
+export type DraftCommunicationCampaignResultDto = {
+  id: string;
+  status: 'success' | 'failure';
+  model: 'stub';
+  tenantId: string;
+  recommendedTemplateName: string;
+  recommendedCampaignName: string;
+  subject: string;
+  html: string;
+  rationale: string[];
+  bestPracticesChecklist: string[];
+};

@@ -11,6 +11,8 @@ import {
   AnalyzeDocumentResultDto,
   AssistChatThreadInputDto,
   AssistChatThreadResultDto,
+  DraftCommunicationCampaignInputDto,
+  DraftCommunicationCampaignResultDto,
   GenerateProcedureInputDto,
   GenerateProcedureResultDto,
   ProposeCorrectiveActionsInputDto,
@@ -171,6 +173,41 @@ export class AiController {
         clerkAuth,
         'ai.chat_assist',
         { threadId: input.threadId },
+        error
+      );
+      throw error;
+    }
+  }
+
+  @Post('draft-communication-campaign')
+  @Roles('admin', 'manager')
+  async draftCommunicationCampaign(
+    @ClerkAuth() clerkAuth: ClerkSessionIdentity | null,
+    @Body() input: DraftCommunicationCampaignInputDto
+  ): Promise<DraftCommunicationCampaignResultDto> {
+    try {
+      const result = await this.aiService.draftCommunicationCampaign(input);
+      await this.platformAuditService.captureFromSession(clerkAuth, {
+        action: 'ai.draft_communication_campaign',
+        resourceType: 'ai-execution',
+        resourceId: result.id,
+        status: 'success',
+        metadata: {
+          model: result.model,
+          tenantId: result.tenantId,
+          deliveryMode: input.deliveryMode,
+          providerType: input.providerType,
+        },
+      });
+      return result;
+    } catch (error) {
+      await this.captureAiFailure(
+        clerkAuth,
+        'ai.draft_communication_campaign',
+        {
+          deliveryMode: input.deliveryMode,
+          providerType: input.providerType,
+        },
         error
       );
       throw error;

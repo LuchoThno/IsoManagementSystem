@@ -33,6 +33,19 @@ export type ChatAssistResult = {
   actionItems: string[];
 };
 
+export type CommunicationCampaignDraftResult = {
+  id: string;
+  status: AIResultStatus;
+  model: 'stub';
+  tenantId: string;
+  recommendedTemplateName: string;
+  recommendedCampaignName: string;
+  subject: string;
+  html: string;
+  rationale: string[];
+  bestPracticesChecklist: string[];
+};
+
 export async function summarizeAuditWithAI(auditId: string): Promise<AuditSummaryResult> {
   return requestIsoApi<AuditSummaryResult>('/ai/summarize-audit', {
     method: 'POST',
@@ -55,6 +68,23 @@ export async function assistChatThreadWithAI(input: {
   goal?: string;
 }): Promise<ChatAssistResult> {
   return requestIsoApi<ChatAssistResult>('/ai/chat-assist', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+export async function draftCommunicationCampaignWithAI(input: {
+  companyName: string;
+  senderName: string;
+  deliveryMode: 'personal' | 'group' | 'massive';
+  audienceLabel: string;
+  campaignGoal: string;
+  daysAhead: number;
+  providerType: 'resend' | 'gmail' | 'custom';
+  tone?: string;
+  currentTemplateName?: string;
+}): Promise<CommunicationCampaignDraftResult> {
+  return requestIsoApi<CommunicationCampaignDraftResult>('/ai/draft-communication-campaign', {
     method: 'POST',
     body: JSON.stringify(input),
   });
