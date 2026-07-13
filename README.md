@@ -35,7 +35,7 @@ Variables realmente usadas hoy:
 - API Google Calendar opcional: `GOOGLE_CALENDAR_CLIENT_ID` o `GOOGLE_CLIENT_ID`, `GOOGLE_CALENDAR_CLIENT_SECRET` o `GOOGLE_CLIENT_SECRET`, `GOOGLE_CALENDAR_REFRESH_TOKEN` o `GOOGLE_REFRESH_TOKEN`, `GOOGLE_CALENDAR_ID`
 - API Communications opcional: `RESEND_API_KEY`, `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, `GMAIL_REFRESH_TOKEN`, `COMMUNICATIONS_WEBHOOK_URL`, `COMMUNICATIONS_WEBHOOK_TOKEN`
 
-El resto de variables de `.env.example` son referencias para integraciones opcionales.
+El resto de variables de [`.env.production.example`](/Users/mac/Documents/Desarrollos_Apps/IsoManagementSystem/.env.production.example:1) son referencias para integraciones opcionales.
 
 Comportamiento de autenticacion y permisos:
 
@@ -166,16 +166,25 @@ Comandos operativos versionados:
 
 - `pnpm backup:mongo -- --env prod`
 - `pnpm restore:mongo -- --archive backups/<archivo>.archive.gz --temp-suffix restore_check`
+- `pnpm smoke:fase7 -- --down` para ejecutar el cierre integrado de Fase 7: levanta stack temporal, corre smoke base, smoke IA y RBAC opcional en modo `clerk`
 - `pnpm smoke:stack:api -- --auth-mode demo --down` para levantar `api + mongo`, forzar `APP_AUTH_MODE`, alinear `API_PORT` con `SMOKE_BASE_URL` y ejecutar smokes HTTP/socket
+- `pnpm smoke:ai` para validar Fase 7 de IA sandbox, incluyendo shape estable de respuesta y audit trail cuando el rol puede leer `platform/audit-logs`
 - `pnpm smoke:rbac` con `SMOKE_ADMIN_TOKEN`, `SMOKE_MANAGER_TOKEN`, `SMOKE_AUDITOR_TOKEN` y/o `SMOKE_VIEWER_TOKEN`
 - `pnpm smoke:users` con `SMOKE_ADMIN_TOKEN` y, si quieres mutaciones reales, `SMOKE_RUN_USER_MUTATIONS=true`, `SMOKE_TEST_USER_EMAIL` y `SMOKE_TEST_USER_PASSWORD`
 
 Secuencias recomendadas:
 
+- Cierre operativo de Fase 7:
+  `pnpm smoke:fase7 -- --down`
+- Cierre operativo de Fase 7 en `clerk` con tokens:
+  `SMOKE_AUTH_MODE=clerk SMOKE_BEARER_TOKEN=... SMOKE_ADMIN_TOKEN=... SMOKE_MANAGER_TOKEN=... SMOKE_AUDITOR_TOKEN=... SMOKE_VIEWER_TOKEN=... pnpm smoke:fase7 -- --down`
 - Validacion local en modo demo:
   `pnpm smoke:stack:api -- --auth-mode demo --down`
 - Validacion de rutas protegidas contra un backend ya levantado:
   `SMOKE_BASE_URL=http://127.0.0.1:3001 pnpm smoke:api`
+- Validacion de IA sandbox en modo demo o con token real:
+  `SMOKE_BASE_URL=http://127.0.0.1:3001 pnpm smoke:ai`
+  En `APP_AUTH_MODE=clerk`, agrega `SMOKE_BEARER_TOKEN=...` para ejecutar llamadas reales; sin token valida rechazo anonimo y deja el resto en skip controlado.
 - Validacion RBAC en modo Clerk por rol:
   `SMOKE_BASE_URL=http://127.0.0.1:3001 SMOKE_ADMIN_TOKEN=... SMOKE_MANAGER_TOKEN=... SMOKE_AUDITOR_TOKEN=... SMOKE_VIEWER_TOKEN=... pnpm smoke:rbac`
   Requiere que la API ya este levantada y respondiendo en `SMOKE_BASE_URL`, idealmente con `APP_AUTH_MODE=clerk`.
@@ -187,9 +196,12 @@ Notas sobre los smokes:
 
 - `smoke:api` valida `auth/config`, `auth/access-context` y la coherencia general del modo de autenticacion.
 - `smoke:api:routes` cubre rutas publicas, protegidas y el acceso a directorio de usuarios y auditoria de plataforma.
+- `smoke:fase7` orquesta el cierre operativo de IA: stack temporal, smoke base, smoke IA y RBAC opcional si hay tokens de rol en `clerk`.
+- `smoke:ai` cubre `/api/iso/ai/*`, valida RBAC anonimo en `clerk`, ejecuta `summarize-audit`, `propose-corrective-actions` y `analyze-document` con datos reales cuando hay acceso, y revisa audit trail si el rol puede leerlo.
 - `smoke:rbac` valida no solo codigos HTTP, sino tambien el rol y los permisos que el backend resuelve en `auth/access-context` para cada token.
 - `smoke:users` valida el listado de usuarios para admin y puede ejecutar un ciclo real de alta, cambio de rol, desactivacion, reactivacion y eliminacion de un usuario de prueba.
 - Si `smoke:rbac` no logra conectarse al backend, ahora informa explicitamente que falta levantar la API o corregir `SMOKE_BASE_URL`.
+- Si `docker compose up --build -d` deja la API en `unhealthy`, revisa primero que el daemon Docker este activo y que el healthcheck use `/api/health`, no una ruta autenticada.
 
 ## GitHub Actions
 

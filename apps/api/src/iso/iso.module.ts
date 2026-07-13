@@ -57,11 +57,18 @@ import { SettingsController } from './settings.controller';
 import { SettingsDocumentService } from './settings-document.service';
 import { SettingsOperationsService } from './settings-operations.service';
 import { TaskEntity, TaskSchema } from './schemas/task.schema';
+import {
+  WorkflowExecutionEntity,
+  WorkflowExecutionSchema,
+} from './schemas/workflow-execution.schema';
+import { WorkflowRuleEntity, WorkflowRuleSchema } from './schemas/workflow-rule.schema';
 import { TasksOperationsService } from './tasks-operations.service';
 import { TasksController } from './tasks.controller';
 import { TasksDomainService } from './tasks-domain.service';
 import { TenantBackfillService } from './tenant-backfill.service';
 import { TraceabilitySyncService } from './traceability-sync.service';
+import { WorkflowsController } from './workflows.controller';
+import { WorkflowsService } from './workflows.service';
 
 @Module({
   imports: [
@@ -86,7 +93,13 @@ import { TraceabilitySyncService } from './traceability-sync.service';
       { name: AuditChecklistEntity.name, schema: AuditChecklistSchema },
       { name: AuditChecklistItemEntity.name, schema: AuditChecklistItemSchema },
       { name: CorrectiveActionEntity.name, schema: CorrectiveActionSchema },
+      { name: WorkflowRuleEntity.name, schema: WorkflowRuleSchema },
+      { name: WorkflowExecutionEntity.name, schema: WorkflowExecutionSchema },
     ]),
+    // Fase 7 - IA sandbox
+    // (montado como stub con contratos y auditoría)
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    require('./ai/ai.module').AiModule,
   ],
   controllers: [
     DocumentsController,
@@ -97,6 +110,7 @@ import { TraceabilitySyncService } from './traceability-sync.service';
     CollaborationController,
     SettingsController,
     BootstrapController,
+    WorkflowsController,
   ],
   providers: [
     IsoService,
@@ -124,6 +138,7 @@ import { TraceabilitySyncService } from './traceability-sync.service';
     TasksOperationsService,
     TenantBackfillService,
     TraceabilitySyncService,
+    WorkflowsService,
   ],
 })
 export class IsoModule {}

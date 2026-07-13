@@ -3,10 +3,17 @@ import { useQuery } from '@tanstack/react-query';
 import { Download, Plus } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { fetchBootstrapShell } from '../lib/api';
+import {
+  proposeCorrectiveActionsWithAI,
+  summarizeAuditWithAI,
+  type AuditSummaryResult,
+  type CorrectiveActionsResult,
+} from '../lib/aiApi';
 import { useUIPermissions } from '../hooks/useUIPermissions';
 import { fetchAuditChecklist } from '../lib/auditChecklistApi';
 import { exportAuditExecutionPdf } from '../lib/auditReportPdf';
 import { listCorrectiveActions } from '../lib/correctiveActionsApi';
+import { AuditAiPanel } from '../components/audits/AuditAiPanel';
 import { AuditList } from '../components/audits/AuditList';
 import { AuditFilters } from '../components/audits/AuditFilters';
 import { AuditModal } from '../components/audits/AuditModal';
@@ -21,7 +28,7 @@ import {
 import { useISOStore } from '../store/useISOStore';
 
 export const Audits: React.FC = () => {
-  const { canManageAudits } = useUIPermissions();
+  const { accessContext, canManageAudits } = useUIPermissions();
   const audits = useISOStore((state) => state.audits);
   const tasks = useISOStore((state) => state.tasks);
   const documents = useISOStore((state) => state.documents);
@@ -38,6 +45,10 @@ export const Audits: React.FC = () => {
   const [typeFilter, setTypeFilter] = useState<Audit['type'] | 'all'>('all');
   const [standardFilter, setStandardFilter] = useState<ISOStandard | 'all'>('all');
   const [selectedAuditId, setSelectedAuditId] = useState<string | null>(null);
+  const [aiBusyAction, setAiBusyAction] = useState<'summary' | 'actions' | null>(null);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [aiSummaryResult, setAiSummaryResult] = useState<AuditSummaryResult | null>(null);
+  const [aiActionsResult, setAiActionsResult] = useState<CorrectiveActionsResult | null>(null);
   const canManage = canManageAudits;
 
   const refreshAudits = useCallback(async () => {
@@ -161,6 +172,54 @@ export const Audits: React.FC = () => {
     const bundle = await fetchAuditExportBundle(selectedAudit.id);
     await exportAuditExecutionPdf(bundle.audit, bundle.report, bundle.validation);
   };
+
+  const handleSummarizeAuditWithAI = async () => {
+    if (!selectedAudit) {
+      return;
+    }
+
+    try {
+      setAiBusyAction('summary');
+      setAiError(null);
+      setAiSummaryResult(await summarizeAuditWithAI(selectedAudit.id));
+    } catch (error) {
+      setAiError(error instanceof Error ? error.message : 'No fue posible resumir la auditoría.');
+    } finally {
+      setAiBusyAction(null);
+    }
+  };
+
+  const handleProposeActionsWithAI = async () => {
+    if (!selectedAudit) {
+      return;
+    }
+
+    try {
+      setAiBusyAction('actions');
+      setAiError(null);
+      setAiActionsResult(
+        await proposeCorrectiveActionsWithAI({
+          auditId: selectedAudit.id,
+          riskContext: selectedAudit.findings.map((finding) => finding.description).join(' | '),
+        })
+      );
+    } catch (error) {
+      setAiError(
+        error instanceof Error
+          ? error.message
+          : 'No fue posible proponer acciones correctivas para la auditoría.'
+      );
+    } finally {
+      setAiBusyAction(null);
+    }
+  };
+
+  useEffect(() => {
+    setAiError(null);
+    setAiSummaryResult(null);
+    setAiActionsResult(null);
+    setAiBusyAction(null);
+  }, [selectedAuditId]);
 
   return (
     <div className="space-y-6">
@@ -336,84 +395,102 @@ export const Audits: React.FC = () => {
               </div>
 
               <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-              <section className="panel-card p-6">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <h3 className="text-xl font-extrabold text-app-text">
-                      Checklist de auditoría
-                    </h3>
-                    <p className="mt-1 text-sm text-slate-500">{auditChecklist.summary}</p>
+                <section className="panel-card p-6">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <h3 className="text-xl font-extrabold text-app-text">
+                        Checklist de auditoría
+                      </h3>
+                      <p className="mt-1 text-sm text-slate-500">{auditChecklist.summary}</p>
+                    </div>
+                    <span className="rounded-full bg-app-primary/10 px-3 py-1.5 text-xs font-bold text-app-primary">
+                      {auditChecklist.progress}% completado
+                    </span>
                   </div>
-                  <span className="rounded-full bg-app-primary/10 px-3 py-1.5 text-xs font-bold text-app-primary">
-                    {auditChecklist.progress}% completado
-                  </span>
-                </div>
 
-                <div className="mt-5 space-y-3">
-                  {auditChecklist.items.map((item) => (
-                    <article
-                      key={item.id}
-                      className="rounded-2xl border border-slate-200 bg-app-surface-alt p-4"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">
-                            {item.clauseCode || 'Sin cláusula'}
-                          </p>
-                          <h4 className="mt-2 font-extrabold text-app-text">{item.title}</h4>
-                          <p className="mt-2 text-sm text-slate-500">{item.prompt}</p>
+                  <div className="mt-5 space-y-3">
+                    {auditChecklist.items.map((item) => (
+                      <article
+                        key={item.id}
+                        className="rounded-2xl border border-slate-200 bg-app-surface-alt p-4"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">
+                              {item.clauseCode || 'Sin cláusula'}
+                            </p>
+                            <h4 className="mt-2 font-extrabold text-app-text">{item.title}</h4>
+                            <p className="mt-2 text-sm text-slate-500">{item.prompt}</p>
+                          </div>
+                          <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-600">
+                            {item.status}
+                          </span>
                         </div>
-                        <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-600">
-                          {item.status}
-                        </span>
-                      </div>
-                      <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-400">
-                        <span>{item.evidenceIds.length} evidencia(s)</span>
-                        <span>{item.notes || 'Sin observaciones registradas'}</span>
-                      </div>
-                    </article>
-                  ))}
-                </div>
-              </section>
+                        <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-400">
+                          <span>{item.evidenceIds.length} evidencia(s)</span>
+                          <span>{item.notes || 'Sin observaciones registradas'}</span>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                </section>
 
-              <section className="panel-card p-6">
-                <div>
+                <div className="space-y-6">
+                  <AuditAiPanel
+                    disabled={!accessContext?.authenticated}
+                    busyAction={aiBusyAction}
+                    error={aiError}
+                    summaryResult={aiSummaryResult}
+                    actionsResult={aiActionsResult}
+                    onSummarize={() => void handleSummarizeAuditWithAI()}
+                    onProposeActions={() => void handleProposeActionsWithAI()}
+                  />
+
+                  <section className="panel-card p-6">
+                    <div>
                     <h3 className="text-xl font-extrabold text-app-text">
                       Acciones correctivas relacionadas
                     </h3>
-                  <p className="mt-1 text-sm text-slate-500">
-                    Seguimiento de acciones derivadas de esta auditoría.
-                  </p>
-                </div>
+                    <p className="mt-1 text-sm text-slate-500">
+                      Seguimiento de acciones derivadas de esta auditoría.
+                    </p>
+                  </div>
 
-                <div className="mt-5 space-y-3">
-                  {selectedAuditActions.map((action) => (
-                    <article key={action.id} className="rounded-2xl border border-slate-200 bg-app-surface-alt p-4">
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="font-extrabold text-app-text">{action.title}</p>
-                          <p className="mt-2 text-sm text-slate-500">{action.description}</p>
+                  <div className="mt-5 space-y-3">
+                    {selectedAuditActions.map((action) => (
+                      <article
+                        key={action.id}
+                        className="rounded-2xl border border-slate-200 bg-app-surface-alt p-4"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="font-extrabold text-app-text">{action.title}</p>
+                            <p className="mt-2 text-sm text-slate-500">{action.description}</p>
+                          </div>
+                          <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-600">
+                            {action.status}
+                          </span>
                         </div>
-                        <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-600">
-                          {action.status}
-                        </span>
-                      </div>
-                      <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-400">
-                        <span>Responsable: {action.assignedTo}</span>
-                        <span>
-                          Vence: {action.dueDate ? action.dueDate.toLocaleDateString('es-CL') : 'Sin fecha'}
-                        </span>
-                      </div>
-                    </article>
-                  ))}
+                        <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-400">
+                          <span>Responsable: {action.assignedTo}</span>
+                          <span>
+                            Vence:{' '}
+                            {action.dueDate
+                              ? action.dueDate.toLocaleDateString('es-CL')
+                              : 'Sin fecha'}
+                          </span>
+                        </div>
+                      </article>
+                    ))}
 
-                  {selectedAuditActions.length === 0 ? (
-                    <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-10 text-center text-sm text-slate-500">
-                      Esta auditoría aún no tiene acciones correctivas vinculadas.
-                    </div>
-                  ) : null}
+                    {selectedAuditActions.length === 0 ? (
+                      <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-10 text-center text-sm text-slate-500">
+                        Esta auditoría aún no tiene acciones correctivas vinculadas.
+                      </div>
+                    ) : null}
+                  </div>
+                  </section>
                 </div>
-              </section>
               </div>
             </div>
           ) : null}

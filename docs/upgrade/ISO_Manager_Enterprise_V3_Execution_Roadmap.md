@@ -427,6 +427,10 @@ Prerequisitos:
 - permisos por tenant
 - eventos auditables
 
+Checklist operativo de cierre:
+
+- `docs/upgrade/ISO_Manager_Fase7_IA_Checklist.md`
+
 ## Fase 8 - Automatizacion
 
 Diseño recomendado:
@@ -443,6 +447,10 @@ Ejemplos iniciales:
 - hallazgo vencido
 - auditoria proxima
 - contrato con obligacion atrasada
+
+Backlog inicial recomendado:
+
+- `docs/upgrade/ISO_Manager_Fase8_Automatizacion_Backlog.md`
 
 ## Fase 9 - Integraciones
 

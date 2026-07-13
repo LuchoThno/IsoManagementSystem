@@ -492,6 +492,50 @@ const mutationRouteMatrix = [
       viewer: 403,
     },
   },
+  {
+    method: 'POST',
+    path: '/api/iso/ai/analyze-document',
+    body: { documentId: 'smoke-missing-document' },
+    expectedByRole: {
+      admin: 404,
+      manager: 404,
+      auditor: 404,
+      viewer: 403,
+    },
+  },
+  {
+    method: 'POST',
+    path: '/api/iso/ai/generate-procedure',
+    body: { topic: 'Smoke procedure generation' },
+    expectedByRole: {
+      admin: 201,
+      manager: 201,
+      auditor: 201,
+      viewer: 403,
+    },
+  },
+  {
+    method: 'POST',
+    path: '/api/iso/ai/summarize-audit',
+    body: { auditId: 'smoke-missing-audit' },
+    expectedByRole: {
+      admin: 404,
+      manager: 404,
+      auditor: 404,
+      viewer: 403,
+    },
+  },
+  {
+    method: 'POST',
+    path: '/api/iso/ai/propose-corrective-actions',
+    body: { auditId: 'smoke-missing-audit' },
+    expectedByRole: {
+      admin: 404,
+      manager: 404,
+      auditor: 403,
+      viewer: 403,
+    },
+  },
 ];
 
 const rbacMatrix = [

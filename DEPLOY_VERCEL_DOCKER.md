@@ -245,3 +245,24 @@ En la zona DNS de `servasmar.cl` crea:
 - El frontend compila en build time, asi que sus variables se cargan en Vercel, no en el servidor Docker.
 - Si Cloudflare queda delante del frontend y del API, deja `VITE_API_URL` y `VITE_SOCKET_URL` con esas URLs públicas; el token de Clerk viaja al API y al socket como bearer/auth token.
 - Si `api-iso.servasmar.cl` falla pero `iso.servasmar.cl` sigue activo, revisa primero los rewrites de Vercel y el DNS/proxy del subdominio antes de tocar el backend.
+
+## 7. Rotacion de secretos
+
+Si alguna vez hubo credenciales reales en un `.env` local o compartido, trata ese material como comprometido y rota al menos:
+
+- `CLERK_SECRET_KEY`
+- `CLERK_JWT_KEY` si forzaste modo estatico
+- `MONGODB_URI` o el usuario/password asociados
+- `RESEND_API_KEY`
+- `GOOGLE_CLIENT_SECRET` y `GOOGLE_REFRESH_TOKEN`
+- `SMTP_PASS`
+- `COMMUNICATIONS_WEBHOOK_TOKEN`
+
+Secuencia recomendada:
+
+1. Genera nuevos secretos en cada proveedor.
+2. Actualiza el VPS con el nuevo `.env.production`.
+3. Reinicia el stack con `docker compose --env-file .env.production -f docker-compose.api.yml up -d --build`.
+4. Valida `curl http://127.0.0.1:3000/api/health`.
+5. Ejecuta `pnpm smoke:api`, `pnpm smoke:api:routes` y `pnpm smoke:ai` contra el backend activo.
+6. Revoca explícitamente los secretos anteriores.

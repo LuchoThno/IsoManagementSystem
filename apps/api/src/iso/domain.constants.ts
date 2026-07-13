@@ -49,6 +49,17 @@ export const CORRECTIVE_SOURCE_TYPE_VALUES = [
   'evidence',
 ] as const;
 export const CORRECTIVE_STATUS_VALUES = ['open', 'in-progress', 'verified', 'closed'] as const;
+export const WORKFLOW_TRIGGER_VALUES = [
+  'audit.upcoming',
+  'audit.overdue_finding',
+  'contract.overdue_obligation',
+] as const;
+export const WORKFLOW_EXECUTION_STATUS_VALUES = [
+  'started',
+  'succeeded',
+  'failed',
+  'skipped',
+] as const;
 
 export type DocumentType = (typeof DOCUMENT_TYPE_VALUES)[number];
 export type DocumentFormat = (typeof DOCUMENT_FORMAT_VALUES)[number];
@@ -79,3 +90,5 @@ export type ContractDocumentKind = (typeof CONTRACT_DOCUMENT_KIND_VALUES)[number
 
 export type CorrectiveSourceType = (typeof CORRECTIVE_SOURCE_TYPE_VALUES)[number];
 export type CorrectiveStatus = (typeof CORRECTIVE_STATUS_VALUES)[number];
+export type WorkflowTriggerType = (typeof WORKFLOW_TRIGGER_VALUES)[number];
+export type WorkflowExecutionStatus = (typeof WORKFLOW_EXECUTION_STATUS_VALUES)[number];

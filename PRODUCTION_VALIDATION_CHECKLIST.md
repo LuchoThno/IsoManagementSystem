@@ -173,6 +173,42 @@ SMOKE_AUTH_MODE=clerk \
 pnpm smoke:api:routes
 ```
 
+Smoke de Fase 7 IA sandbox:
+
+```bash
+SMOKE_BASE_URL=https://api-iso.servasmar.cl \
+SMOKE_AUTH_MODE=clerk \
+SMOKE_BEARER_TOKEN=eyJ... \
+pnpm smoke:ai
+```
+
+Resultado esperado:
+
+- sin token en `clerk`, los endpoints IA devuelven `401`
+- con token valido, `summarize-audit`, `propose-corrective-actions` y `analyze-document` responden `201`
+- el payload mantiene `id`, `status`, `model`, `tenantId` y la estructura esperada por cada caso
+- si el token es `admin`, aparecen nuevos eventos `ai.*` en `platform/audit-logs`
+
+Atajo de cierre integrado de Fase 7:
+
+```bash
+SMOKE_BASE_URL=https://api-iso.servasmar.cl \
+SMOKE_AUTH_MODE=clerk \
+SMOKE_BEARER_TOKEN=eyJ... \
+SMOKE_ADMIN_TOKEN=... \
+SMOKE_MANAGER_TOKEN=... \
+SMOKE_AUDITOR_TOKEN=... \
+SMOKE_VIEWER_TOKEN=... \
+pnpm smoke:fase7 -- --down
+```
+
+Resultado esperado:
+
+- corre smoke base
+- corre smoke IA
+- corre RBAC si hay tokens de rol
+- deja la stack abajo al finalizar si el flujo la levantó localmente
+
 Si quieres validar rutas autenticadas reales:
 
 ```bash
@@ -194,6 +230,7 @@ Batería backend mínima:
 ```bash
 SMOKE_BASE_URL=https://api-iso.servasmar.cl \
 SMOKE_AUTH_MODE=clerk \
+SMOKE_BEARER_TOKEN=eyJ... \
 SMOKE_SOCKET_URL="https://iso.servasmar.cl/socket.io/?EIO=4&transport=polling" \
 pnpm smoke:backend
 ```
