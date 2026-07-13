@@ -24,6 +24,9 @@ const Documents = React.lazy(() =>
 const Tasks = React.lazy(() =>
   import('./pages/Tasks').then((module) => ({ default: module.Tasks }))
 );
+const Automation = React.lazy(() =>
+  import('./pages/Automation').then((module) => ({ default: module.Automation }))
+);
 const Audits = React.lazy(() =>
   import('./pages/Audits').then((module) => ({ default: module.Audits }))
 );
@@ -260,6 +263,7 @@ const AppRoutes: React.FC<{ protectedRoute: React.FC<{ children: React.ReactNode
         <Route index element={withSuspense(<Dashboard />, 'dashboard')} />
         <Route path="documents" element={withSuspense(<Documents />, 'documentos')} />
         <Route path="tasks" element={withSuspense(<Tasks />, 'tareas')} />
+        <Route path="automation" element={withSuspense(<Automation />, 'automatización')} />
         <Route path="audits" element={withSuspense(<Audits />, 'auditorías')} />
         <Route path="standards" element={withSuspense(<Standards />, 'normas')} />
         <Route path="standards/:id" element={withSuspense(<StandardDetail />, 'detalle normativo')} />

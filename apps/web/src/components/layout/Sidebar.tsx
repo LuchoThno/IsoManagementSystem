@@ -19,6 +19,7 @@ import {
   MessageSquare,
   PanelLeftClose,
   PanelLeftOpen,
+  Sparkles,
   Settings,
   Users2,
 } from 'lucide-react';
@@ -32,6 +33,7 @@ const groups = [
     items: [
       { to: '/documents', icon: FileText, label: 'Gestión documental' },
       { to: '/tasks', icon: CheckSquare, label: 'Tareas' },
+      { to: '/automation', icon: Sparkles, label: 'Automatización' },
       { to: '/audits', icon: ClipboardList, label: 'Auditorías' },
       { to: '/standards', icon: Files, label: 'Normas' },
       { to: '/evidences', icon: FileCheck2, label: 'Evidencias' },

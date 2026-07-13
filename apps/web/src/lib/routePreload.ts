@@ -2,6 +2,7 @@ const preloaders = {
   '/': () => import('../pages/Dashboard'),
   '/documents': () => import('../pages/Documents'),
   '/tasks': () => import('../pages/Tasks'),
+  '/automation': () => import('../pages/Automation'),
   '/audits': () => import('../pages/Audits'),
   '/calendar': () => import('../pages/Calendar'),
   '/alerts': () => import('../pages/Alerts'),

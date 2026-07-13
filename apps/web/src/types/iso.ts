@@ -223,6 +223,57 @@ export interface CorrectiveAction {
   updatedAt: Date;
 }
 
+export interface WorkflowRuleAction {
+  type: string;
+  enabled: boolean;
+  config: Record<string, unknown>;
+}
+
+export interface WorkflowRule {
+  id: string;
+  tenantId?: string | null;
+  code: string;
+  name: string;
+  triggerType:
+    | 'audit.upcoming'
+    | 'audit.overdue_finding'
+    | 'contract.overdue_obligation';
+  enabled: boolean;
+  cooldownMinutes: number;
+  config: Record<string, unknown>;
+  actions: WorkflowRuleAction[];
+  createdAt: Date | null;
+  updatedAt: Date | null;
+}
+
+export interface WorkflowExecution {
+  id: string;
+  tenantId?: string | null;
+  ruleId: string;
+  triggerType:
+    | 'audit.upcoming'
+    | 'audit.overdue_finding'
+    | 'contract.overdue_obligation';
+  resourceType: string;
+  resourceId: string;
+  status: 'started' | 'succeeded' | 'failed' | 'skipped';
+  startedAt: Date;
+  finishedAt: Date | null;
+  summary: string;
+  metadata: Record<string, unknown>;
+  errorMessage: string | null;
+  createdAt: Date | null;
+  updatedAt: Date | null;
+}
+
+export interface WorkflowRunResult {
+  rule: WorkflowRule | null;
+  processed: number;
+  createdTasks: number;
+  skipped: number;
+  executions: WorkflowExecution[];
+}
+
 export interface DocumentVersionEntry {
   id: string;
   version: string;

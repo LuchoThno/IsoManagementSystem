@@ -8,6 +8,7 @@ import {
   canManageCommunicationTemplates,
   canManageDocuments,
   canManageTasks,
+  canManageWorkflows,
   canSendCommunicationCampaigns,
   canViewCommunicationContent,
 } from '../lib/accessContext';
@@ -43,6 +44,7 @@ export function useUIPermissions() {
       canManageDocuments: canManageDocuments(accessContext, authConfig),
       canManageTasks: canManageTasks(accessContext, authConfig),
       canManageAudits: canManageAudits(accessContext, authConfig),
+      canManageWorkflows: canManageWorkflows(accessContext, authConfig),
     }),
     [
       accessContext,

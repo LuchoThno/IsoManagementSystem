@@ -142,6 +142,14 @@ export const canManageAudits = (
       hasAnyRole(accessContext, ['admin', 'manager', 'auditor'])
   );
 
+export const canManageWorkflows = (
+  accessContext: AccessContext | null,
+  authConfig?: AuthConfig | null
+) =>
+  Boolean(
+    authConfig?.capabilities.manualUserManagement || hasAnyRole(accessContext, ['admin', 'manager'])
+  );
+
 export const fetchAccessContext = async () => {
   const authConfig = await fetchAuthConfig();
 
