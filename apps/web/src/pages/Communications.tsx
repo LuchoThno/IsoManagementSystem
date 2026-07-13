@@ -22,6 +22,7 @@ import {
   deleteEmailTemplate,
   fetchBootstrapShell,
   fetchCommunicationCompatibility,
+  listUsers,
   sendBulkTaskReminderCampaign,
   updateCommunicationSettings,
   updateEmailTemplate,
@@ -94,6 +95,20 @@ const providerLabels: Record<CommunicationProviderType, string> = {
   custom: 'Webhook personalizado',
 };
 
+const aiGoalPresets = [
+  'impulsar seguimiento de tareas próximas y confirmar responsables',
+  'acelerar cierre de tareas críticas esta semana',
+  'recordar vencimientos con tono preventivo y claro',
+  'escalar retrasos sin perder un tono colaborativo',
+];
+
+const aiTonePresets = [
+  'claro, ejecutivo y accionable',
+  'cercano, ordenado y tranquilizador',
+  'preventivo, formal y orientado a cumplimiento',
+  'directo, breve y enfocado en responsables',
+];
+
 const renderTemplate = (
   template: Pick<EmailTemplate, 'subject' | 'content'> | typeof baseEmailModel,
   context: Record<string, string | number>
@@ -125,11 +140,20 @@ export const Communications: React.FC = () => {
   const communicationSettings = useISOStore((state) => state.communicationSettings);
   const settings = useISOStore((state) => state.settings);
   const hydrateShell = useISOStore((state) => state.hydrateShell);
+  const replaceUsers = useISOStore((state) => state.replaceUsers);
 
   const activeUsers = React.useMemo(() => users.filter((user) => user.active), [users]);
-  const availableRoles = React.useMemo(
-    () => Array.from(new Set(activeUsers.map((user) => user.role))),
+  const deliverableUsers = React.useMemo(
+    () => activeUsers.filter((user) => user.email.trim().length > 0),
     [activeUsers]
+  );
+  const activeUsersWithoutEmail = React.useMemo(
+    () => activeUsers.filter((user) => user.email.trim().length === 0),
+    [activeUsers]
+  );
+  const availableRoles = React.useMemo(
+    () => Array.from(new Set(deliverableUsers.map((user) => user.role))),
+    [deliverableUsers]
   );
 
   const [settingsForm, setSettingsForm] = React.useState<CommunicationSettings>(communicationSettings);
@@ -151,7 +175,7 @@ export const Communications: React.FC = () => {
     name: 'Comunicado de tareas por vencer',
     templateId: templates[0]?.id ?? '',
     daysAhead: 7,
-    recipientIds: activeUsers.map((user) => user.id),
+    recipientIds: deliverableUsers.map((user) => user.id),
   });
   const isAccessResolved = !loading;
   const canViewCommunications = canViewCommunicationContent;
@@ -170,10 +194,18 @@ export const Communications: React.FC = () => {
   }, [campaignForm.templateId, templates]);
 
   React.useEffect(() => {
-    if (!selectedRecipientId && activeUsers[0]) {
-      setSelectedRecipientId(activeUsers[0].id);
+    if (deliverableUsers.length === 0) {
+      if (selectedRecipientId) {
+        setSelectedRecipientId('');
+      }
+      return;
     }
-  }, [activeUsers, selectedRecipientId]);
+
+    const recipientStillAvailable = deliverableUsers.some((user) => user.id === selectedRecipientId);
+    if (!recipientStillAvailable) {
+      setSelectedRecipientId(deliverableUsers[0].id);
+    }
+  }, [deliverableUsers, selectedRecipientId]);
 
   React.useEffect(() => {
     const loadCompatibility = async () => {
@@ -193,8 +225,21 @@ export const Communications: React.FC = () => {
     window.setTimeout(() => setMessage(''), 3000);
   };
 
+  const refreshAudienceDirectory = React.useCallback(async () => {
+    replaceUsers(await listUsers());
+  }, [replaceUsers]);
+
+  React.useEffect(() => {
+    void refreshAudienceDirectory();
+  }, [refreshAudienceDirectory]);
+
   const refreshData = async (successMessage?: string) => {
-    hydrateShell(await fetchBootstrapShell({ force: true }));
+    const [shell, nextUsers] = await Promise.all([
+      fetchBootstrapShell({ force: true }),
+      listUsers(),
+    ]);
+    hydrateShell(shell);
+    replaceUsers(nextUsers);
     if (successMessage) {
       showMessage(successMessage);
     }
@@ -227,15 +272,45 @@ export const Communications: React.FC = () => {
 
   const resolvedRecipients = React.useMemo(() => {
     if (deliveryMode === 'personal') {
-      return activeUsers.filter((user) => user.id === selectedRecipientId);
+      return deliverableUsers.filter((user) => user.id === selectedRecipientId);
     }
 
     if (deliveryMode === 'group') {
-      return activeUsers.filter((user) => selectedRole === 'all' || user.role === selectedRole);
+      return deliverableUsers.filter(
+        (user) => selectedRole === 'all' || user.role === selectedRole
+      );
     }
 
-    return activeUsers;
-  }, [activeUsers, deliveryMode, selectedRecipientId, selectedRole]);
+    return deliverableUsers;
+  }, [deliverableUsers, deliveryMode, selectedRecipientId, selectedRole]);
+
+  const recipientNames = React.useMemo(
+    () => new Set(resolvedRecipients.map((user) => user.name)),
+    [resolvedRecipients]
+  );
+
+  const targetedDueSoonTasks = React.useMemo(
+    () => dueSoonTasks.filter((task) => recipientNames.has(task.assignedTo)),
+    [dueSoonTasks, recipientNames]
+  );
+
+  const urgencyBreakdown = React.useMemo(() => {
+    const now = Date.now();
+    return targetedDueSoonTasks.reduce(
+      (accumulator, task) => {
+        const diffDays = Math.ceil((task.dueDate.getTime() - now) / (24 * 60 * 60 * 1000));
+        if (diffDays <= 2) {
+          accumulator.critical += 1;
+        } else if (diffDays <= 5) {
+          accumulator.upcoming += 1;
+        } else {
+          accumulator.planned += 1;
+        }
+        return accumulator;
+      },
+      { critical: 0, upcoming: 0, planned: 0 }
+    );
+  }, [targetedDueSoonTasks]);
 
   React.useEffect(() => {
     setCampaignForm((current) => ({
@@ -259,6 +334,42 @@ export const Communications: React.FC = () => {
           ? 'todos los roles activos'
           : `rol ${selectedRole}`
         : 'toda la base activa';
+
+  const urgencyLabel =
+    urgencyBreakdown.critical > 0
+      ? 'urgencia alta'
+      : urgencyBreakdown.upcoming > 0
+        ? 'urgencia media'
+        : 'seguimiento preventivo';
+
+  const audienceInsights = React.useMemo(() => {
+    if (resolvedRecipients.length === 0) {
+      return 'sin destinatarios utilizables';
+    }
+
+    const roleSummary =
+      deliveryMode === 'group' && selectedRole !== 'all'
+        ? `segmentado por rol ${selectedRole}`
+        : `${availableRoles.length} rol(es) con correo disponible`;
+
+    return [
+      `${resolvedRecipients.length} destinatario(s) activos con correo`,
+      `${targetedDueSoonTasks.length} tarea(s) dentro de la ventana`,
+      `${urgencyBreakdown.critical} crítica(s)`,
+      `${urgencyBreakdown.upcoming} próxima(s)`,
+      `${urgencyBreakdown.planned} planificada(s)`,
+      roleSummary,
+    ].join(', ');
+  }, [
+    availableRoles.length,
+    deliveryMode,
+    resolvedRecipients.length,
+    selectedRole,
+    targetedDueSoonTasks.length,
+    urgencyBreakdown.critical,
+    urgencyBreakdown.planned,
+    urgencyBreakdown.upcoming,
+  ]);
 
   const selectedTemplate =
     templates.find((template) => template.id === campaignForm.templateId) ?? templates[0] ?? null;
@@ -384,6 +495,11 @@ export const Communications: React.FC = () => {
       return;
     }
 
+    if (resolvedRecipients.length === 0) {
+      showMessage('No hay destinatarios con correo válido para este envío.');
+      return;
+    }
+
     const result = await sendBulkTaskReminderCampaign({
       ...campaignForm,
       recipientNames: resolvedRecipients.map((user) => user.name),
@@ -411,8 +527,13 @@ export const Communications: React.FC = () => {
         senderName: settingsForm.senderName,
         deliveryMode,
         audienceLabel,
+        audienceInsights,
         campaignGoal: aiCampaignGoal,
         daysAhead: campaignForm.daysAhead,
+        recipientCount: resolvedRecipients.length,
+        taskCount: targetedDueSoonTasks.length,
+        urgencyLabel,
+        excludedUsersCount: activeUsersWithoutEmail.length,
         providerType: settingsForm.providerType,
         tone: aiTone,
         currentTemplateName: templateForm.name,
@@ -487,13 +608,16 @@ export const Communications: React.FC = () => {
             </p>
             <div className="relative mt-6 flex flex-wrap gap-3">
               <span className="rounded-full border border-white/80 bg-white/75 px-4 py-2 text-xs font-bold uppercase tracking-[0.16em] text-slate-600 shadow-sm backdrop-blur">
-                {resolvedRecipients.length} destinatarios activos
+                {resolvedRecipients.length} destinatarios listos
               </span>
               <span className="rounded-full border border-white/80 bg-white/75 px-4 py-2 text-xs font-bold uppercase tracking-[0.16em] text-slate-600 shadow-sm backdrop-blur">
                 {templates.length} plantillas listas
               </span>
               <span className="rounded-full border border-white/80 bg-white/75 px-4 py-2 text-xs font-bold uppercase tracking-[0.16em] text-slate-600 shadow-sm backdrop-blur">
                 Provider {providerLabels[settingsForm.providerType]}
+              </span>
+              <span className="rounded-full border border-white/80 bg-white/75 px-4 py-2 text-xs font-bold uppercase tracking-[0.16em] text-slate-600 shadow-sm backdrop-blur">
+                Directorio sincronizado: {deliverableUsers.length}/{activeUsers.length}
               </span>
             </div>
           </div>
@@ -628,9 +752,9 @@ export const Communications: React.FC = () => {
                     onChange={(event) => setSelectedRecipientId(event.target.value)}
                     className="admin-select mt-2 w-full"
                   >
-                    {activeUsers.map((user) => (
+                    {deliverableUsers.map((user) => (
                       <option key={user.id} value={user.id}>
-                        {user.name}
+                        {user.name} · {user.email}
                       </option>
                     ))}
                   </select>
@@ -664,8 +788,30 @@ export const Communications: React.FC = () => {
                 </p>
                 <p className="mt-2 text-lg font-extrabold text-slate-700">{recipientModeLabel}</p>
                 <p className="mt-2 text-sm text-slate-500">
-                  {resolvedRecipients.length} destinatario(s) activos seleccionados para el envio.
+                  {resolvedRecipients.length} destinatario(s) con correo válido seleccionados para el envio.
                 </p>
+                <p className="mt-2 text-xs text-slate-400">
+                  La audiencia se obtiene desde el directorio activo del entorno y se refresca junto al módulo.
+                </p>
+                {activeUsersWithoutEmail.length > 0 ? (
+                  <p className="mt-2 text-xs font-semibold text-amber-700">
+                    {activeUsersWithoutEmail.length} usuario(s) activos quedaron fuera porque no tienen correo.
+                  </p>
+                ) : null}
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <span className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-slate-600 ring-1 ring-slate-200">
+                    {urgencyLabel}
+                  </span>
+                  <span className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-slate-600 ring-1 ring-slate-200">
+                    {urgencyBreakdown.critical} crítica(s)
+                  </span>
+                  <span className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-slate-600 ring-1 ring-slate-200">
+                    {urgencyBreakdown.upcoming} próxima(s)
+                  </span>
+                  <span className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-slate-600 ring-1 ring-slate-200">
+                    {urgencyBreakdown.planned} planificada(s)
+                  </span>
+                </div>
               </div>
             </div>
           </section>
@@ -951,6 +1097,24 @@ export const Communications: React.FC = () => {
                   <Sparkles className="h-5 w-5 text-app-primary" />
                 </div>
 
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {aiGoalPresets.map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      disabled={!canManageTemplates && !canSendCampaigns}
+                      onClick={() => setAiCampaignGoal(preset)}
+                      className={`rounded-full px-3 py-1.5 text-xs font-bold transition ${
+                        aiCampaignGoal === preset
+                          ? 'bg-slate-900 text-white'
+                          : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50'
+                      }`}
+                    >
+                      {preset}
+                    </button>
+                  ))}
+                </div>
+
                 <div className="mt-4 grid gap-4 md:grid-cols-2">
                   <div>
                     <label className="block text-sm font-bold text-slate-600">Objetivo del envío</label>
@@ -975,6 +1139,24 @@ export const Communications: React.FC = () => {
                 </div>
 
                 <div className="mt-4 flex flex-wrap gap-2">
+                  {aiTonePresets.map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      disabled={!canManageTemplates && !canSendCampaigns}
+                      onClick={() => setAiTone(preset)}
+                      className={`rounded-full px-3 py-1.5 text-xs font-bold transition ${
+                        aiTone === preset
+                          ? 'bg-app-primary text-white'
+                          : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50'
+                      }`}
+                    >
+                      {preset}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="mt-4 flex flex-wrap gap-2">
                   <span className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-slate-600 ring-1 ring-slate-200">
                     Audiencia: {audienceLabel}
                   </span>
@@ -984,6 +1166,42 @@ export const Communications: React.FC = () => {
                   <span className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-slate-600 ring-1 ring-slate-200">
                     Ventana: {campaignForm.daysAhead} días
                   </span>
+                  <span className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-slate-600 ring-1 ring-slate-200">
+                    Correos utilizables: {resolvedRecipients.length}
+                  </span>
+                  <span className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-slate-600 ring-1 ring-slate-200">
+                    Prioridad: {urgencyLabel}
+                  </span>
+                </div>
+
+                <div className="mt-4 grid gap-3 md:grid-cols-3">
+                  <div className="rounded-2xl bg-white px-4 py-4 ring-1 ring-slate-200">
+                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">
+                      Usuarios activos
+                    </p>
+                    <p className="mt-2 text-2xl font-extrabold text-slate-700">{activeUsers.length}</p>
+                  </div>
+                  <div className="rounded-2xl bg-white px-4 py-4 ring-1 ring-slate-200">
+                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">
+                      Enviables
+                    </p>
+                    <p className="mt-2 text-2xl font-extrabold text-slate-700">{deliverableUsers.length}</p>
+                  </div>
+                  <div className="rounded-2xl bg-white px-4 py-4 ring-1 ring-slate-200">
+                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">
+                      Excluidos sin correo
+                    </p>
+                    <p className="mt-2 text-2xl font-extrabold text-slate-700">
+                      {activeUsersWithoutEmail.length}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-4 rounded-2xl bg-white px-4 py-4 ring-1 ring-slate-200">
+                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">
+                    Contexto que usará la IA
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-slate-600">{audienceInsights}</p>
                 </div>
 
                 <div className="mt-4 flex flex-wrap gap-3">
@@ -1239,8 +1457,13 @@ export const Communications: React.FC = () => {
                   <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Alcance del envio</p>
                   <p className="mt-2 text-lg font-extrabold text-slate-700">{recipientModeLabel}</p>
                   <p className="mt-2 text-sm text-slate-500">
-                    {resolvedRecipients.length} destinatario(s) · {dueSoonTasks.length} tarea(s) dentro de la ventana definida.
+                    {resolvedRecipients.length} destinatario(s) con correo válido · {targetedDueSoonTasks.length} tarea(s) dentro de la ventana definida.
                   </p>
+                  {activeUsersWithoutEmail.length > 0 ? (
+                    <p className="mt-2 text-xs font-semibold text-amber-700">
+                      {activeUsersWithoutEmail.length} usuario(s) activos no recibirán este envío hasta completar su correo.
+                    </p>
+                  ) : null}
                 </div>
 
                 <div>
@@ -1270,7 +1493,7 @@ export const Communications: React.FC = () => {
             <section className="rounded-[30px] border border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#fcfdff_100%)] p-6 shadow-sm">
               <h3 className="text-lg font-extrabold text-slate-700">Vista operativa</h3>
               <div className="mt-5 space-y-3">
-                {dueSoonTasks.slice(0, 5).map((task) => (
+                {targetedDueSoonTasks.slice(0, 5).map((task) => (
                   <div
                     key={task.id}
                     className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4"
@@ -1286,7 +1509,7 @@ export const Communications: React.FC = () => {
                     </div>
                   </div>
                 ))}
-                {dueSoonTasks.length === 0 && (
+                {targetedDueSoonTasks.length === 0 && (
                   <div className="rounded-2xl border border-dashed border-slate-200 px-4 py-8 text-center text-sm text-slate-500">
                     No hay tareas por vencer dentro del rango seleccionado.
                   </div>

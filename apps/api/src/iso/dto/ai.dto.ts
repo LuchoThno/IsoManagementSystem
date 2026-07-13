@@ -101,8 +101,13 @@ export type DraftCommunicationCampaignInputDto = {
   senderName: string;
   deliveryMode: 'personal' | 'group' | 'massive';
   audienceLabel: string;
+  audienceInsights?: string;
   campaignGoal: string;
   daysAhead: number;
+  recipientCount?: number;
+  taskCount?: number;
+  urgencyLabel?: string;
+  excludedUsersCount?: number;
   providerType: 'resend' | 'gmail' | 'custom';
   tone?: string;
   currentTemplateName?: string;

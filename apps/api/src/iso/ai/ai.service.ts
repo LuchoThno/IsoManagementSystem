@@ -213,6 +213,17 @@ export class AiService {
     const audience = input.audienceLabel.trim();
     const goal = input.campaignGoal.trim();
     const templateBase = input.currentTemplateName?.trim() || 'Comunicado operativo';
+    const audienceInsights = input.audienceInsights?.trim();
+    const recipientCount = input.recipientCount ?? 0;
+    const taskCount = input.taskCount ?? 0;
+    const urgencyLabel = input.urgencyLabel?.trim() || 'seguimiento operativo';
+    const excludedUsersCount = input.excludedUsersCount ?? 0;
+    const subjectPrefix =
+      urgencyLabel === 'urgencia alta'
+        ? 'Atención prioritaria'
+        : urgencyLabel === 'urgencia media'
+          ? 'Seguimiento prioritario'
+          : 'Seguimiento operativo';
 
     return {
       id: randomUUID(),
@@ -220,12 +231,14 @@ export class AiService {
       model: 'stub',
       tenantId,
       recommendedTemplateName: `${templateBase} · ${audience}`,
-      recommendedCampaignName: `${goal} · ${audience} · ${input.daysAhead} días`,
-      subject: `[${input.companyName}] ${goal} para ${audience} en los próximos ${input.daysAhead} días`,
+      recommendedCampaignName: `${goal} · ${audience} · ${urgencyLabel} · ${input.daysAhead} días`,
+      subject: `[${input.companyName}] ${subjectPrefix}: ${goal} para ${audience}`,
       html: `<div style="font-family:Arial,sans-serif;color:#1e293b;line-height:1.6">
   <p style="font-size:12px;text-transform:uppercase;letter-spacing:.14em;color:#64748b;margin:0 0 12px">Comunicación ${input.deliveryMode}</p>
   <h1 style="font-size:24px;margin:0 0 16px">Hola {{userName}},</h1>
   <p>Te contactamos para apoyar <strong>${goal}</strong> con foco en <strong>${audience}</strong> durante los próximos <strong>{{daysAhead}}</strong> días.</p>
+  <p>Este envío considera <strong>${recipientCount}</strong> destinatario(s) y <strong>${taskCount}</strong> tarea(s) dentro de la ventana, con prioridad <strong>${urgencyLabel}</strong>.</p>
+  ${audienceInsights ? `<p style="margin:0 0 14px">Contexto de audiencia: ${audienceInsights}.</p>` : ''}
   <p>Actualmente tienes <strong>{{taskCount}}</strong> tarea(s) dentro de la ventana definida.</p>
   <div style="margin:20px 0;padding:20px;border:1px solid #dbeafe;border-radius:18px;background:#f8fbff">
     <p style="margin:0 0 10px;font-weight:700;color:#0f172a">Qué revisar ahora</p>
@@ -233,18 +246,22 @@ export class AiService {
     <div>{{taskTable}}</div>
   </div>
   <p>Acción sugerida: revisa prioridades, confirma bloqueos y actualiza el estado antes del siguiente corte operativo.</p>
+  ${excludedUsersCount > 0 ? `<p style="font-size:13px;color:#92400e">Nota interna: ${excludedUsersCount} usuario(s) activo(s) quedaron fuera por falta de correo registrado.</p>` : ''}
   <p>Si necesitas apoyo, responde este correo para coordinar con ${input.senderName}.</p>
   <p style="margin-top:24px">Saludos,<br /><strong>${input.senderName}</strong><br />${input.companyName}</p>
 </div>`,
       rationale: [
-        `El asunto prioriza claridad y horizonte temporal para mejorar apertura en campañas ${input.deliveryMode}.`,
-        `El cuerpo usa resumen ejecutivo + bloque escaneable para reducir fricción de lectura masiva.`,
+        `El asunto incorpora una señal de ${urgencyLabel} para ajustar prioridad percibida sin sonar alarmista.`,
+        `El cuerpo usa resumen ejecutivo + bloque escaneable para reducir fricción de lectura en ${recipientCount} destinatario(s).`,
         `El tono propuesto es ${normalizedTone} para mantener credibilidad operativa sin sonar genérico.`,
+        audienceInsights
+          ? `La propuesta considera el contexto de audiencia indicado: ${audienceInsights}.`
+          : 'La propuesta mantiene un marco editorial flexible ante una audiencia transversal.',
       ],
       bestPracticesChecklist: [
         'Mantener un solo objetivo principal por envío.',
         'Usar asunto específico, sin mayúsculas excesivas ni ambigüedad.',
-        'Abrir con contexto y urgencia proporcional, no alarmista.',
+        `Abrir con contexto y urgencia proporcional (${urgencyLabel}), no alarmista.`,
         'Incluir CTA claro y único antes del cierre.',
         'Mantener bloques cortos y contenido escaneable para móvil.',
         `Validar segmentación antes de enviar por ${input.providerType}.`,
